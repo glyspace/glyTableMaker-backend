@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  postgres16:
+    image: postgres:16
+    ports:
+      - "5436:5432"
+    volumes:
+      - ${HOME}/glytablemaker/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=glygen
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB=glygen
