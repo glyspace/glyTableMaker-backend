@@ -9,4 +9,8 @@ spring:
     separator: ^^^ END OF SCRIPT ^^^
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-  
+
+glygen:
+  scheme: http://
+  host: localhost:8080
+  basePath: /

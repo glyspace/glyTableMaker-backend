@@ -4,6 +4,7 @@ import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.List;
 
+import org.glygen.tablemaker.persistence.GlygenUser;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.UserLoginType;
 import org.glygen.tablemaker.persistence.dao.RoleRepository;
@@ -15,7 +16,6 @@ import org.glygen.tablemaker.view.SuccessResponse;
 import org.glygen.tablemaker.view.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,6 +28,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.persistence.EntityExistsException;
 import jakarta.validation.Valid;
 
@@ -38,13 +40,8 @@ public class UserController {
     //public static Logger logger=(Logger) LoggerFactory.getLogger(UserController.class);
     final static Logger logger = LoggerFactory.getLogger("event-logger");
     
-    @Autowired
-    UserRepository userRepository;
-    
-    @Autowired
-    RoleRepository roleRepository;
-    
-    
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final UserManager userManager;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
@@ -53,15 +50,16 @@ public class UserController {
     public UserController(UserManager userManager,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
-            TokenProvider tokenProvider) {
+            TokenProvider tokenProvider, UserRepository userRepo, RoleRepository roleRepo) {
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
         this.userManager = userManager;
         this.tokenProvider = tokenProvider;
+        this.userRepository = userRepo;
+        this.roleRepository = roleRepo;
     }
-
     
-    
+    @Operation(summary = "Get all users", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/user")
     public ResponseEntity<SuccessResponse> getAllUser() {
         List<UserEntity> users = userRepository.findAll();
@@ -98,22 +96,21 @@ public class UserController {
         if (existing != null) {
             throw new EntityExistsException ("There is already an account with this email: " + user.getEmail());
         }
-        
-        logger.info("user affiliation" + newUser.getAffiliation());
             
         userManager.createUser(newUser);  
         logger.info("New user {} is added to the system", newUser.getUsername());
-
+        user.setPassword(null);   // Do not send the password
         return ResponseEntity.ok(new SuccessResponse(user, "Registered successfully"));
     }
 
     @PostMapping("/authenticate")
     public ResponseEntity<SuccessResponse> authenticateUser(@Valid @RequestBody LoginRequest login) {
 
-        var authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(login.getUsername(), login.getPassword()));
+        var authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(login.getUsername(), login.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = tokenProvider.generateToken(authentication);
+        String jwt = tokenProvider.generateToken((GlygenUser) authentication.getPrincipal());
 
         return ResponseEntity.ok(new SuccessResponse(jwt, "Login Successfully"));
     }

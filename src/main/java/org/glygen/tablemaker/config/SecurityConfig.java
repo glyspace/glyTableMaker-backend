@@ -9,6 +9,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -55,7 +56,6 @@ public class SecurityConfig {
         // @formatter:off
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                // Add Paseto token filter
                 .addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .authenticationProvider(authenticationProvider())
                 // Set unauthorized requests exception handler
@@ -78,6 +78,7 @@ public class SecurityConfig {
                         "/swagger-ui/**",
                         "/swagger-ui.html").permitAll()
                 .requestMatchers("/api/**").authenticated());
+               // .oauth2ResourceServer(configure -> configure.jwt(Customizer.withDefaults()));
         // @formatter:on
         return http.build();
     }

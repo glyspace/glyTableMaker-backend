@@ -31,9 +31,9 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         Optional<String> jwt = resolveHeaderToken(request);
-        if (jwt.isPresent() && tokenProvider.validateToken(jwt.get())) {
+        if (jwt.isPresent() && !tokenProvider.isTokenExpired(jwt.get())) {
 
-            String username = tokenProvider.extractUsername(jwt.get());
+            String username = tokenProvider.extractUserName(jwt.get());
             if (StringUtils.isNotEmpty(username) && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userService.loadUserByUsername(username);
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
