@@ -1,5 +1,7 @@
 package org.glygen.tablemaker.controller;
 
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.List;
@@ -110,9 +112,16 @@ public class UserController {
                 new UsernamePasswordAuthenticationToken(login.getUsername(), login.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = tokenProvider.generateToken((GlygenUser) authentication.getPrincipal());
-
-        return ResponseEntity.ok(new SuccessResponse(jwt, "Login Successfully"));
+        String jwt;
+        try {
+            jwt = tokenProvider.generateToken((GlygenUser) authentication.getPrincipal());
+            return ResponseEntity.ok(new SuccessResponse(jwt, "Login Successfully"));
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return null;
+        
     }
 
 }

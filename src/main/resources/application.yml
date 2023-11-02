@@ -4,7 +4,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5436/glygen
     username: glygen
-    password: glygen@uga
+    password: glygen@uga   ## this is temporary for testing locally, will be removed 
     driver-class-name: org.postgresql.Driver
     separator: ^^^ END OF SCRIPT ^^^
   jpa:
