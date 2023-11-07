@@ -3,16 +3,12 @@ package org.glygen.tablemaker.security;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.KeySpec;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
 import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.SecretKeySpec;
 
 import org.glygen.tablemaker.persistence.GlygenUser;
 import org.slf4j.Logger;
@@ -67,8 +63,6 @@ public class TokenProvider {
     }
 
     private Claims extractAllClaims(String token) throws JwtException, IllegalArgumentException, NoSuchAlgorithmException, InvalidKeySpecException {
-        //return Jwts.parser().decryptWith((SecretKey) getSigningKey()).build().parseEncryptedClaims(token).getPayload();
-        
         return Jwts.parser()
             .verifyWith((SecretKey) getSigningKey())
             .build()
@@ -79,10 +73,5 @@ public class TokenProvider {
 
     private Key getSigningKey() throws NoSuchAlgorithmException, InvalidKeySpecException {
         return Keys.hmacShaKeyFor(jwtSigningKey.getBytes());
-        
-       /* SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-        KeySpec spec = new PBEKeySpec(jwtSigningKey.toCharArray(), jwtSigningKey.getBytes(), 65536, 256);
-        SecretKey originalKey = new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES");
-        return originalKey;*/
     }
 }
