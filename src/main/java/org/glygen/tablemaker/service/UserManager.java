@@ -13,7 +13,7 @@ public interface UserManager {
 
 	VerificationToken generateNewVerificationToken(String existingVerificationToken);
 
-	//String validateVerificationToken(String token);
+	String validateVerificationToken(String token);
 	
 	void deleteVerificationToken (String token);
 

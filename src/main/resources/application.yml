@@ -9,8 +9,26 @@ spring:
     separator: ^^^ END OF SCRIPT ^^^
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
+    
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: glygenarray.api@gmail.com
+    email: glygenarray.api@gmail.com
+    password: ENC(jFt5gCSNcZv9uWa5yd+6gEFsZ6xmAu5pRkvdUgXY394=)
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 glygen:
   scheme: http://
   host: localhost:8080
   basePath: /
+  frontend:
+      scheme: http://
+      host: localhost:3000
+      basePath: /
+      emailVerificationPage: emailConfirmation

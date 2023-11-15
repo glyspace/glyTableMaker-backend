@@ -8,6 +8,7 @@ import org.glygen.tablemaker.view.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -39,6 +40,14 @@ public class ControllerAdvice {
         return new ErrorResponse(String.valueOf(HttpStatus.NOT_FOUND.value()), "No resource found for your request. Please verify you request", TIMESTAMP);
 
     }
+    
+    @ExceptionHandler({BadCredentialsException.class})
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ErrorResponse badCredentialsException (BadCredentialsException ex) {
+        log.debug(ex.getMessage(), ex.getCause());
+        return new ErrorResponse(String.valueOf(HttpStatus.UNAUTHORIZED.value()), ex.getMessage(), TIMESTAMP);
+
+    }
 
     @ExceptionHandler({DataNotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
@@ -48,7 +57,7 @@ public class ControllerAdvice {
 
     }
 
-    @ExceptionHandler({BadRequestException.class, DuplicateException.class})
+    @ExceptionHandler({BadRequestException.class, DuplicateException.class, IllegalArgumentException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleBadRequestException(Exception ex) {
         return new ErrorResponse(String.valueOf(HttpStatus.BAD_REQUEST.value()), ex.getMessage(), TIMESTAMP);

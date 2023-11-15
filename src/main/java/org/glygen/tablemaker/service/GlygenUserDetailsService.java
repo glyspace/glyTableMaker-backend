@@ -8,8 +8,6 @@ import org.glygen.tablemaker.persistence.GlygenUser;
 import org.glygen.tablemaker.persistence.RoleEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -24,8 +22,6 @@ public class GlygenUserDetailsService implements UserDetailsService {
 	@Autowired
 	private UserRepository userRepository;
 	
-	final static Logger logger = LoggerFactory.getLogger("event-logger");
-	
 	public GlygenUserDetailsService() {
 		super();
 	}
@@ -37,7 +33,8 @@ public class GlygenUserDetailsService implements UserDetailsService {
 		        userRepository.findByUsernameIgnoreCase(username);
 		
 	    if (user == null)
-	        throw new UsernameNotFoundException("User with " + (username.contains("@") ? "email  ": "username ") + username + " does not exist!");
+	        throw new UsernameNotFoundException("User with " + (username.contains("@") ? "email  ": "username ") 
+	                + username + " does not exist!");
 			
 		return new GlygenUser(user.getUsername(), user.getPassword(), user.getEnabled(), true, true, true,
 				getAuthorities(user.getRoles()), user.getFirstName(), user.getLastName(), 

@@ -58,7 +58,7 @@ public class UserManagerImpl implements UserManager {
         return vToken;
     }
     
-    /*@Override
+    @Override
     public String validateVerificationToken(String token) {
         final VerificationToken verificationToken = tokenRepository.findByToken(token);
         if (verificationToken == null) {
@@ -72,11 +72,11 @@ public class UserManagerImpl implements UserManager {
             if (user.getEnabled()) {
             	// do not delete the user, possible email change
             	// delete email change request, if any
-            	List<EmailChangeEntity> emailChange = emailRepository.findByUser(user);
+            	/*List<EmailChangeEntity> emailChange = emailRepository.findByUser(user);
             	if (emailChange != null) {
             		for (EmailChangeEntity e: emailChange) 
             			emailRepository.delete(e);
-            	}
+            	}*/
             } else 
             	repository.delete(user);
             return TOKEN_EXPIRED;
@@ -84,19 +84,19 @@ public class UserManagerImpl implements UserManager {
         
         if (user.getEnabled()) {
         	// already enabled, possible email change
-        	List<EmailChangeEntity> emailChange = emailRepository.findByUser(user);
+        	/*List<EmailChangeEntity> emailChange = emailRepository.findByUser(user);
         	if (emailChange != null) {
         		for (EmailChangeEntity e: emailChange) {
         			user.setEmail(e.getNewEmail());
         			emailRepository.delete(e);
         			break;
         		}
-        	}
+        	}*/
         } else 
         	user.setEnabled(true);
         repository.save(user);
         return TOKEN_VALID;
-    }*/
+    }
 
 	@Override
 	public void createUser(UserEntity newUser) {
