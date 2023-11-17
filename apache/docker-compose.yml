@@ -1,0 +1,11 @@
+version: '3.4'
+services:
+  httpd:
+    build:
+      context: .
+      args:
+        - GLYGEN_BASEPATH
+    ports:
+      - 9980:80
+    volumes:
+      - ./httpd.conf:/usr/local/apache2/conf/httpd.conf
