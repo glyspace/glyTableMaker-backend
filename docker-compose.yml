@@ -8,12 +8,12 @@ services:
       - ${HOME}/glytablemaker/maven:/root/.m2
       - .:/workspace
     working_dir: /workspace/
-    command: bash -c "mvn clean && mvn -U -Djasypt.encryptor.password=${JASYPT_SECRET} -DskipTests=true -Dlog4j2.version=2.17.1 spring-boot:run"
+    command: bash -c "mvn clean && mvn -U -Dspring-boot.run.jvmArguments=-Djasypt.encryptor.password=${JASYPT_SECRET} -DskipTests=true -Dlog4j2.version=2.17.1 spring-boot:run"
     environment:
       - MAVEN_OPTS=-Xmx6000m
       - JASYPT_SECRET
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5436/glygen}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres16:5436/glygen}
       - SPRING_DATASOURCE_USERNAME=glygen
       - SPRING_DATASOURCE_PASSWORD
       - GLYGEN_SCHEME=${GLYGEN_SCHEME:-http://}
@@ -24,3 +24,7 @@ services:
       - SPRINGDOC_SWAGGERUI_CONFIGURL=${SPRINGDOC_SWAGGERUI_CONFIGURL:-/v3/api-docs/swagger-config}
       - SPRINGDOC_SWAGGERUI_URL=${SPRINGDOC_SWAGGERUI_URL:-/v3/api-docs}
     restart: always
+networks:
+  default:
+    name: ${GLYGEN_NETWORK:-glygen-network}
+    external: true

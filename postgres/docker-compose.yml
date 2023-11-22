@@ -10,3 +10,7 @@ services:
       - POSTGRES_USER=glygen
       - POSTGRES_PASSWORD
       - POSTGRES_DB=glygen
+networks:
+  default:
+    name: ${GLYGEN_NETWORK:-glygen-network}
+    external: true

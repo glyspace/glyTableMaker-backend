@@ -11,7 +11,7 @@
 	<groupId>org.glygen</groupId>
 	<artifactId>tablemaker</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>war</packaging>
+	<packaging>jar</packaging>
 	<name>tablemaker</name>
 	<description>Glygen Table Formatter/Maker</description>
 	<properties>
