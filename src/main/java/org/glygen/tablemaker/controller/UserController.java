@@ -163,7 +163,7 @@ public class UserController {
                 @ApiResponse(responseCode="404", description="User with given login name does not exist"),
                 @ApiResponse(responseCode="415", description="Media type is not supported"),
                 @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> updateUser (@Valid @RequestBody(required=true) User user, @PathVariable("userName") String loginId) {
+    public ResponseEntity<SuccessResponse> updateUser (@RequestBody(required=true) User user, @PathVariable("userName") String loginId) {
         UserEntity userEntity = userRepository.findByUsernameIgnoreCase(loginId.trim());
         if (userEntity == null) {
             // find it with email
