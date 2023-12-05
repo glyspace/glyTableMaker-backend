@@ -43,6 +43,12 @@ public class MailService implements EmailManager {
     @Value("${glygen.frontend.emailVerificationPage}")
     String emailVerificationPage;
     
+    PasswordEncoder passwordEncoder;
+    
+    public MailService(PasswordEncoder p) {
+        this.passwordEncoder = p;
+    }
+    
     public void sendMessage(String recipientAddress, String subject, String body) {
         SimpleMailMessage email = new SimpleMailMessage();
         email.setFrom(sender);
@@ -57,8 +63,8 @@ public class MailService implements EmailManager {
         char[] pswd = RandomPasswordGenerator.generatePswd(5, 20, 1, 1, 1);
         String newPassword = new String(pswd);
         // encrypt the password
-        PasswordEncoder passwordEncoder =
-                PasswordEncoderFactories.createDelegatingPasswordEncoder();
+        //PasswordEncoder passwordEncoder =
+        //        PasswordEncoderFactories.createDelegatingPasswordEncoder();
         String hashedPassword = passwordEncoder.encode(newPassword);
         user.setPassword(hashedPassword);
         userManager.createUser(user);
