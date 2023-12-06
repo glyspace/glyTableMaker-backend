@@ -3,13 +3,14 @@ services:
   postgres16:
     image: postgres:16
     ports:
-      - "5436:5432"
+      - "5436:5436"
     volumes:
       - ${HOME}/glytablemaker/postgres:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=glygen
       - POSTGRES_PASSWORD
       - POSTGRES_DB=glygen
+      - PGPORT=5436
 networks:
   default:
     name: ${GLYGEN_NETWORK:-glygen-network}
