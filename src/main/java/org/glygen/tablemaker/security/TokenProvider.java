@@ -14,6 +14,7 @@ import org.glygen.tablemaker.persistence.GlygenUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
@@ -33,7 +34,7 @@ public class TokenProvider {
         return extractClaim(token, Claims::getSubject);
     }
 
-    public String generateToken(GlygenUser userDetails) throws NoSuchAlgorithmException, InvalidKeySpecException {
+    public String generateToken(UserDetails userDetails) throws NoSuchAlgorithmException, InvalidKeySpecException {
         return generateToken(new HashMap<>(), userDetails);
     }
 
@@ -47,7 +48,7 @@ public class TokenProvider {
         return claimsResolvers.apply(claims);
     }
 
-    private String generateToken(Map<String, Object> extraClaims, GlygenUser userDetails) throws NoSuchAlgorithmException, InvalidKeySpecException {
+    private String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) throws NoSuchAlgorithmException, InvalidKeySpecException {
         return Jwts.builder().subject(userDetails.getUsername())
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + org.glygen.tablemaker.config.SecurityConstants.EXPIRATION_TIME))

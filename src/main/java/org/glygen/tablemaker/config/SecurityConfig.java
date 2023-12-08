@@ -3,6 +3,8 @@ package org.glygen.tablemaker.config;
 import org.glygen.tablemaker.security.AuthTokenFilter;
 import org.glygen.tablemaker.security.HandlerAccessDeniedHandler;
 import org.glygen.tablemaker.security.HandlerAuthenticationEntryPoint;
+import org.glygen.tablemaker.security.oauth2.CustomAuthenticationSuccessHandler;
+import org.glygen.tablemaker.security.oauth2.CustomOAuth2UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -29,10 +31,16 @@ public class SecurityConfig {
     
     private final UserDetailsService userDetailsService;
     private final AuthTokenFilter authTokenFilter;
+    private final CustomOAuth2UserService customOauth2UserService;
+    private final CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
     
-    public SecurityConfig(UserDetailsService userDetailsService, AuthTokenFilter authTokenFilter) {
+    public SecurityConfig(UserDetailsService userDetailsService, AuthTokenFilter authTokenFilter,
+            CustomOAuth2UserService customOAuth2UserService, 
+            CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler) {
         this.userDetailsService = userDetailsService;
         this.authTokenFilter = authTokenFilter;
+        this.customAuthenticationSuccessHandler = customAuthenticationSuccessHandler;
+        this.customOauth2UserService = customOAuth2UserService;
     }
     
     @Bean // (1)
@@ -88,10 +96,14 @@ public class SecurityConfig {
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html").permitAll()
-                .requestMatchers("/api/**").authenticated());
-               // .oauth2ResourceServer(configure -> configure.jwt(Customizer.withDefaults()));
+                .requestMatchers("/api/**").authenticated())
+                .oauth2Login(oauth2Login -> oauth2Login
+                        .userInfoEndpoint().userService(customOauth2UserService)
+                        .and()
+                        .successHandler(customAuthenticationSuccessHandler))
+                .logout(l -> l.logoutSuccessUrl("/").permitAll());
         // @formatter:on
         return http.build();
     }
-
+   
 }
