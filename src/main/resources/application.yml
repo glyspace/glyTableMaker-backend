@@ -15,6 +15,7 @@ spring:
             client-id: ENC(vwVGR85Fa4BxyCrx/8nKdqhzeROIeMgzh9iZh/dd1jyt73xoytMx9zGFeu4byOsD94njLvFZUOf9sYvoPqhI1qcwh9LUmkEoSIBSbgp3qzguyQZT/6X8FA==)
             client-secret: ENC(6aOBrgpfQOh9LGVoIcr3UJCyBGHI1s5gcSm0IJxTwbK7Wy2P79W18lUkMvRbgmdS)
             scope: profile, email
+            redirectUri: http://localhost:8080/login/oauth2/code/google
   mail:
     host: smtp.gmail.com
     port: 587
