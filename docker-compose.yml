@@ -19,11 +19,12 @@ services:
       - GLYGEN_SCHEME=${GLYGEN_SCHEME:-https://}
       - GLYGEN_HOST=${GLYGEN_HOST:-glygen.ccrc.uga.edu/tablemaker}
       - GLYGEN_FRONTEND_HOST=${GLYGEN_FRONTEND_HOST:-glygen.ccrc.uga.edu/tablemaker}
+      - GLYGEN_OAUTH2_REDIRECTURI=${GLYGEN_OAUTH2_REDIRECTURI:-https://glygen.ccrc.uga.edu/tablemaker/oauth2/redirect}
       - GLYGEN_BASEPATH=${GLYGEN_BASEPATH:-/api}
       - SERVER_SERVLET_CONTEXT_PATH=${SERVER_SERVLET_CONTEXT_PATH:-/}
       - SPRINGDOC_SWAGGERUI_CONFIGURL=${SPRINGDOC_SWAGGERUI_CONFIGURL:-/v3/api-docs/swagger-config}
       - SPRINGDOC_SWAGGERUI_URL=${SPRINGDOC_SWAGGERUI_URL:-/v3/api-docs}
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECTURI=${GOOGLE_REDIRECT_URI:-https://glygen.ccrc.uga.edu/tablemaker/login/oauth2/code/google}
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECTURI=${GOOGLE_REDIRECT_URI:-https://glygen.ccrc.uga.edu/tablemaker/api/login/oauth2/code/google}
     restart: always
 networks:
   default:
