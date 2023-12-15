@@ -12,10 +12,10 @@ public class PasswordValidator implements ConstraintValidator<Password, String>{
 	private Matcher matcher;
 
 	/**
-	 * pattern: min 5, max 20 characters, at least 1 lowercase, 1 uppercase letter, 1 numeric and 1 special character
+	 * pattern: min 5, max 30 characters, at least 1 lowercase, 1 uppercase letter, 1 numeric and 1 special character
 	 */
 	public static final String PASSWORD_PATTERN = 	
-		"(?=^.{5,20}$)(?=.*\\d)(?=.*[!@#$%^&*]+)(?![.\\n])(?=.*[A-Z])(?=.*[a-z]).*$";
+		"(?=^.{5,30}$)(?=.*\\d)(?=.*[!@#$%^&*]+)(?![.\\n])(?=.*[A-Z])(?=.*[a-z]).*$";
 
 	@Override
 	public void initialize(Password arg0) {
