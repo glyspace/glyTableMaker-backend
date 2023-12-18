@@ -86,21 +86,22 @@ public class SecurityConfig {
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Set permissions on endpoints
                 .authorizeHttpRequests(auth -> auth
-                .requestMatchers(PUBLIC_URLS).permitAll()
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers(
-                        "/configuration/ui",
-                        "/swagger-resources/**",
-                        "/configuration/security",
-                        "/webjars/**",
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**",
-                        "/swagger-ui.html").permitAll()
-                .requestMatchers("/api/**").authenticated())
+                    .requestMatchers(PUBLIC_URLS).permitAll()
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                    .requestMatchers(
+                            "/configuration/ui",
+                            "/swagger-resources/**",
+                            "/configuration/security",
+                            "/webjars/**",
+                            "/v3/api-docs/**",
+                            "/swagger-ui/**",
+                            "/swagger-ui.html").permitAll()
+                    .requestMatchers("/api/**").authenticated())
                 .oauth2Login(oauth2Login -> oauth2Login
-                        .userInfoEndpoint().userService(customOauth2UserService)
-                        .and()
+                        .userInfoEndpoint(userInfoEndpointConfig ->
+                                userInfoEndpointConfig.userService(customOauth2UserService))
                         .successHandler(customAuthenticationSuccessHandler))
+                
                 .logout(l -> l.logoutSuccessUrl("/").permitAll());
         // @formatter:on
         return http.build();
