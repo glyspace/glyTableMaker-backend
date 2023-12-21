@@ -14,14 +14,14 @@ public class GlygenUser extends User {
     private final String email;
     private final String affiliation;
     private final String affiliationWebsite;
-    private final Boolean publicFlag;
+    private final Boolean tempPassword;
 
     public GlygenUser(String username, String password, boolean enabled,
         boolean accountNonExpired, boolean credentialsNonExpired,
         boolean accountNonLocked,
         Collection<? extends GrantedAuthority> authorities,
         String firstName, String lastName, String email, String affiliation,
-        String affiliationWebsite, Boolean publicFlag) {
+        String affiliationWebsite, Boolean tempP) {
 
             super(username, password, enabled, accountNonExpired,
                credentialsNonExpired, accountNonLocked, authorities);
@@ -31,7 +31,7 @@ public class GlygenUser extends User {
             this.email = email;
             this.affiliation = affiliation;
             this.affiliationWebsite = affiliationWebsite;
-            this.publicFlag = publicFlag;
+            this.tempPassword = tempP;
     }
 
     public static long getSerialversionuid() {
@@ -54,8 +54,8 @@ public class GlygenUser extends User {
 		return affiliationWebsite;
 	}
     
-    public Boolean getPublicFlag() {
-		return publicFlag;
+    public Boolean getTempPassword() {
+		return tempPassword;
 	}
     
     public String getEmail() {

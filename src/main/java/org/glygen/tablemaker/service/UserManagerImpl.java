@@ -120,6 +120,9 @@ public class UserManagerImpl implements UserManager {
 	@Override
 	public void changePassword(UserEntity user, String newPassword) {
 		user.setPassword(newPassword);
+		if (user.getTempPassword()) {
+		    user.setTempPassword(false);
+		}
 		repository.save(user);
 	}
 
@@ -139,11 +142,11 @@ public class UserManagerImpl implements UserManager {
 		return user;
 	}
 
-	/*@Override
+	@Override
 	public void cleanUpExpiredSignup() {
 		final Calendar cal = Calendar.getInstance();
 		// get all expired token and delete their users
-		Set<EmailChangeEntity> toBeDeleted = new HashSet<>();
+		//Set<EmailChangeEntity> toBeDeleted = new HashSet<>();
 		Set<UserEntity> usersToBeDeleted = new HashSet<UserEntity>();
 		for (VerificationToken verificationToken: tokenRepository.findAll()) {
 			final UserEntity user = verificationToken.getUser();
@@ -151,24 +154,24 @@ public class UserManagerImpl implements UserManager {
 	            if (user.getEnabled()) {
 	            	// do not delete the user, possible email change
 	            	// delete email change request, if any
-	            	List<EmailChangeEntity> emailChange = emailRepository.findByUser(user);
+	            	/*List<EmailChangeEntity> emailChange = emailRepository.findByUser(user);
 	            	if (emailChange != null) {
 	            		for (EmailChangeEntity e: emailChange) {
 	            			toBeDeleted.add(e);
 	            		}
-	            	}
+	            	}*/
 	            } else 
 	            	usersToBeDeleted.add(user);
 	        }
 		}
 		tokenRepository.deleteAllExpiredSince(cal.getTime());
-		for (EmailChangeEntity e: toBeDeleted) {
+		/*for (EmailChangeEntity e: toBeDeleted) {
 			emailRepository.delete(e);
-		}
+		}*/
 		for (UserEntity u: usersToBeDeleted) {
 			repository.delete(u);
 		}
-	}*/
+	}
 
 	@Override
 	public void deleteVerificationToken(String token) {
