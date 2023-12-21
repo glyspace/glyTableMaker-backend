@@ -29,6 +29,6 @@ public interface UserManager {
 	
 	UserEntity getUserByUsername(String userName);
 	
-	//void cleanUpExpiredSignup ();
+	void cleanUpExpiredSignup ();
 
 }

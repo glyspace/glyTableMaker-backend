@@ -23,6 +23,7 @@ import org.glygen.tablemaker.service.UserManager;
 import org.glygen.tablemaker.service.UserManagerImpl;
 import org.glygen.tablemaker.view.ChangePassword;
 import org.glygen.tablemaker.view.LoginRequest;
+import org.glygen.tablemaker.view.LoginResponse;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.glygen.tablemaker.view.User;
 import org.glygen.tablemaker.view.validation.PasswordValidator;
@@ -144,7 +145,7 @@ public class UserController {
         userView.setEmail(user.getEmail());
         userView.setFirstName(user.getFirstName());
         userView.setLastName(user.getLastName());
-        userView.setPublicFlag(user.getPublicFlag());
+        userView.setTempPassword(user.getTempPassword());
         userView.setUserName(user.getUsername());
         userView.setUserType(user.getLoginType().name());
         userView.setGroupName(user.getGroupName());
@@ -215,7 +216,7 @@ public class UserController {
                 if (user.getAffiliationWebsite() != null) userEntity.setAffiliationWebsite(user.getAffiliationWebsite().trim());
                 if (user.getFirstName() != null && !user.getFirstName().trim().isEmpty()) userEntity.setFirstName(user.getFirstName().trim());
                 if (user.getLastName() != null && !user.getLastName().trim().isEmpty()) userEntity.setLastName(user.getLastName().trim());
-                if (user.getPublicFlag() != null) userEntity.setPublicFlag(user.getPublicFlag());
+                if (user.getTempPassword() != null) userEntity.setTempPassword(user.getTempPassword());
                 userRepository.save(userEntity);
             }
             else {
@@ -237,7 +238,7 @@ public class UserController {
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
     public Boolean checkUserName(@RequestParam("username") final String username) {
-        //userManager.cleanUpExpiredSignup(); // to make sure we are not holding onto any user name which is not verified and expired
+        userManager.cleanUpExpiredSignup(); // to make sure we are not holding onto any user name which is not verified and expired
         UserEntity user = userRepository.findByUsernameIgnoreCase(username.trim());
         if(user!=null) {
             throw new DuplicateException("This user " + username + " already exists!");
@@ -259,10 +260,12 @@ public class UserController {
         newUser.setGroupName(user.getGroupName());
         newUser.setDepartment(user.getDepartment());
         newUser.setAffiliationWebsite(user.getAffiliationWebsite()); 
-        newUser.setPublicFlag(user.getPublicFlag());
+        newUser.setTempPassword(false);
         newUser.setRoles(Arrays.asList(roleRepository.findByRoleName("ROLE_USER")));
         newUser.setLoginType(UserLoginType.LOCAL); 
         
+        // clean up expired tokens if any
+        userManager.cleanUpExpiredSignup();
         
         // check if the user already exists
         UserEntity existing = userRepository.findByUsernameIgnoreCase(user.getUserName());
@@ -428,8 +431,19 @@ public class UserController {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt;
         try {
-            jwt = tokenProvider.generateToken((GlygenUser) authentication.getPrincipal());
-            return ResponseEntity.ok(new SuccessResponse(jwt, "Login Successfully"));
+            GlygenUser user = (GlygenUser) authentication.getPrincipal();
+            jwt = tokenProvider.generateToken(user);
+            User userView = new User();
+            userView.setAffiliation(user.getAffiliation());
+            userView.setAffiliationWebsite(user.getAffiliationWebsite());
+            userView.setEmail(user.getEmail());
+            userView.setFirstName(user.getFirstName());
+            userView.setLastName(user.getLastName());
+            userView.setTempPassword(user.getTempPassword());
+            userView.setUserName(user.getUsername());
+            
+            LoginResponse resp = new LoginResponse(jwt, userView);
+            return ResponseEntity.ok(new SuccessResponse(resp, "Login Successfully"));
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             throw new RuntimeException("Failed to generate an authentication token!", e);
         }

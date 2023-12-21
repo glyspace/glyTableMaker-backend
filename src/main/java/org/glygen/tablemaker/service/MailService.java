@@ -67,6 +67,7 @@ public class MailService implements EmailManager {
         //        PasswordEncoderFactories.createDelegatingPasswordEncoder();
         String hashedPassword = passwordEncoder.encode(newPassword);
         user.setPassword(hashedPassword);
+        user.setTempPassword(true);
         userManager.createUser(user);
         
         final String recipientAddress = user.getEmail();

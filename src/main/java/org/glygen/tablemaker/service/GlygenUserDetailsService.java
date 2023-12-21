@@ -53,7 +53,7 @@ public class GlygenUserDetailsService implements UserDetailsService {
 			
 	        return new GlygenUser(user.getUsername(), user.getPassword(), user.getEnabled(), true, true, true,
 				getAuthorities(user.getRoles()), user.getFirstName(), user.getLastName(), 
-				user.getEmail(), user.getAffiliation(), user.getAffiliationWebsite(), user.getPublicFlag());
+				user.getEmail(), user.getAffiliation(), user.getAffiliationWebsite(), user.getTempPassword());
 	    }
 	}
 	

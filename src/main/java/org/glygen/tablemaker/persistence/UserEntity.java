@@ -42,7 +42,7 @@ public class UserEntity {
     private String department;
     private String affiliation;
     private String affiliationWebsite;
-    private Boolean publicFlag;
+    private Boolean tempPassword;
     private UserLoginType loginType;
     private Collection<RoleEntity> roles;
     
@@ -165,17 +165,17 @@ public class UserEntity {
 		this.affiliationWebsite = affiliationWebsite;
 	}
 	/**
-	 * @return the publicFlag
+	 * @return the tempPassword
 	 */
-	@Column(name="publicflag")
-	public Boolean getPublicFlag() {
-		return publicFlag;
+	@Column(name="tempPassword")
+	public Boolean getTempPassword() {
+		return tempPassword;
 	}
 	/**
-	 * @param publicFlag the publicFlag to set
+	 * @param tempPassword tempPassword flag to set
 	 */
-	public void setPublicFlag(Boolean publicFlag) {
-		this.publicFlag = publicFlag;
+	public void setTempPassword(Boolean t) {
+		this.tempPassword = t;
 	}
     
 	@ManyToMany(fetch=FetchType.EAGER, cascade=CascadeType.MERGE)

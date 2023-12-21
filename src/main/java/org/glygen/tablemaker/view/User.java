@@ -19,7 +19,7 @@ public class User {
     private String department;
     private String affiliation;
     private String affiliationWebsite;
-    private Boolean publicFlag = false;
+    private Boolean tempPassword = false;
     private String userType;
     
 	/**
@@ -118,16 +118,16 @@ public class User {
 		this.affiliationWebsite = affiliationWebsite;
 	}
 	/**
-	 * @return the publicFlag
+	 * @return the tempPassword flag
 	 */
-	public Boolean getPublicFlag() {
-		return publicFlag;
+	public Boolean getTempPassword() {
+		return tempPassword;
 	}
 	/**
-	 * @param publicFlag the publicFlag to set
+	 * @param tempPassword the tempPassword flag to set
 	 */
-	public void setPublicFlag(Boolean publicFlag) {
-		this.publicFlag = publicFlag;
+	public void setTempPassword(Boolean t) {
+		this.tempPassword = t;
 	}
 	
 	/**
