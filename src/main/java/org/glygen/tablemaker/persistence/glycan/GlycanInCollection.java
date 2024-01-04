@@ -2,6 +2,8 @@ package org.glygen.tablemaker.persistence.glycan;
 
 import java.util.Date;
 
+import org.glygen.tablemaker.persistence.UserEntity;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -53,7 +55,7 @@ public class GlycanInCollection {
     /**
      * @return the collection
      */
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne(cascade = CascadeType.ALL, targetEntity = Collection.class)
     @JoinColumn(name = "collectionid")
     public Collection getCollection() {
         return collection;

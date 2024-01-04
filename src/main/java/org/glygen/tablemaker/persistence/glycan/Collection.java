@@ -2,6 +2,7 @@ package org.glygen.tablemaker.persistence.glycan;
 
 import org.glygen.tablemaker.persistence.UserEntity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -16,12 +17,12 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name="collections")
 public class Collection {
-    
-    Long id;
+    Long collectionId;
     String name;
     String description;
     UserEntity user;
     Metadata metadata;
+    Collection parent;
     java.util.Collection<Collection> collections;   //TODO how to do this???
     java.util.Collection<GlycanInCollection> glycans;
     
@@ -31,18 +32,19 @@ public class Collection {
     @Id
     @GeneratedValue
     @Column(name="collectionid")
-    public Long getId() {
-        return id;
+    public Long getCollectionId() {
+        return collectionId;
     }
     /**
      * @param id the id to set
      */
-    public void setId(Long id) {
-        this.id = id;
+    public void setCollectionId(Long id) {
+        this.collectionId = id;
     }
     /**
      * @return the name
      */
+    @Column
     public String getName() {
         return name;
     }
@@ -55,6 +57,7 @@ public class Collection {
     /**
      * @return the description
      */
+    @Column
     public String getDescription() {
         return description;
     }
@@ -95,12 +98,14 @@ public class Collection {
     /**
      * @return the collections
      */
+    @OneToMany(mappedBy="parent")
     public java.util.Collection<Collection> getCollections() {
         return collections;
     }
     /**
      * @param collections the collections to set
      */
+    
     public void setCollections(java.util.Collection<Collection> collections) {
         this.collections = collections;
     }
@@ -116,6 +121,19 @@ public class Collection {
      */
     public void setGlycans(java.util.Collection<GlycanInCollection> glycans) {
         this.glycans = glycans;
+    }
+    /**
+     * @return the parent
+     */
+    @ManyToOne
+    public Collection getParent() {
+        return parent;
+    }
+    /**
+     * @param parent the parent to set
+     */
+    public void setParent(Collection parent) {
+        this.parent = parent;
     }
 
 }

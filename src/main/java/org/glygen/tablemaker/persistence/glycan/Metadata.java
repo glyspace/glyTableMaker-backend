@@ -1,15 +1,17 @@
 package org.glygen.tablemaker.persistence.glycan;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 
 @Entity
 public class Metadata {
-    Long id;
+    Long metadataId;
     Datatype type;
     String value;
     
@@ -17,14 +19,15 @@ public class Metadata {
      * @return the id
      */
     @Id
-    public Long getId() {
-        return id;
+    @GeneratedValue
+    public Long getMetadataId() {
+        return metadataId;
     }
     /**
      * @param datatypeId the id to set
      */
-    public void setId(Long id) {
-        this.id = id;
+    public void setMetadataId(Long id) {
+        this.metadataId = id;
     }
     /**
      * @return the type
@@ -43,6 +46,7 @@ public class Metadata {
     /**
      * @return the value
      */
+    @Column
     public String getValue() {
         return value;
     }
