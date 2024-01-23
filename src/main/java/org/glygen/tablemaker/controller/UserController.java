@@ -87,15 +87,6 @@ public class UserController {
         this.emailManager = emailManager;
     }
     
-    @Operation(summary = "Get all users", security = { @SecurityRequirement(name = "bearer-key") })
-    @GetMapping("/user")
-    public ResponseEntity<SuccessResponse> getAllUser() {
-        List<UserEntity> users = userRepository.findAll();
-        
-        //TODO do not return passwords
-        return new ResponseEntity<>(new SuccessResponse(users, MessageFormat.format("{0} result found", users.size())), HttpStatus.OK);
-    }
-    
     
     @GetMapping("/user/{userName}")
     @Operation(summary="Retrieve the information for the given user", security = { @SecurityRequirement(name = "bearer-key") })

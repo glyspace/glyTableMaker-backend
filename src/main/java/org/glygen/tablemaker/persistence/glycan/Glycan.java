@@ -30,7 +30,6 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 @JsonSerialize
 public class Glycan {
     Long glycanId;
-    String internalID;
     String glytoucanID;
     String wurcs;
     String glycoCT;
@@ -60,19 +59,6 @@ public class Glycan {
         this.glycanId = glycanId;
     }
     
-    /**
-     * @return the internalID
-     */
-    @Column(name="internalid", unique = false, nullable = false, length = 255)
-    public String getInternalID() {
-        return internalID;
-    }
-    /**
-     * @param internalID the internalID to set
-     */
-    public void setInternalID(String internalID) {
-        this.internalID = internalID;
-    }
     /**
      * @return the glytoucanID
      */

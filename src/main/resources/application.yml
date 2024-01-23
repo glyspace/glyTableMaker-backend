@@ -29,6 +29,10 @@ spring:
           starttls:
             enable: true
 
+glytoucan:
+  api-key: ENC(xxC0coU6Fo/mu1WTYjVA9IWdPerjRD0XPBEgmXgW8mdI6n7Jk5/bA3nFD48QKPxWpEVU9ICMXxlugIwk+DZSe65whHuRX8NhH0MwyeO2Xsc=)
+  user-id: ff2dda587eb4597ab1dfb995b520e99b7ef68d7786af0f3ea626555e2c609c3d
+  
 glygen:
   oauth2:
      redirectUri: http://localhost:3000/oauth2/redirect

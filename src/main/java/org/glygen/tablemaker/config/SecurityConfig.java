@@ -5,6 +5,7 @@ import org.glygen.tablemaker.security.HandlerAccessDeniedHandler;
 import org.glygen.tablemaker.security.HandlerAuthenticationEntryPoint;
 import org.glygen.tablemaker.security.oauth2.CustomAuthenticationSuccessHandler;
 import org.glygen.tablemaker.security.oauth2.CustomOAuth2UserService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -33,6 +34,12 @@ public class SecurityConfig {
     private final AuthTokenFilter authTokenFilter;
     private final CustomOAuth2UserService customOauth2UserService;
     private final CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
+    
+    @Value("${glytoucan.api-key}")
+    String apiKey;
+    
+    @Value("${glytoucan.user-id}")
+    String userId;
     
     public SecurityConfig(UserDetailsService userDetailsService, AuthTokenFilter authTokenFilter,
             CustomOAuth2UserService customOAuth2UserService, 
@@ -63,6 +70,11 @@ public class SecurityConfig {
 
     @Bean // (4)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        
+        // settings for GlytoucanUtil
+        org.glygen.tablemaker.util.GlytoucanUtil.getInstance().setApiKey(apiKey);
+        org.glygen.tablemaker.util.GlytoucanUtil.getInstance().setUserId(userId);
+        
         RequestMatcher PUBLIC_URLS = new OrRequestMatcher( 
                 new AntPathRequestMatcher("/error"),
                 new AntPathRequestMatcher("/api/account/authenticate**"),

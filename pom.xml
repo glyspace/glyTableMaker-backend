@@ -77,6 +77,75 @@
 	        <artifactId>jasypt-spring-boot</artifactId>
 	        <version>3.0.5</version>
 		</dependency>
+		<!-- GLIC -->
+		<!-- https://gitlab.com/api/v4/projects/17725126/packages/maven -->
+		<dependency>
+			<groupId>org.glycoinfo</groupId>
+			<artifactId>wurcsframework</artifactId>
+			<version>1.2.13</version>
+		</dependency>
+		<dependency>
+		  <groupId>glycoinfo</groupId>
+		  <artifactId>molecular</artifactId>
+		  <version>0.1.37</version>
+		</dependency>
+		<dependency>
+			<groupId>org.eurocarbdb.glycanbuilder</groupId>
+			<artifactId>glycanbuilder2</artifactId>
+			<version>1.23.1</version>
+			<exclusions>
+		        <exclusion>
+		            <groupId>log4j</groupId>
+		            <artifactId>log4j</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>org.apache.logging.log4j</groupId>
+		            <artifactId>log4j</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>org.apache.logging.log4j</groupId>
+		            <artifactId>log4j-api</artifactId>
+		        </exclusion>
+		        <exclusion>
+		            <groupId>org.apache.logging.log4j</groupId>
+		            <artifactId>log4j-core</artifactId>
+		        </exclusion>
+		        <exclusion>
+		        	<groupId>xml-apis</groupId>
+		        	<artifactId>xml-apis</artifactId>
+		        </exclusion>
+		        <exclusion>
+			        <groupId>org.slf4j</groupId>
+			    	<artifactId>log4j-over-slf4j</artifactId>
+			    </exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+		  <groupId>resourcesdb</groupId>
+		  <artifactId>resourcesdb_interfaces</artifactId>
+		  <version>1</version>
+		</dependency>
+		
+		<!--  GlycoInfo -->
+		<!--  https://gitlab.com/api/v4/projects/41883306/packages/maven -->
+		<dependency>
+            <groupId>org.glycoinfo.convert</groupId>
+            <artifactId>glycanformatconverter</artifactId>
+            <version>2.9.1</version>
+        </dependency>
+        <dependency>
+		  <groupId>org.glycoinfo.composition</groupId>
+		  <artifactId>GlycanCompositionConverter</artifactId>
+		  <version>1.0.0</version>
+		</dependency>
+        
+		<!-- https://mvnrepository.com/artifact/org.jdom/jdom2 -->
+		<dependency>
+		    <groupId>org.jdom</groupId>
+		    <artifactId>jdom2</artifactId>
+		    <version>2.0.6</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
@@ -95,6 +164,23 @@
 			<snapshots>
 				<enabled>false</enabled>
 			</snapshots>
+		</repository>
+		<repository>
+			<id>nexus</id>
+			<url>https://glygen.ccrc.uga.edu/repository/content/repositories/thirdparty/</url>
+		</repository>
+	    <repository>
+	      <id>github</id>
+	      <name>my github repository</name>
+	      <url>https://raw.githubusercontent.com/glycoinfo/MavenRepository/master/</url>
+	    </repository>
+	    <repository>
+		    <id>WURCSFramework-gitlab-maven</id>
+		    <url>https://gitlab.com/api/v4/projects/17725126/packages/maven</url>
+		</repository>
+		<repository>
+		    <id>gitlab-maven</id>
+		    <url>https://gitlab.com/api/v4/projects/41883306/packages/maven</url>
 		</repository>
 	</repositories>
 	<pluginRepositories>
