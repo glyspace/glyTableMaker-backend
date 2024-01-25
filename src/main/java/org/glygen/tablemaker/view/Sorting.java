@@ -1,20 +1,13 @@
 package org.glygen.tablemaker.view;
 
 public class Sorting {
-    Integer column;
+    String id;
     Boolean desc;
-    /**
-     * @return the column
-     */
-    public Integer getColumn() {
-        return column;
+    
+    public Sorting() {
+        // TODO Auto-generated constructor stub
     }
-    /**
-     * @param column the column to set
-     */
-    public void setColumn(Integer column) {
-        this.column = column;
-    }
+    
     /**
      * @return the desc
      */
@@ -26,5 +19,19 @@ public class Sorting {
      */
     public void setDesc(Boolean desc) {
         this.desc = desc;
+    }
+
+    /**
+     * @return the id
+     */
+    public String getId() {
+        return id;
+    }
+
+    /**
+     * @param id the id to set
+     */
+    public void setId(String id) {
+        this.id = id;
     }
 }

@@ -22,6 +22,7 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import jakarta.persistence.Transient;
 import jakarta.xml.bind.annotation.XmlRootElement;
 
 @Entity
@@ -41,6 +42,7 @@ public class Glycan {
     RegistrationStatus status;
     UserEntity user;
     java.util.Collection<GlycanInCollection> glycanCollections;
+    byte[] cartoon;
     
     /**
      * @return the glycanId
@@ -204,5 +206,18 @@ public class Glycan {
      */
     public void setGlycanCollections(java.util.Collection<GlycanInCollection> glycanCollections) {
         this.glycanCollections = glycanCollections;
+    }
+    /**
+     * @return the cartoon
+     */
+    @Transient
+    public byte[] getCartoon() {
+        return cartoon;
+    }
+    /**
+     * @param cartoon the cartoon to set
+     */
+    public void setCartoon(byte[] cartoon) {
+        this.cartoon = cartoon;
     }
 }

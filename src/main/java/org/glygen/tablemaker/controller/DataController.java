@@ -1,10 +1,18 @@
 package org.glygen.tablemaker.controller;
 
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.imageio.ImageIO;
+
+import org.apache.commons.io.IOUtils;
 import org.eurocarbdb.MolecularFramework.io.SugarImporterException;
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarExporterGlycoCTCondensed;
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarImporterGlycoCTCondensed;
@@ -24,7 +32,6 @@ import org.glycoinfo.GlycanCompositionConverter.structure.Composition;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionParseException;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionUtils;
 import org.glycoinfo.GlycanCompositionConverter.utils.DictionaryException;
-import org.glycoinfo.GlycanFormatconverter.io.GlycoCT.WURCSToGlycoCT;
 import org.glycoinfo.WURCSFramework.io.GlycoCT.GlycoVisitorValidationForWURCS;
 import org.glycoinfo.WURCSFramework.io.GlycoCT.WURCSExporterGlycoCT;
 import org.glycoinfo.WURCSFramework.util.WURCSException;
@@ -45,19 +52,34 @@ import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.glygen.tablemaker.view.UserStatisticsView;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
@@ -65,7 +87,7 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/data")
 public class DataController {
     
-    Logger logger = org.slf4j.LoggerFactory.getLogger(DataController.class);
+    static Logger logger = org.slf4j.LoggerFactory.getLogger(DataController.class);
     static BuilderWorkspace glycanWorkspace = new BuilderWorkspace(new GlycanRendererAWT());
     static {       
             glycanWorkspace.initData();
@@ -85,6 +107,9 @@ public class DataController {
     final private GlycanRepository glycanRepository;
     final private UserRepository userRepository;
     
+    @Value("${spring.file.imagedirectory}")
+    String imageLocation;
+    
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository) {
         this.glycanRepository = glycanRepository;
         this.userRepository = userRepository;
@@ -100,11 +125,16 @@ public class DataController {
     @Operation(summary = "Get glycans", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getglycans")
     public ResponseEntity<SuccessResponse> getGlycans(
+            @RequestParam("start")
             Integer start, 
+            @RequestParam("size")
             Integer size,
-            List<Filter> filters,
+            @RequestParam("filters")
+            String filters,
+            @RequestParam("globalFilter")
             String globalFilter,
-            List<Sorting> sorting) {
+            @RequestParam("sorting")
+            String sorting) {
         // get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -112,8 +142,44 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
       
-        // TODO apply filters and sorting
-        Page<Glycan> glycansInPage = glycanRepository.findAllByUser(user, PageRequest.of(start, size));
+        // parse filters and sorting
+        ObjectMapper mapper = new ObjectMapper();
+        List<Filter> filterList = null;
+        if (filters != null && !filters.equals("[]")) {
+            try {
+                filterList = mapper.readValue(filters, 
+                    new TypeReference<ArrayList<Filter>>() {});
+            } catch (JsonProcessingException e) {
+                throw new InternalError("filter parameter is invalid " + filters, e);
+            }
+        }
+        List<Sorting> sortingList = null;
+        List<Order> sortOrders = new ArrayList<>();
+        if (sorting != null && !sorting.equals("[]")) {
+            try {
+                sortingList = mapper.readValue(sorting, 
+                    new TypeReference<ArrayList<Sorting>>() {});
+                for (Sorting s: sortingList) {
+                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                }
+            } catch (JsonProcessingException e) {
+                throw new InternalError("sorting parameter is invalid " + sorting, e);
+            }
+        }
+        
+        // TODO apply filters
+        Page<Glycan> glycansInPage = glycanRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
+        
+        // retrieve cartoon images
+        for (Glycan g: glycansInPage.getContent()) {
+            try {
+                g.setCartoon(getImageForGlycan(g.getGlycanId()));
+            } catch (DataNotFoundException e) {
+                // ignore
+                logger.warn ("no image found for glycan " + g.getGlycanId());
+            }
+        }
+        
         Map<String, Object> response = new HashMap<>();
         response.put("glycans", glycansInPage.getContent());
         response.put("currentPage", glycansInPage.getNumber());
@@ -123,6 +189,31 @@ public class DataController {
         return new ResponseEntity<>(new SuccessResponse(response, "glycans retrieved"), HttpStatus.OK);
     }
     
+    @Operation(summary = "Delete given glycan from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value="/delete/{glycanId}", method = RequestMethod.DELETE)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Glycan deleted successfully"), 
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to delete glycans"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> deleteGlycan (
+            @Parameter(required=true, description="internal id of the glycan to delete") 
+            @PathVariable("glycanId") Long glycanId) {
+        
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        Glycan existing = glycanRepository.findByGlycanIdAndUser(glycanId, user);
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given glycan " + glycanId + " for the user");
+        }
+        //TODO need to check if the glycan appears in any collection and delete from the collections first
+        glycanRepository.deleteById(glycanId);
+        return new ResponseEntity<>(new SuccessResponse(glycanId, "Glycan deleted successfully"), HttpStatus.OK);
+    }
     
     @Operation(summary = "Add glycan", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addglycan")
@@ -152,6 +243,21 @@ public class DataController {
             // check glytoucan to see if the id is correct!
             String sequence = getSequenceFromGlytoucan(g.getGlytoucanID().trim());
             glycan.setWurcs(sequence);
+            WURCS2Parser t_wurcsparser = new WURCS2Parser();
+            MassOptions massOptions = new MassOptions();
+            massOptions.setDerivatization(MassOptions.NO_DERIVATIZATION);
+            massOptions.setIsotope(MassOptions.ISOTOPE_MONO);
+            massOptions.ION_CLOUD = new IonCloud();
+            massOptions.NEUTRAL_EXCHANGES = new IonCloud();
+            ResidueType m_residueFreeEnd = ResidueDictionary.findResidueType("freeEnd");
+            massOptions.setReducingEndType(m_residueFreeEnd);
+            try {
+                org.eurocarbdb.application.glycanbuilder.Glycan glycanObject = t_wurcsparser.readGlycan(glycan.getWurcs(), massOptions);
+                glycan.setMass(computeMass(glycanObject));
+            } catch (Exception e) {
+                logger.error("could not calculate mass for wurcs sequence ", e);
+                glycan.setError("Could not calculate mass. Reason: " + e.getMessage());
+            }
             glycan.setStatus(RegistrationStatus.ALREADY_IN_GLYTOUCAN);
             
         } else if (g.getSequence() != null && !g.getSequence().trim().isEmpty()){ 
@@ -324,7 +430,24 @@ public class DataController {
         // save the glycan
         glycan.setDateCreated(new Date());
         glycan.setUser(user);
-        glycanRepository.save(glycan);
+        Glycan added = glycanRepository.save(glycan);
+        
+        if (added != null) {
+            BufferedImage t_image = createImageForGlycan(added);
+            if (t_image != null) {
+                String filename = added.getGlycanId() + ".png";
+                //save the image into a file
+                logger.debug("Adding image to " + imageLocation);
+                File imageFile = new File(imageLocation + File.separator + filename);
+                try {
+                    ImageIO.write(t_image, "png", imageFile);
+                } catch (IOException e) {
+                    logger.error("could not write cartoon image to file", e);
+                }
+            } else {
+                logger.warn ("Glycan image cannot be generated for glycan " + added.getGlycanId());
+            }
+        } 
         return new ResponseEntity<>(new SuccessResponse(glycan, "glycan added"), HttpStatus.OK);
     }
     
@@ -389,19 +512,71 @@ public class DataController {
             if (wurcsSequence == null) {
                 // cannot be found in Glytoucan
                 throw new DataNotFoundException("Glycan with accession number " + glytoucanId + " cannot be found");
-            } else {
-                // convert sequence into GlycoCT and return
-                WURCSToGlycoCT exporter = new WURCSToGlycoCT();
-                exporter.start(wurcsSequence);
-                if ( !exporter.getErrorMessages().isEmpty() ) {
-                    //throw new GlycanRepositoryException(exporter.getErrorMessages());
-                    logger.info("Cannot be exported in GlycoCT: " + wurcsSequence + " Reason: " + exporter.getErrorMessages());
-                    return wurcsSequence;
-                }
-                return exporter.getGlycoCT();
-            }           
+            } 
+            return wurcsSequence;           
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid Input: Glytoucan ID" + glytoucanId + " failed. Reason: " + e.getMessage());
+        }
+    }
+    
+    public static BufferedImage createImageForGlycan(Glycan glycan) {
+        BufferedImage t_image = null;
+        org.eurocarbdb.application.glycanbuilder.Glycan glycanObject = null;
+        try {
+            if (glycan.getGlycoCT() != null && !glycan.getGlycoCT().isEmpty()) {
+                glycanObject = 
+                        org.eurocarbdb.application.glycanbuilder.Glycan.
+                        fromGlycoCTCondensed(glycan.getGlycoCT().trim());
+                if (glycanObject == null && glycan.getGlytoucanID() != null) {
+                    String seq = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
+                    if (seq != null) {
+                        try {
+                            WURCS2Parser t_wurcsparser = new WURCS2Parser();
+                            glycanObject = t_wurcsparser.readGlycan(seq, new MassOptions());
+                        } catch (Exception e) {
+                            logger.error ("Glycan image cannot be generated with WURCS sequence", e);
+                        }
+                    }
+                }
+                
+            } else if (glycan.getWurcs() != null && !glycan.getWurcs().isEmpty()) {
+                WURCS2Parser t_wurcsparser = new WURCS2Parser();
+                glycanObject = t_wurcsparser.readGlycan(glycan.getWurcs().trim(), new MassOptions());
+            }
+            if (glycanObject != null) {
+                t_image = glycanWorkspace.getGlycanRenderer().getImage(glycanObject, true, false, true, 1.0D);
+            } 
+
+        } catch (Exception e) {
+            logger.error ("Glycan image cannot be generated", e);
+            // check if there is glytoucan id
+            if (glycan.getGlytoucanID() != null) {
+                String seq = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
+                if (seq != null) {
+                    WURCS2Parser t_wurcsparser = new WURCS2Parser();
+                    try {
+                        glycanObject = t_wurcsparser.readGlycan(seq, new MassOptions());
+                        if (glycanObject != null) {
+                            t_image = glycanWorkspace.getGlycanRenderer().getImage(glycanObject, true, false, true, 1.0D);
+                        }
+                    } catch (Exception e1) {
+                        logger.error ("Glycan image cannot be generated from WURCS", e);
+                    }
+                }
+            }
+            
+        }
+        return t_image;
+    }
+    
+    public byte[] getImageForGlycan (Long glycanId) {
+        try {
+            File imageFile = new File(imageLocation + File.separator + glycanId + ".png");
+            InputStreamResource resource = new InputStreamResource(new FileInputStream(imageFile));
+            return IOUtils.toByteArray(resource.getInputStream());
+        } catch (IOException e) {
+            logger.error("Image cannot be retrieved. Reason: " + e.getMessage());
+            throw new DataNotFoundException("Image for glycan " + glycanId + " is not available");
         }
     }
 

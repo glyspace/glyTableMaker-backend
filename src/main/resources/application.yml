@@ -28,6 +28,8 @@ spring:
           auth: true
           starttls:
             enable: true
+  file:
+    imagedirectory: ./images
 
 glytoucan:
   api-key: ENC(xxC0coU6Fo/mu1WTYjVA9IWdPerjRD0XPBEgmXgW8mdI6n7Jk5/bA3nFD48QKPxWpEVU9ICMXxlugIwk+DZSe65whHuRX8NhH0MwyeO2Xsc=)

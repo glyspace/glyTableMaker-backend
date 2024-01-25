@@ -4,6 +4,10 @@ public class Filter {
     Integer column;
     String value;
     
+    public Filter() {
+        // TODO Auto-generated constructor stub
+    }
+    
     /**
      * @return the value
      */
