@@ -306,7 +306,7 @@ public class DataController {
                     glycan.setGws(g.getSequence().trim());
                     existing = glycanRepository.findByGwsIgnoreCase(glycan.getGws());
                     if (existing != null) {
-                        throw new DuplicateException ("There is already a glycan with glyco workbench sequence " + glycan.getGws());
+                        throw new DuplicateException ("There is already a glycan with glycoworkbench sequence " + glycan.getGws());
                     }
                     try {
                         // parse and convert to GlycoCT
@@ -338,7 +338,7 @@ public class DataController {
                         try {
                             sugar = importer.parse(glycan.getGlycoCT());
                             if (sugar == null) {
-                                logger.error("Cannot get Sugar object for sequence:" + glycan.getGlycoCT());
+                                logger.error("Cannot get Sugar object for sequence:\n" + glycan.getGlycoCT());
                             } else {
                                 SugarExporterGlycoCTCondensed exporter = new SugarExporterGlycoCTCondensed();
                                 exporter.start(sugar);
@@ -370,7 +370,7 @@ public class DataController {
                 // if not, register
                 // store the hash and update status 
                 String glyToucanId = GlytoucanUtil.getInstance().registerGlycan(glycan.getWurcs());
-                logger.info("Got glytoucan id after registering the glycan:" + glyToucanId);
+                logger.info("Got glytoucan id after registering the glycan: " + glyToucanId);
             
                 if (glyToucanId == null || glyToucanId.length() > 10) {
                     // this is new registration, hash returned
@@ -486,7 +486,7 @@ public class DataController {
                 } 
             } catch (WURCSException | SugarImporterException | GlycoVisitorException e) {
                 logger.warn ("cannot convert sequence into Wurcs to check glytoucan", e);
-                logger.info("Glycan sequence that failed: " + glycan.getGlycoCT().trim());
+                logger.info("Glycan sequence that failed:\n" + glycan.getGlycoCT().trim());
                 String [] codes;
                 if (sugar != null) {
                     // run the validator to get the detailed error messages
@@ -515,7 +515,7 @@ public class DataController {
             } 
             return wurcsSequence;           
         } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid Input: Glytoucan ID" + glytoucanId + " failed. Reason: " + e.getMessage());
+            throw new IllegalArgumentException("Invalid Input: Glytoucan ID " + glytoucanId + " failed. Reason: " + e.getMessage());
         }
     }
     
