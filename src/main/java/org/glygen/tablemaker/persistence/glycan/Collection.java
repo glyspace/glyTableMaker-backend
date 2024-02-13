@@ -23,7 +23,7 @@ public class Collection {
     UserEntity user;
     Metadata metadata;
     Collection parent;
-    java.util.Collection<Collection> collections;   //TODO how to do this???
+    java.util.Collection<Collection> collections;  
     java.util.Collection<GlycanInCollection> glycans;
     
     /**
@@ -57,7 +57,7 @@ public class Collection {
     /**
      * @return the description
      */
-    @Column
+    @Column(length=4000)
     public String getDescription() {
         return description;
     }

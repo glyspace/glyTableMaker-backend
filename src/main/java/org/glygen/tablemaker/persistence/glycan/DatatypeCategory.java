@@ -51,7 +51,7 @@ public class DatatypeCategory {
     /**
      * @return the description
      */
-    @Column
+    @Column(length=4000)
     public String getDescription() {
         return description;
     }

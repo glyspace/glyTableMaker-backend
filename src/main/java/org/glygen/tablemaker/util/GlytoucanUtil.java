@@ -41,10 +41,11 @@ public class GlytoucanUtil {
 	String userId;
 	
 	static String glycanURL = "https://sparqlist.glycosmos.org/sparqlist/api/gtc_wurcs_by_accession?accNum=";
-	static String retrieveURL ="https://sparqlist.glyconavi.org/api/WURCS2GlyTouCan?WURCS=";
+	static String retrieveURL ="api/WURCS2GlyTouCan";
 	static String registerURL = "https://api.glytoucan.org/glycan/register";
 	static String validateURL = "wurcsframework/wurcsvalidator/1.0.1/";
 	static String apiURL = "https://api.glycosmos.org/";
+	static String retrieveAPIURL ="https://sparqlist.glyconavi.org/";
 	
 	private static RestTemplate restTemplate = new RestTemplate();
 	
@@ -96,6 +97,11 @@ public class GlytoucanUtil {
 	
 	public String getAccessionNumber (String wurcsSequence) {
 		String accessionNumber = null;
+        
+        UriComponents uriComponents = UriComponentsBuilder.fromHttpUrl(retrieveAPIURL)
+                .path(retrieveURL)
+                .queryParam("WURCS", wurcsSequence)
+                .build();
 		
 		String url;
 		
@@ -103,7 +109,7 @@ public class GlytoucanUtil {
 		
 		HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(createHeaders(userId, apiKey));
 		try {
-			ResponseEntity<GlytoucanResponse[]> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, GlytoucanResponse[].class);
+			ResponseEntity<GlytoucanResponse[]> response = restTemplate.exchange(uriComponents.toUri(), HttpMethod.GET, requestEntity, GlytoucanResponse[].class);
 			if (response.getBody().length == 0) {
 			    logger.info ("No accession number is found! " + wurcsSequence);
 			    return null;
@@ -188,6 +194,7 @@ public class GlytoucanUtil {
 	         String authHeader = "Basic " + new String( encodedAuth );
 	         set( "Authorization", authHeader );
 	         setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+	         setContentType(MediaType.APPLICATION_JSON);
 	      }};
 	}
 	

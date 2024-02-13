@@ -77,7 +77,7 @@ public class Glycan {
     /**
      * @return the wurcs
      */
-    @Column(name="wurcs")
+    @Column(name="wurcs", columnDefinition="text")
     public String getWurcs() {
         return wurcs;
     }
@@ -90,7 +90,7 @@ public class Glycan {
     /**
      * @return the glycoCT
      */
-    @Column(name="glycoct")
+    @Column(name="glycoct", columnDefinition="text")
     public String getGlycoCT() {
         return glycoCT;
     }
@@ -103,7 +103,7 @@ public class Glycan {
     /**
      * @return the gws
      */
-    @Column(name="gws")
+    @Column(name="gws", columnDefinition="text")
     public String getGws() {
         return gws;
     }
@@ -184,7 +184,7 @@ public class Glycan {
     /**
      * @return the error
      */
-    @Column(name="error")
+    @Column(name="error", length=4000)
     public String getError() {
         return error;
     }

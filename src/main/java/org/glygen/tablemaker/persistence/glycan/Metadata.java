@@ -46,7 +46,7 @@ public class Metadata {
     /**
      * @return the value
      */
-    @Column
+    @Column (name="value", length = 4000)
     public String getValue() {
         return value;
     }

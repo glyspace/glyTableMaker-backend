@@ -7,6 +7,8 @@ services:
     volumes:
       - ${HOME}/glytablemaker/maven:/root/.m2
       - .:/workspace
+      - ${HOME}/glytablemaker/images:/images
+      - ${HOME}/glytablemaker/uploads:/uploads
     working_dir: /workspace/
     command: bash -c "mvn clean && mvn -U -Dspring-boot.run.jvmArguments=-Djasypt.encryptor.password=${JASYPT_SECRET} -DskipTests=true -Dlog4j2.version=2.17.1 spring-boot:run"
     environment:

@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5436/glygen
     username: glygen
-    password: ENC(X0FzFsG1HA2ZepGQ2i//F9SMNcWJANlw6pLJtzy+JZo=)
+    password: ENC(Y28YsnugTP2zFhN68Z12aHtODjqpm42tNcQ7WfJo/BI=)
     driver-class-name: org.postgresql.Driver
     separator: ^^^ END OF SCRIPT ^^^
   jpa:
@@ -30,6 +30,7 @@ spring:
             enable: true
   file:
     imagedirectory: ./images
+    uploaddirectory: ./uploads
 
 glytoucan:
   api-key: ENC(xxC0coU6Fo/mu1WTYjVA9IWdPerjRD0XPBEgmXgW8mdI6n7Jk5/bA3nFD48QKPxWpEVU9ICMXxlugIwk+DZSe65whHuRX8NhH0MwyeO2Xsc=)
