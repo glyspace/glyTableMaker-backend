@@ -1,9 +1,9 @@
 package org.glygen.tablemaker;
 
-
 import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
+import org.glygen.tablemaker.exception.UploadNotFinishedException;
 import org.glygen.tablemaker.view.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +56,15 @@ public class ControllerAdvice {
         return new ErrorResponse(String.valueOf(HttpStatus.NOT_FOUND.value()), ex.getMessage(), TIMESTAMP);
 
     }
+    
+    @ExceptionHandler({UploadNotFinishedException.class})
+    @ResponseStatus(HttpStatus.PARTIAL_CONTENT)
+    public ErrorResponse uploadNotFinishedException(Exception ex) {
+        log.debug(ex.getMessage(), ex.getCause());
+        return new ErrorResponse(String.valueOf(HttpStatus.PARTIAL_CONTENT.value()), ex.getMessage(), TIMESTAMP);
 
+    }
+    
     @ExceptionHandler({BadRequestException.class, DuplicateException.class, IllegalArgumentException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleBadRequestException(Exception ex) {
