@@ -10,10 +10,10 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface GlycanRepository extends JpaRepository<Glycan, Long>,  JpaSpecificationExecutor<Glycan>{
     
-    public Glycan findByGlytoucanIDIgnoreCase(String glytoucanID);
-    public Glycan findByWurcsIgnoreCase(String wurcs);
-    public Glycan findByGwsIgnoreCase(String gws);
-    public Glycan findByGlycoCTIgnoreCase(String glycoCT);
+    public Glycan findByGlytoucanIDIgnoreCaseAndUser(String glytoucanID, UserEntity user);
+    public Glycan findByWurcsIgnoreCaseAndUser(String wurcs, UserEntity user);
+    public Glycan findByGwsIgnoreCaseAndUser(String gws, UserEntity user);
+    public Glycan findByGlycoCTIgnoreCaseAndUser(String glycoCT, UserEntity user);
     public Glycan findByGlycanIdAndUser (Long id, UserEntity user);
     public Page<Glycan> findAllByUser(UserEntity user, Pageable pageable);
     public Page<Glycan> findAllByUser(UserEntity user, Specification<Glycan> spec, Pageable pageable);

@@ -184,7 +184,7 @@ public class Glycan {
     /**
      * @return the error
      */
-    @Column(name="error", length=4000)
+    @Column(name="error", columnDefinition="text")
     public String getError() {
         return error;
     }

@@ -35,6 +35,7 @@ import org.glycoinfo.GlycanCompositionConverter.utils.CompositionUtils;
 import org.glycoinfo.GlycanCompositionConverter.utils.DictionaryException;
 import org.glycoinfo.WURCSFramework.util.validation.WURCSValidator;
 import org.glycoinfo.application.glycanbuilder.converterWURCS2.WURCS2Parser;
+import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
@@ -250,7 +251,7 @@ public class DataController {
             glycan.setGlytoucanID(g.getGlytoucanID());
             // check for duplicates
             // error if there is already a glycan in the system
-            Glycan existing = glycanRepository.findByGlytoucanIDIgnoreCase(g.getGlytoucanID().trim());
+            Glycan existing = glycanRepository.findByGlytoucanIDIgnoreCaseAndUser(g.getGlytoucanID().trim(), user);
             if (existing != null) {
                 throw new DuplicateException ("There is already a glycan with GlyTouCan ID " + g.getGlytoucanID());
             }
@@ -266,7 +267,7 @@ public class DataController {
             glycan.setStatus(RegistrationStatus.ALREADY_IN_GLYTOUCAN);
             
         } else if (g.getSequence() != null && !g.getSequence().trim().isEmpty()){ 
-            parseAndRegisterGlycan(glycan, g, glycanRepository);
+            parseAndRegisterGlycan(glycan, g, glycanRepository, user);
         } else { // composition
             try {
                 Composition compo = CompositionUtils.parse(g.getComposition().trim());
@@ -291,7 +292,7 @@ public class DataController {
                         glycan.setError("Could not calculate mass. Reason: " + e.getMessage());
                     }
                 }
-                Glycan existing = glycanRepository.findByWurcsIgnoreCase(glycan.getWurcs());
+                Glycan existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
                 if (existing != null) {
                     throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs());
                 }
@@ -339,6 +340,7 @@ public class DataController {
     		allowableValues= {"GWS", "WURCS"})) 
 	        @RequestParam(required=true, value="filetype") String fileType) {
     	
+    	
     	SequenceFormat format = SequenceFormat.valueOf(fileType);
     	
     	// get user info
@@ -347,6 +349,15 @@ public class DataController {
         if (auth != null) { 
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
+        
+        // check if there is an ongoing upload
+    	List<BatchUploadEntity> batchList = uploadRepository.findByUser(user);
+    	for (BatchUploadEntity b: batchList) {
+    		if (b.getStatus() == UploadStatus.PROCESSING) {
+    			throw new BadRequestException ("There is an ongoing glycan upload process. Please wait for that to finish before uploading a new file");
+    		}
+    	}
+    	
 	    
 	    String fileFolder = uploadDir;
         if (fileWrapper.getFileFolder() != null && !fileWrapper.getFileFolder().isEmpty())
@@ -362,6 +373,7 @@ public class DataController {
                 BatchUploadEntity result = new BatchUploadEntity();
                 result.setStartDate(new Date());
                 result.setStatus(UploadStatus.PROCESSING);
+                result.setUser(user);
                 uploadRepository.save(result);
                 
                 try {    
@@ -413,7 +425,7 @@ public class DataController {
     	return new ResponseEntity<>(new SuccessResponse(null, "glycan added"), HttpStatus.OK); 
     }
     
-    public static void parseAndRegisterGlycan (Glycan glycan, GlycanView g, GlycanRepository glycanRepository) {
+    public static void parseAndRegisterGlycan (Glycan glycan, GlycanView g, GlycanRepository glycanRepository, UserEntity user) {
     	org.eurocarbdb.application.glycanbuilder.Glycan glycanObject= null;
         FixGlycoCtUtil fixGlycoCT = new FixGlycoCtUtil();
         Sugar sugar = null;
@@ -441,14 +453,14 @@ public class DataController {
                     }
                 }
                 
-                Glycan existing = glycanRepository.findByWurcsIgnoreCase(glycan.getWurcs());
+                Glycan existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
                 if (existing != null) {
                     throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs());
                 }
                 break;
             case GWS:
                 glycan.setGws(g.getSequence().trim());
-                existing = glycanRepository.findByGwsIgnoreCase(glycan.getGws());
+                existing = glycanRepository.findByGwsIgnoreCaseAndUser(glycan.getGws(), user);
                 if (existing != null) {
                     throw new DuplicateException ("There is already a glycan with glycoworkbench sequence " + glycan.getGws());
                 }
@@ -499,7 +511,7 @@ public class DataController {
                         throw new IllegalArgumentException ("GlycoCT parsing failed. Reason " + pe.getMessage());
                     }
                 }
-                existing = glycanRepository.findByGlycoCTIgnoreCase(glycan.getGlycoCT());
+                existing = glycanRepository.findByGlycoCTIgnoreCaseAndUser(glycan.getGlycoCT(), user);
                 if (existing != null) {
                     throw new DuplicateException ("There is already a glycan with GlycoCT " + glycan.getGlycoCT());
                 }    

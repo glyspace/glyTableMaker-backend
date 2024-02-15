@@ -8,8 +8,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -21,6 +25,7 @@ public class BatchUploadEntity {
 	Date startDate;
 	Date accessedDate;
 	String successMessage;
+	UserEntity user;
 	
 	@Id
 	@GeneratedValue
@@ -73,4 +78,19 @@ public class BatchUploadEntity {
 	public void setSuccessMessage(String sucessMessage) {
 		this.successMessage = sucessMessage;
 	}
+	
+	/**
+     * @return the user
+     */
+    @ManyToOne(targetEntity = UserEntity.class, fetch = FetchType.EAGER)
+    @JoinColumn(nullable = false, name = "userid", foreignKey = @ForeignKey(name = "FK_VERIFY_USER"))
+    public UserEntity getUser() {
+        return user;
+    }
+    /**
+     * @param user the user to set
+     */
+    public void setUser(UserEntity user) {
+        this.user = user;
+    }
 }
