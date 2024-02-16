@@ -42,6 +42,7 @@ import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
+import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
@@ -65,6 +66,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -182,8 +184,41 @@ public class DataController {
             }
         }
         
-        // TODO apply filters
-        Page<Glycan> glycansInPage = glycanRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
+        // apply filters
+        List<GlycanSpecifications> specificationList = new ArrayList<>();
+        if (filterList != null) {
+	        for (Filter f: filterList) {
+	        	GlycanSpecifications spec = new GlycanSpecifications(f);
+	        	specificationList.add(spec);
+	        }
+        }
+        
+        if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+        	specificationList.add(new GlycanSpecifications(new Filter ("glytoucanID", globalFilter)));
+        	specificationList.add(new GlycanSpecifications(new Filter ("mass", globalFilter)));
+        }
+        
+        Specification<Glycan> spec = null;
+        if (!specificationList.isEmpty()) {
+        	spec = specificationList.get(0);
+        	for (int i=1; i < specificationList.size(); i++) {
+        		spec = Specification.where(spec).or(specificationList.get(i)); 
+        	}
+        	
+        	spec = Specification.where(spec).and(GlycanSpecifications.hasUserWithId(user.getUserId()));
+        }
+        
+        Page<Glycan> glycansInPage = null;
+        if (spec != null) {
+        	try {
+        		glycansInPage = glycanRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
+        	} catch (Exception e) {
+        		logger.error(e.getMessage(), e);
+        		throw e;
+        	}
+        } else {
+        	glycansInPage = glycanRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
+        }
         
         // retrieve cartoon images
         for (Glycan g: glycansInPage.getContent()) {

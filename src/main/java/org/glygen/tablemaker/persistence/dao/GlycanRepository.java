@@ -16,5 +16,5 @@ public interface GlycanRepository extends JpaRepository<Glycan, Long>,  JpaSpeci
     public Glycan findByGlycoCTIgnoreCaseAndUser(String glycoCT, UserEntity user);
     public Glycan findByGlycanIdAndUser (Long id, UserEntity user);
     public Page<Glycan> findAllByUser(UserEntity user, Pageable pageable);
-    public Page<Glycan> findAllByUser(UserEntity user, Specification<Glycan> spec, Pageable pageable);
+    public Page<Glycan> findAll(Specification<Glycan> spec, Pageable pageable);
 }
