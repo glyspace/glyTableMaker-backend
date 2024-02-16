@@ -4,7 +4,10 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
+import java.security.Principal;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -71,6 +74,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -86,6 +90,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -237,6 +242,66 @@ public class DataController {
         response.put("totalPages", glycansInPage.getTotalPages());
         
         return new ResponseEntity<>(new SuccessResponse(response, "glycans retrieved"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Get latest batch upload", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/checkbatchupload")
+    @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Check performed successfully", content = {
+            @Content( schema = @Schema(implementation = SuccessResponse.class))}),
+            @ApiResponse(responseCode="415", description= "Media type is not supported"),
+            @ApiResponse(responseCode="500", description= "Internal Server Error") })
+    public ResponseEntity<SuccessResponse> getActiveBatchUpload () {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        if (user != null) {
+        	List<BatchUploadEntity> uploads = uploadRepository.findFirstByUserOrderByStartDateDesc(user);
+        	List<BatchUploadEntity>  notAccessed = new ArrayList<>();
+        	for (BatchUploadEntity b: uploads) {
+        		if (b.getAccessedDate() == null) {
+        			notAccessed.add(b);
+        		}
+        	}
+        	if (notAccessed.isEmpty()) {
+        		throw new DataNotFoundException("No active batch upload");
+        	}
+        	return new ResponseEntity<>(new SuccessResponse(notAccessed.get(0), "most recent batch upload retrieved"), HttpStatus.OK);
+        } else {
+        	throw new BadRequestException("user cannot be found");
+        }
+    }
+    
+    @Operation(summary = "Update (hide) active batch upload processes by type", 
+            security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value = "/updatebatchupload", method = RequestMethod.POST,
+            produces={"application/json", "application/xml"})
+    @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Update performed successfully", content = {
+            @Content( schema = @Schema(implementation = SuccessResponse.class))}),
+            @ApiResponse(responseCode="415", description= "Media type is not supported"),
+            @ApiResponse(responseCode="500", description= "Internal Server Error") })
+    public ResponseEntity<SuccessResponse> updateActiveBatchUpload(){
+
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        if (user != null) {
+        	List<BatchUploadEntity> uploads = uploadRepository.findFirstByUserOrderByStartDateDesc(user);
+        	if (!uploads.isEmpty()) {
+        		BatchUploadEntity mostRecent = uploads.get(0);
+	            mostRecent.setAccessedDate(new Date());
+	            uploadRepository.save(mostRecent);
+	        }
+	
+        	return new ResponseEntity<>(new SuccessResponse(uploads.get(0), "most recent batch upload is updated, will not be shown again"), HttpStatus.OK);
+	    }
+        else {
+        	throw new BadRequestException("user cannot be found");
+        }
     }
     
     @Operation(summary = "Delete given glycan from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
