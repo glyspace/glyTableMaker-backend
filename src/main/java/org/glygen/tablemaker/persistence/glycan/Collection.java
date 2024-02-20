@@ -1,8 +1,9 @@
 package org.glygen.tablemaker.persistence.glycan;
 
+import java.util.List;
+
 import org.glygen.tablemaker.persistence.UserEntity;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -13,6 +14,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 @Entity
 @Table(name="collections")
@@ -21,7 +23,7 @@ public class Collection {
     String name;
     String description;
     UserEntity user;
-    Metadata metadata;
+    java.util.Collection<Metadata> metadata;
     Collection parent;
     java.util.Collection<Collection> collections;  
     java.util.Collection<GlycanInCollection> glycans;
@@ -81,20 +83,7 @@ public class Collection {
     public void setUser(UserEntity user) {
         this.user = user;
     }
-    /**
-     * @return the metadata
-     */
-    @ManyToOne(targetEntity = Metadata.class, fetch = FetchType.EAGER)
-    @JoinColumn(nullable = false, name = "metadataid", foreignKey = @ForeignKey(name = "FK_VERIFY_METADATA"))
-    public Metadata getMetadata() {
-        return metadata;
-    }
-    /**
-     * @param metadata the metadata to set
-     */
-    public void setMetadata(Metadata metadata) {
-        this.metadata = metadata;
-    }
+    
     /**
      * @return the collections
      */
@@ -135,5 +124,13 @@ public class Collection {
     public void setParent(Collection parent) {
         this.parent = parent;
     }
+    
+    @Transient
+	public java.util.Collection<Metadata> getMetadata() {
+		return metadata;
+	}
+	public void setMetadata(List<Metadata> metadata) {
+		this.metadata = metadata;
+	}
 
 }

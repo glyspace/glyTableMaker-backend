@@ -14,6 +14,7 @@ public class Metadata {
     Long metadataId;
     Datatype type;
     String value;
+    Collection collection;
     
     /**
      * @return the id
@@ -56,4 +57,17 @@ public class Metadata {
     public void setValue(String value) {
         this.value = value;
     }
+    
+    /**
+     * @return the collection
+     */
+    @ManyToOne(targetEntity = Collection.class, fetch = FetchType.EAGER)
+    @JoinColumn(nullable = false, name = "collectionid", foreignKey = @ForeignKey(name = "FK_VERIFY_COLLECTION"))
+    public Collection getCollection() {
+        return collection;
+    }
+    
+    public void setCollection(Collection collection) {
+		this.collection = collection;
+	}
 }

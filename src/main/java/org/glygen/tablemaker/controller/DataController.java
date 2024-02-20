@@ -4,10 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
-import java.security.Principal;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -44,9 +41,12 @@ import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
+import org.glygen.tablemaker.persistence.dao.CollectionRepository;
+import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
+import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
@@ -74,7 +74,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -119,6 +118,7 @@ public class DataController {
     }
     
     final private GlycanRepository glycanRepository;
+    final private CollectionRepository collectionRepository;
     final private UserRepository userRepository;
     final private BatchUploadRepository uploadRepository;
     final private AsyncService batchUploadService;
@@ -130,8 +130,9 @@ public class DataController {
 	String uploadDir;
     
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository,
-    		BatchUploadRepository uploadRepository, AsyncService uploadService) {
+    		BatchUploadRepository uploadRepository, AsyncService uploadService, CollectionRepository collectionRepository) {
         this.glycanRepository = glycanRepository;
+		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
         this.uploadRepository = uploadRepository;
 		this.batchUploadService = uploadService;
@@ -244,6 +245,96 @@ public class DataController {
         return new ResponseEntity<>(new SuccessResponse(response, "glycans retrieved"), HttpStatus.OK);
     }
     
+    @Operation(summary = "Get collections", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getcollections")
+    public ResponseEntity<SuccessResponse> getCollections(
+            @RequestParam("start")
+            Integer start, 
+            @RequestParam("size")
+            Integer size,
+            @RequestParam("filters")
+            String filters,
+            @RequestParam("globalFilter")
+            String globalFilter,
+            @RequestParam("sorting")
+            String sorting) {
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+      
+        // parse filters and sorting
+        ObjectMapper mapper = new ObjectMapper();
+        List<Filter> filterList = null;
+        if (filters != null && !filters.equals("[]")) {
+            try {
+                filterList = mapper.readValue(filters, 
+                    new TypeReference<ArrayList<Filter>>() {});
+            } catch (JsonProcessingException e) {
+                throw new InternalError("filter parameter is invalid " + filters, e);
+            }
+        }
+        List<Sorting> sortingList = null;
+        List<Order> sortOrders = new ArrayList<>();
+        if (sorting != null && !sorting.equals("[]")) {
+            try {
+                sortingList = mapper.readValue(sorting, 
+                    new TypeReference<ArrayList<Sorting>>() {});
+                for (Sorting s: sortingList) {
+                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                }
+            } catch (JsonProcessingException e) {
+                throw new InternalError("sorting parameter is invalid " + sorting, e);
+            }
+        }
+        
+        // apply filters
+        List<CollectionSpecification> specificationList = new ArrayList<>();
+        if (filterList != null) {
+	        for (Filter f: filterList) {
+	        	CollectionSpecification spec = new CollectionSpecification(f);
+	        	specificationList.add(spec);
+	        }
+        }
+        
+        if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+        	specificationList.add(new CollectionSpecification(new Filter ("name", globalFilter)));
+        	specificationList.add(new CollectionSpecification(new Filter ("description", globalFilter)));
+        }
+        
+        Specification<Collection> spec = null;
+        if (!specificationList.isEmpty()) {
+        	spec = specificationList.get(0);
+        	for (int i=1; i < specificationList.size(); i++) {
+        		spec = Specification.where(spec).or(specificationList.get(i)); 
+        	}
+        	
+        	spec = Specification.where(spec).and(CollectionSpecification.hasUserWithId(user.getUserId()));
+        }
+        
+        Page<Collection> collectionsInPage = null;
+        if (spec != null) {
+        	try {
+        		collectionsInPage = collectionRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
+        	} catch (Exception e) {
+        		logger.error(e.getMessage(), e);
+        		throw e;
+        	}
+        } else {
+        	collectionsInPage = collectionRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("glycans", collectionsInPage.getContent());
+        response.put("currentPage", collectionsInPage.getNumber());
+        response.put("totalItems", collectionsInPage.getTotalElements());
+        response.put("totalPages", collectionsInPage.getTotalPages());
+        
+        return new ResponseEntity<>(new SuccessResponse(response, "glycans retrieved"), HttpStatus.OK);
+    }
+    
     @Operation(summary = "Get latest batch upload", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/checkbatchupload")
     @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Check performed successfully", content = {
@@ -305,7 +396,7 @@ public class DataController {
     }
     
     @Operation(summary = "Delete given glycan from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
-    @RequestMapping(value="/delete/{glycanId}", method = RequestMethod.DELETE)
+    @RequestMapping(value="/deleteglycans/{glycanId}", method = RequestMethod.DELETE)
     @ApiResponses (value ={@ApiResponse(responseCode="200", description="Glycan deleted successfully"), 
             @ApiResponse(responseCode="401", description="Unauthorized"),
             @ApiResponse(responseCode="403", description="Not enough privileges to delete glycans"),
