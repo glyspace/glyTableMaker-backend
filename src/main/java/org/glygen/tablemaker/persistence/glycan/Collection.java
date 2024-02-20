@@ -4,6 +4,10 @@ import java.util.List;
 
 import org.glygen.tablemaker.persistence.UserEntity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -101,7 +105,8 @@ public class Collection {
     /**
      * @return the glycans
      */
-    @OneToMany(mappedBy = "collection")
+    @JsonManagedReference
+    @OneToMany(mappedBy = "collection", cascade=CascadeType.ALL)
     public java.util.Collection<GlycanInCollection> getGlycans() {
         return glycans;
     }

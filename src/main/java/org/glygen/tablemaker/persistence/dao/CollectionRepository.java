@@ -9,4 +9,5 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface CollectionRepository extends JpaRepository<Collection, Long>, JpaSpecificationExecutor<Collection> {
 	public Page<Collection> findAllByUser(UserEntity user, Pageable pageable);
+	public Collection findByCollectionIdAndUser (Long id, UserEntity user);
 }

@@ -2,9 +2,10 @@ package org.glygen.tablemaker.persistence.glycan;
 
 import java.util.Date;
 
-import org.glygen.tablemaker.persistence.UserEntity;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -41,7 +42,8 @@ public class GlycanInCollection {
     /**
      * @return the glycan
      */
-    @ManyToOne(cascade = CascadeType.ALL)
+    @JsonBackReference
+    @ManyToOne(targetEntity = Glycan.class)
     @JoinColumn(name = "glycanid")  
     public Glycan getGlycan() {
         return glycan;
@@ -55,7 +57,8 @@ public class GlycanInCollection {
     /**
      * @return the collection
      */
-    @ManyToOne(cascade = CascadeType.ALL, targetEntity = Collection.class)
+    @JsonBackReference
+    @ManyToOne(targetEntity = Collection.class)
     @JoinColumn(name = "collectionid")
     public Collection getCollection() {
         return collection;

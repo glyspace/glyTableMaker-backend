@@ -4,6 +4,8 @@ import java.util.Date;
 
 import org.glygen.tablemaker.persistence.UserEntity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import jakarta.persistence.Column;
@@ -197,6 +199,7 @@ public class Glycan {
     /**
      * @return the glycanCollections
      */
+    @JsonManagedReference
     @OneToMany(mappedBy = "glycan")
     public java.util.Collection<GlycanInCollection> getGlycanCollections() {
         return glycanCollections;

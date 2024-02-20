@@ -327,12 +327,12 @@ public class DataController {
         }
         
         Map<String, Object> response = new HashMap<>();
-        response.put("glycans", collectionsInPage.getContent());
+        response.put("collections", collectionsInPage.getContent());
         response.put("currentPage", collectionsInPage.getNumber());
         response.put("totalItems", collectionsInPage.getTotalElements());
         response.put("totalPages", collectionsInPage.getTotalPages());
         
-        return new ResponseEntity<>(new SuccessResponse(response, "glycans retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
     }
     
     @Operation(summary = "Get latest batch upload", security = { @SecurityRequirement(name = "bearer-key") })
@@ -396,7 +396,7 @@ public class DataController {
     }
     
     @Operation(summary = "Delete given glycan from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
-    @RequestMapping(value="/deleteglycans/{glycanId}", method = RequestMethod.DELETE)
+    @RequestMapping(value="/deleteglycan/{glycanId}", method = RequestMethod.DELETE)
     @ApiResponses (value ={@ApiResponse(responseCode="200", description="Glycan deleted successfully"), 
             @ApiResponse(responseCode="401", description="Unauthorized"),
             @ApiResponse(responseCode="403", description="Not enough privileges to delete glycans"),
@@ -419,6 +419,34 @@ public class DataController {
         //TODO need to check if the glycan appears in any collection and delete from the collections first
         glycanRepository.deleteById(glycanId);
         return new ResponseEntity<>(new SuccessResponse(glycanId, "Glycan deleted successfully"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Delete the given collection from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value="/deletecollection/{collectionId}", method = RequestMethod.DELETE)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Collection deleted successfully"), 
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to delete collections"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> deleteCollection (
+            @Parameter(required=true, description="id of the collection to delete") 
+            @PathVariable("collectionId") Long collectionId) {
+        
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        Collection existing = collectionRepository.findByCollectionIdAndUser(collectionId, user);
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
+        }
+        //TODO How to remove the connection to the glycans in the collection
+       // existing.getGlycans().clear();
+       // collectionRepository.save(existing);
+        collectionRepository.deleteById(collectionId);
+        return new ResponseEntity<>(new SuccessResponse(collectionId, "Collection deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Add glycan", security = { @SecurityRequirement(name = "bearer-key") })
