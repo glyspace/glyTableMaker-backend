@@ -4,7 +4,6 @@ import java.util.Date;
 
 import org.glygen.tablemaker.persistence.UserEntity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 

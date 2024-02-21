@@ -239,7 +239,7 @@ public class DataController {
         }
         
         Map<String, Object> response = new HashMap<>();
-        response.put("glycans", glycansInPage.getContent());
+        response.put("objects", glycansInPage.getContent());
         response.put("currentPage", glycansInPage.getNumber());
         response.put("totalItems", glycansInPage.getTotalElements());
         response.put("totalPages", glycansInPage.getTotalPages());
@@ -328,14 +328,37 @@ public class DataController {
         	collectionsInPage = collectionRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
         }
         
+        List<CollectionView> collections = new ArrayList<>();
+        for (Collection c: collectionsInPage.getContent()) {
+        	CollectionView cv = new CollectionView();
+        	cv.setCollectionId(c.getCollectionId());
+        	cv.setName(c.getName());
+        	cv.setDescription(c.getDescription());
+        	if (c.getMetadata() != null) cv.setMetadata(new ArrayList<>(c.getMetadata()));
+        	cv.setGlycans(new ArrayList<Glycan>());
+        	for (GlycanInCollection gic: c.getGlycans()) {
+        		Glycan g = gic.getGlycan();
+        		g.setGlycanCollections(null);
+        		try {
+                    g.setCartoon(getImageForGlycan(g.getGlycanId()));
+                } catch (DataNotFoundException e) {
+                    // ignore
+                    logger.warn ("no image found for glycan " + g.getGlycanId());
+                }
+        		cv.getGlycans().add(g);
+        	}
+        	collections.add(cv);
+        }
+        
         Map<String, Object> response = new HashMap<>();
-        response.put("collections", collectionsInPage.getContent());
+        response.put("objects", collections);
         response.put("currentPage", collectionsInPage.getNumber());
         response.put("totalItems", collectionsInPage.getTotalElements());
         response.put("totalPages", collectionsInPage.getTotalPages());
         
         return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
     }
+    
     
     @Operation(summary = "Get collection by the given id", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcollection/{collectionId}")
@@ -353,7 +376,25 @@ public class DataController {
             throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
         }
         
-        return new ResponseEntity<>(new SuccessResponse(existing, "collection retrieved"), HttpStatus.OK);
+        CollectionView cv = new CollectionView();
+        cv.setCollectionId(existing.getCollectionId());
+    	cv.setName(existing.getName());
+    	cv.setDescription(existing.getDescription());
+    	if (existing.getMetadata() != null) cv.setMetadata(new ArrayList<>(existing.getMetadata()));
+    	cv.setGlycans(new ArrayList<Glycan>());
+    	for (GlycanInCollection gic: existing.getGlycans()) {
+    		Glycan g = gic.getGlycan();
+    		g.setGlycanCollections(null);
+    		try {
+                g.setCartoon(getImageForGlycan(g.getGlycanId()));
+            } catch (DataNotFoundException e) {
+                // ignore
+                logger.warn ("no image found for glycan " + g.getGlycanId());
+            }
+    		cv.getGlycans().add(g);
+    	}
+        
+        return new ResponseEntity<>(new SuccessResponse(cv, "collection retrieved"), HttpStatus.OK);
     }
     
     @Operation(summary = "Get latest batch upload", security = { @SecurityRequirement(name = "bearer-key") })
@@ -583,6 +624,18 @@ public class DataController {
     	Collection collection = new Collection();
     	collection.setName(c.getName());
     	collection.setDescription(c.getDescription());
+    	collection.setMetadata(c.getMetadata());
+    	
+    	if (c.getGlycans() != null && !c.getGlycans().isEmpty()) {
+    		collection.setGlycans(new ArrayList<>());
+    		for (Glycan g: c.getGlycans()) {
+    			GlycanInCollection gic = new GlycanInCollection();
+    			gic.setCollection(collection);
+    			gic.setGlycan(g);
+    			gic.setDateAdded(new Date());
+    			collection.getGlycans().add(gic);
+    		}
+    	}
     	
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
