@@ -48,12 +48,14 @@ import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
+import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
 import org.glygen.tablemaker.service.AsyncService;
 import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.SequenceUtils;
+import org.glygen.tablemaker.view.CollectionView;
 import org.glygen.tablemaker.view.FileWrapper;
 import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.GlycanView;
@@ -335,6 +337,25 @@ public class DataController {
         return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
     }
     
+    @Operation(summary = "Get collection by the given id", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getcollection/{collectionId}")
+    public ResponseEntity<SuccessResponse> getCollectionById(
+    		@Parameter(required=true, description="id of the collection to delete") 
+    		@PathVariable("collectionId") Long collectionId) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        Collection existing = collectionRepository.findByCollectionIdAndUser(collectionId, user);
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
+        }
+        
+        return new ResponseEntity<>(new SuccessResponse(existing, "collection retrieved"), HttpStatus.OK);
+    }
+    
     @Operation(summary = "Get latest batch upload", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/checkbatchupload")
     @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Check performed successfully", content = {
@@ -416,7 +437,15 @@ public class DataController {
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given glycan " + glycanId + " for the user");
         }
-        //TODO need to check if the glycan appears in any collection and delete from the collections first
+        //need to check if the glycan appears in any collection and give an error message
+        if (existing.getGlycanCollections() != null && !existing.getGlycanCollections().isEmpty()) {
+        	String collectionString = "";
+        	for (GlycanInCollection col: existing.getGlycanCollections()) {
+        		collectionString += col.getCollection().getName() + ", ";
+        	}
+        	collectionString = collectionString.substring(0, collectionString.lastIndexOf(","));
+        	throw new BadRequestException ("Cannot delete this glycan. It is used in the following collections " + collectionString);
+        }
         glycanRepository.deleteById(glycanId);
         return new ResponseEntity<>(new SuccessResponse(glycanId, "Glycan deleted successfully"), HttpStatus.OK);
     }
@@ -442,9 +471,8 @@ public class DataController {
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
         }
-        //TODO How to remove the connection to the glycans in the collection
-       // existing.getGlycans().clear();
-       // collectionRepository.save(existing);
+        //TODO How to check if there are any parent collections referencing this one
+        
         collectionRepository.deleteById(collectionId);
         return new ResponseEntity<>(new SuccessResponse(collectionId, "Collection deleted successfully"), HttpStatus.OK);
     }
@@ -547,6 +575,24 @@ public class DataController {
             }
         } 
         return new ResponseEntity<>(new SuccessResponse(glycan, "glycan added"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Add collection", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/addcollection")
+    public ResponseEntity<SuccessResponse> addCollection(@Valid @RequestBody CollectionView c) {
+    	Collection collection = new Collection();
+    	collection.setName(c.getName());
+    	collection.setDescription(c.getDescription());
+    	
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        collection.setUser(user);
+    	collectionRepository.save(collection);
+    	return new ResponseEntity<>(new SuccessResponse(collection, "collection added"), HttpStatus.OK);
     }
     
     @Operation(summary = "Add glycans from file", security = { @SecurityRequirement(name = "bearer-key") })
