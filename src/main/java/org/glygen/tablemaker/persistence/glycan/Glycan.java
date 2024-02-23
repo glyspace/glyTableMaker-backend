@@ -198,7 +198,6 @@ public class Glycan {
     /**
      * @return the glycanCollections
      */
-    @JsonManagedReference
     @OneToMany(mappedBy = "glycan")
     public java.util.Collection<GlycanInCollection> getGlycanCollections() {
         return glycanCollections;

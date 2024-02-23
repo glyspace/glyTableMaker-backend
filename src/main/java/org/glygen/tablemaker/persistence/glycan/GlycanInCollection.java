@@ -3,6 +3,7 @@ package org.glygen.tablemaker.persistence.glycan;
 import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -40,7 +41,7 @@ public class GlycanInCollection {
     /**
      * @return the glycan
      */
-    @JsonBackReference
+    @JsonIgnore
     @ManyToOne(targetEntity = Glycan.class)
     @JoinColumn(name = "glycanid")  
     public Glycan getGlycan() {
@@ -55,7 +56,7 @@ public class GlycanInCollection {
     /**
      * @return the collection
      */
-    @JsonBackReference
+    @JsonIgnore
     @ManyToOne(targetEntity = Collection.class)
     @JoinColumn(name = "collectionid")
     public Collection getCollection() {

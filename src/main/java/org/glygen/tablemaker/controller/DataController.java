@@ -232,6 +232,10 @@ public class DataController {
         for (Glycan g: glycansInPage.getContent()) {
             try {
                 g.setCartoon(getImageForGlycan(g.getGlycanId()));
+                if (g.getGlytoucanID() == null && g.getGlytoucanHash() != null && g.getWurcs() != null) {
+                	// registered, try to get the accession number
+                	g.setGlytoucanID(GlytoucanUtil.getInstance().getAccessionNumber(g.getWurcs()));
+                }
             } catch (DataNotFoundException e) {
                 // ignore
                 logger.warn ("no image found for glycan " + g.getGlycanId());
@@ -621,6 +625,15 @@ public class DataController {
     @Operation(summary = "Add collection", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addcollection")
     public ResponseEntity<SuccessResponse> addCollection(@Valid @RequestBody CollectionView c) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        // check if duplicate
+    	
     	Collection collection = new Collection();
     	collection.setName(c.getName());
     	collection.setDescription(c.getDescription());
@@ -637,15 +650,83 @@ public class DataController {
     		}
     	}
     	
+        collection.setUser(user);
+    	collectionRepository.save(collection);
+    	return new ResponseEntity<>(new SuccessResponse(collection, "collection added"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Add collection", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/updatecollection")
+    public ResponseEntity<SuccessResponse> updateCollection(@Valid @RequestBody CollectionView c) {
+    	if (c.getCollectionId() == null) {
+    		throw new IllegalArgumentException("collection id should be provided for update");
+    	}
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
         if (auth != null) { 
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
-        collection.setUser(user);
-    	collectionRepository.save(collection);
-    	return new ResponseEntity<>(new SuccessResponse(collection, "collection added"), HttpStatus.OK);
+    	Collection existing = collectionRepository.findByCollectionIdAndUser(c.getCollectionId(), user);
+    	if (existing == null) {
+    		throw new IllegalArgumentException("Collection (" + c.getCollectionId() + ") to be updated cannot be found");
+    	}
+    	// check if name is a duplicate
+    	if (!existing.getName().equalsIgnoreCase(c.getName())) {   // changing the name
+	    	List<Collection> duplicate = collectionRepository.findAllByNameAndUser (c.getName(), user);
+	    	if (!duplicate.isEmpty()) {
+	    		throw new DuplicateException("Collection with name: " + c.getName() + " already exists! Pick a different name");
+	    	}
+    	}
+    	existing.setName(c.getName());
+    	existing.setDescription(c.getDescription());
+    	if (existing.getGlycans() == null) {
+    		existing.setGlycans(new ArrayList<>());
+    	}
+    	
+    	if (c.getGlycans() == null || c.getGlycans().isEmpty()) {
+    		existing.getGlycans().clear();
+    	} else {
+	    	// remove glycans as necessary
+    		List<GlycanInCollection> toBeRemoved = new ArrayList<>();
+	    	for (GlycanInCollection gic: existing.getGlycans()) {
+	    		boolean found = false;
+	    		for (Glycan g: c.getGlycans()) {
+	    			if (g.getGlycanId().equals(gic.getGlycan().getGlycanId())) {
+	    				// keep it
+	    				found = true;
+	    			}
+	    		}
+	    		if (!found) {
+	    			toBeRemoved.add(gic);
+	    		}
+	    	}
+	    	existing.getGlycans().removeAll(toBeRemoved);
+    	}
+    	
+    	if (c.getGlycans() != null && !c.getGlycans().isEmpty()) {
+    		// check if this glycan already exists in the collection
+    		for (Glycan g: c.getGlycans()) {
+    			boolean exists = false;
+    			for (GlycanInCollection gic: existing.getGlycans()) {
+        			if (gic.getGlycan().getGlycanId().equals(g.getGlycanId())) {
+        				exists = true;
+        				break;
+        			}
+        		}
+    			if (!exists) {
+	    			GlycanInCollection gic = new GlycanInCollection();
+	    			gic.setCollection(existing);
+	    			gic.setGlycan(g);
+	    			gic.setDateAdded(new Date());
+	    			existing.getGlycans().add(gic);
+    			}
+    		}
+    	}
+    	
+    	existing.setMetadata(c.getMetadata());
+    	collectionRepository.save(existing);
+    	return new ResponseEntity<>(new SuccessResponse(c, "collection updated"), HttpStatus.OK);
     }
     
     @Operation(summary = "Add glycans from file", security = { @SecurityRequirement(name = "bearer-key") })

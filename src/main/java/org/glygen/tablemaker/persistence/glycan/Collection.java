@@ -105,8 +105,7 @@ public class Collection {
     /**
      * @return the glycans
      */
-    @JsonManagedReference
-    @OneToMany(mappedBy = "collection", cascade=CascadeType.ALL)
+    @OneToMany(mappedBy = "collection", cascade=CascadeType.ALL, orphanRemoval = true)
     public java.util.Collection<GlycanInCollection> getGlycans() {
         return glycans;
     }
