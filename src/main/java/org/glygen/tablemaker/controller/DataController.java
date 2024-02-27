@@ -318,6 +318,7 @@ public class DataController {
         	}
         	
         	spec = Specification.where(spec).and(CollectionSpecification.hasUserWithId(user.getUserId()));
+        	spec = Specification.where(spec).and(CollectionSpecification.hasNoChildren());
         }
         
         Page<Collection> collectionsInPage = null;
@@ -329,7 +330,7 @@ public class DataController {
         		throw e;
         	}
         } else {
-        	collectionsInPage = collectionRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
+        	collectionsInPage = collectionRepository.findNonParentCollectionsByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
         }
         
         List<CollectionView> collections = new ArrayList<>();
@@ -516,8 +517,25 @@ public class DataController {
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
         }
-        //TODO How to check if there are any parent collections referencing this one
-        
+        //Check if there are any parent collections referencing this one
+        List<Collection> parentList = new ArrayList<>();
+        List<Collection> parentCollections = collectionRepository.findParentCollectionsByUser(user);
+        for (Collection parent: parentCollections) {
+        	for (Collection child: parent.getCollections()) {
+        		if (child.getCollectionId() == collectionId) {
+        			parentList.add(parent);
+        			break;
+        		}
+        	}
+        }
+        if (!parentList.isEmpty()) {
+        	String parents = "";
+        	for (Collection p: parentList) {
+        		parents += p.getName() + ", ";
+        	}
+        	throw new BadRequestException("Cannot delete this collection since there collections referencing it.\n"
+        			+ "Delete from the parent collection first! Parents: " + parents.substring(0, parents.lastIndexOf(", ")));
+        }
         collectionRepository.deleteById(collectionId);
         return new ResponseEntity<>(new SuccessResponse(collectionId, "Collection deleted successfully"), HttpStatus.OK);
     }

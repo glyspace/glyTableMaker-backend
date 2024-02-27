@@ -32,4 +32,10 @@ public class CollectionSpecification implements Specification<Collection> {
 	        return criteriaBuilder.equal(collectionUser.get("userId"), userid);
 	    };
 	}
+	
+	public static Specification<Collection> hasNoChildren () {
+		return (root, query, criteriaBuilder) -> {
+	        return criteriaBuilder.isEmpty(root.get("collections"));
+	    };
+	}
 }
