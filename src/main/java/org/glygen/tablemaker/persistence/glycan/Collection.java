@@ -1,11 +1,9 @@
 package org.glygen.tablemaker.persistence.glycan;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.glygen.tablemaker.persistence.UserEntity;
-
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -15,6 +13,7 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -28,7 +27,7 @@ public class Collection {
     String description;
     UserEntity user;
     java.util.Collection<Metadata> metadata;
-    Collection parent;
+    java.util.Collection<Collection> parents;
     java.util.Collection<Collection> collections;  
     java.util.Collection<GlycanInCollection> glycans;
     
@@ -91,7 +90,7 @@ public class Collection {
     /**
      * @return the collections
      */
-    @OneToMany(mappedBy="parent")
+    @ManyToMany(mappedBy="parents")
     public java.util.Collection<Collection> getCollections() {
         return collections;
     }
@@ -115,19 +114,15 @@ public class Collection {
     public void setGlycans(java.util.Collection<GlycanInCollection> glycans) {
         this.glycans = glycans;
     }
-    /**
-     * @return the parent
-     */
-    @ManyToOne
-    public Collection getParent() {
-        return parent;
-    }
-    /**
-     * @param parent the parent to set
-     */
-    public void setParent(Collection parent) {
-        this.parent = parent;
-    }
+    
+    @ManyToMany
+    public java.util.Collection<Collection> getParents() {
+		return parents;
+	}
+    
+    public void setParents(java.util.Collection<Collection> parents) {
+		this.parents = parents;
+	}
     
     @Transient
 	public java.util.Collection<Metadata> getMetadata() {
@@ -135,6 +130,15 @@ public class Collection {
 	}
 	public void setMetadata(List<Metadata> metadata) {
 		this.metadata = metadata;
+	}
+	
+	public void addParent (Collection parent) {
+		if (this.parents == null) {
+			this.parents = new ArrayList<>();
+		}
+		if (!this.parents.contains(parent)) {
+			this.parents.add(parent);
+		}
 	}
 
 }

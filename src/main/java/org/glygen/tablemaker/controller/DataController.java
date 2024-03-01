@@ -465,13 +465,12 @@ public class DataController {
         	cv.setCollectionId(c.getCollectionId());
         	cv.setName(c.getName());
         	cv.setDescription(c.getDescription());
-        	if (c.getMetadata() != null) cv.setMetadata(new ArrayList<>(c.getMetadata()));
         	cv.setChildren(new ArrayList<>());
         	for (Collection cc: c.getCollections()) {
         		CollectionView child = new CollectionView();
         		child.setName(cc.getName());
         		child.setDescription(cc.getDescription());
-        		child.setMetadata(new ArrayList<>(cc.getMetadata()));
+        		if (cc.getMetadata() != null) child.setMetadata(new ArrayList<>(cc.getMetadata()));
         		child.setGlycans(new ArrayList<Glycan>());
             	for (GlycanInCollection gic: cc.getGlycans()) {
             		Glycan g = gic.getGlycan();
@@ -807,7 +806,37 @@ public class DataController {
     	return new ResponseEntity<>(new SuccessResponse(collection, "collection added"), HttpStatus.OK);
     }
     
-    @Operation(summary = "Add collection", security = { @SecurityRequirement(name = "bearer-key") })
+    @Operation(summary = "Add collection of collections", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/addcoc")
+    public ResponseEntity<SuccessResponse> addCoC(@Valid @RequestBody CollectionView c) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        if (c.getChildren() == null || c.getChildren().isEmpty()) {
+        	throw new IllegalArgumentException("Collections cannot be empty!");
+        }
+        
+        // check if duplicate
+    	Collection collection = new Collection();
+    	collection.setName(c.getName());
+    	collection.setDescription(c.getDescription());
+    	collection.setCollections(new ArrayList<>());
+    	for (CollectionView child: c.getChildren()) {
+    		Collection childEntity = collectionRepository.getReferenceById(child.getCollectionId());
+    		childEntity.addParent(collection);
+    		collection.getCollections().add(childEntity);
+    	}
+    	
+        collection.setUser(user);
+    	collectionRepository.save(collection);
+    	return new ResponseEntity<>(new SuccessResponse(c, "collection added"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "update collection", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatecollection")
     public ResponseEntity<SuccessResponse> updateCollection(@Valid @RequestBody CollectionView c) {
     	if (c.getCollectionId() == null) {
