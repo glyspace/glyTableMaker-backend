@@ -38,4 +38,10 @@ public class CollectionSpecification implements Specification<Collection> {
 	        return criteriaBuilder.isEmpty(root.get("collections"));
 	    };
 	}
+	
+	public static Specification<Collection> hasChildren () {
+		return (root, query, criteriaBuilder) -> {
+	        return criteriaBuilder.isNotEmpty(root.get("collections"));
+	    };
+	}
 }

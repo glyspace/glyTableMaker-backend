@@ -11,7 +11,7 @@ public class CollectionView {
 	String description;
 	List<Metadata> metadata;
 	List<Glycan> glycans;
-	
+	List<CollectionView> children;
 	
 	public String getName() {
 		return name;
@@ -42,5 +42,11 @@ public class CollectionView {
 	}
 	public void setCollectionId(Long collectionId) {
 		this.collectionId = collectionId;
+	}
+	public List<CollectionView> getChildren() {
+		return children;
+	}
+	public void setChildren(List<CollectionView> children) {
+		this.children = children;
 	}
 }

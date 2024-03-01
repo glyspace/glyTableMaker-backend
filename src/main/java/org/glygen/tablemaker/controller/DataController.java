@@ -364,6 +364,127 @@ public class DataController {
         return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
     }
     
+    @Operation(summary = "Get collections of collections", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getcoss")
+    public ResponseEntity<SuccessResponse> getCollectionsOfCollections(
+            @RequestParam("start")
+            Integer start, 
+            @RequestParam("size")
+            Integer size,
+            @RequestParam("filters")
+            String filters,
+            @RequestParam("globalFilter")
+            String globalFilter,
+            @RequestParam("sorting")
+            String sorting) {
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+      
+        // parse filters and sorting
+        ObjectMapper mapper = new ObjectMapper();
+        List<Filter> filterList = null;
+        if (filters != null && !filters.equals("[]")) {
+            try {
+                filterList = mapper.readValue(filters, 
+                    new TypeReference<ArrayList<Filter>>() {});
+            } catch (JsonProcessingException e) {
+                throw new InternalError("filter parameter is invalid " + filters, e);
+            }
+        }
+        List<Sorting> sortingList = null;
+        List<Order> sortOrders = new ArrayList<>();
+        if (sorting != null && !sorting.equals("[]")) {
+            try {
+                sortingList = mapper.readValue(sorting, 
+                    new TypeReference<ArrayList<Sorting>>() {});
+                for (Sorting s: sortingList) {
+                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                }
+            } catch (JsonProcessingException e) {
+                throw new InternalError("sorting parameter is invalid " + sorting, e);
+            }
+        }
+        
+        // apply filters
+        List<CollectionSpecification> specificationList = new ArrayList<>();
+        if (filterList != null) {
+	        for (Filter f: filterList) {
+	        	CollectionSpecification spec = new CollectionSpecification(f);
+	        	specificationList.add(spec);
+	        }
+        }
+        
+        if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+        	specificationList.add(new CollectionSpecification(new Filter ("name", globalFilter)));
+        	specificationList.add(new CollectionSpecification(new Filter ("description", globalFilter)));
+        }
+        
+        Specification<Collection> spec = null;
+        if (!specificationList.isEmpty()) {
+        	spec = specificationList.get(0);
+        	for (int i=1; i < specificationList.size(); i++) {
+        		spec = Specification.where(spec).or(specificationList.get(i)); 
+        	}
+        	
+        	spec = Specification.where(spec).and(CollectionSpecification.hasUserWithId(user.getUserId()));
+        	spec = Specification.where(spec).and(CollectionSpecification.hasChildren());
+        }
+        
+        Page<Collection> collectionsInPage = null;
+        if (spec != null) {
+        	try {
+        		collectionsInPage = collectionRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
+        	} catch (Exception e) {
+        		logger.error(e.getMessage(), e);
+        		throw e;
+        	}
+        } else {
+        	collectionsInPage = collectionRepository.findParentCollectionsByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
+        }
+        
+        List<CollectionView> collections = new ArrayList<>();
+        for (Collection c: collectionsInPage.getContent()) {
+        	CollectionView cv = new CollectionView();
+        	cv.setCollectionId(c.getCollectionId());
+        	cv.setName(c.getName());
+        	cv.setDescription(c.getDescription());
+        	if (c.getMetadata() != null) cv.setMetadata(new ArrayList<>(c.getMetadata()));
+        	cv.setChildren(new ArrayList<>());
+        	for (Collection cc: c.getCollections()) {
+        		CollectionView child = new CollectionView();
+        		child.setName(cc.getName());
+        		child.setDescription(cc.getDescription());
+        		child.setMetadata(new ArrayList<>(cc.getMetadata()));
+        		child.setGlycans(new ArrayList<Glycan>());
+            	for (GlycanInCollection gic: cc.getGlycans()) {
+            		Glycan g = gic.getGlycan();
+            		g.setGlycanCollections(null);
+            		try {
+                        g.setCartoon(getImageForGlycan(g.getGlycanId()));
+                    } catch (DataNotFoundException e) {
+                        // ignore
+                        logger.warn ("no image found for glycan " + g.getGlycanId());
+                    }
+            		child.getGlycans().add(g);
+            	}
+        		cv.getChildren().add(child);
+        	}
+        	collections.add(cv);
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("objects", collections);
+        response.put("currentPage", collectionsInPage.getNumber());
+        response.put("totalItems", collectionsInPage.getTotalElements());
+        response.put("totalPages", collectionsInPage.getTotalPages());
+        
+        return new ResponseEntity<>(new SuccessResponse(response, "collections of collections retrieved"), HttpStatus.OK);
+    }
+    
     
     @Operation(summary = "Get collection by the given id", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcollection/{collectionId}")
