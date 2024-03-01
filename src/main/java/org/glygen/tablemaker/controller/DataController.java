@@ -144,6 +144,19 @@ public class DataController {
     @GetMapping("/statistics")
     public ResponseEntity<SuccessResponse> getStatistics() {
         UserStatisticsView stats = new UserStatisticsView();
+     // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        stats.setGlycanCount(glycanRepository.count(GlycanSpecifications.hasUserWithId(user.getUserId())));
+        Specification<Collection> spec = CollectionSpecification.hasUserWithId(user.getUserId());
+    	spec = Specification.where(spec).and(CollectionSpecification.hasNoChildren());
+        stats.setCollectionCount(collectionRepository.count(spec));
+        spec = CollectionSpecification.hasUserWithId(user.getUserId());
+    	spec = Specification.where(spec).and(CollectionSpecification.hasChildren());
+    	stats.setCocCount(collectionRepository.count(spec));
         return new ResponseEntity<>(new SuccessResponse(stats, "statistics gathered"), HttpStatus.OK);
     }
     
