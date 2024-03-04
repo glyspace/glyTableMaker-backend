@@ -468,6 +468,7 @@ public class DataController {
         	cv.setChildren(new ArrayList<>());
         	for (Collection cc: c.getCollections()) {
         		CollectionView child = new CollectionView();
+        		child.setCollectionId(cc.getCollectionId());
         		child.setName(cc.getName());
         		child.setDescription(cc.getDescription());
         		if (cc.getMetadata() != null) child.setMetadata(new ArrayList<>(cc.getMetadata()));
@@ -501,7 +502,7 @@ public class DataController {
     @Operation(summary = "Get collection by the given id", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcollection/{collectionId}")
     public ResponseEntity<SuccessResponse> getCollectionById(
-    		@Parameter(required=true, description="id of the collection to delete") 
+    		@Parameter(required=true, description="id of the collection to be retrieved") 
     		@PathVariable("collectionId") Long collectionId) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -530,6 +531,53 @@ public class DataController {
                 logger.warn ("no image found for glycan " + g.getGlycanId());
             }
     		cv.getGlycans().add(g);
+    	}
+        
+        return new ResponseEntity<>(new SuccessResponse(cv, "collection retrieved"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Get collection of collections by the given id", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getcoc/{collectionId}")
+    public ResponseEntity<SuccessResponse> getCoCById(
+    		@Parameter(required=true, description="id of the collection to be retrieved") 
+    		@PathVariable("collectionId") Long collectionId) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        Collection existing = collectionRepository.findByCollectionIdAndUser(collectionId, user);
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
+        }
+        
+        CollectionView cv = new CollectionView();
+        cv.setCollectionId(existing.getCollectionId());
+    	cv.setName(existing.getName());
+    	cv.setDescription(existing.getDescription());
+    	cv.setChildren(new ArrayList<>());
+    	if (existing.getCollections() != null) {
+	    	for (Collection c: existing.getCollections()) {
+	    		CollectionView child = new CollectionView();
+	    		child.setCollectionId(c.getCollectionId());
+	    		child.setName(c.getName());
+	    		child.setDescription(c.getDescription());
+	    		if (c.getMetadata() != null) child.setMetadata(new ArrayList<>(c.getMetadata()));
+	        	child.setGlycans(new ArrayList<Glycan>());
+	        	for (GlycanInCollection gic: c.getGlycans()) {
+	        		Glycan g = gic.getGlycan();
+	        		g.setGlycanCollections(null);
+	        		try {
+	                    g.setCartoon(getImageForGlycan(g.getGlycanId()));
+	                } catch (DataNotFoundException e) {
+	                    // ignore
+	                    logger.warn ("no image found for glycan " + g.getGlycanId());
+	                }
+	        		child.getGlycans().add(g);
+	        	}
+	        	cv.getChildren().add(child);
+	    	}
     	}
         
         return new ResponseEntity<>(new SuccessResponse(cv, "collection retrieved"), HttpStatus.OK);
@@ -623,7 +671,7 @@ public class DataController {
         		collectionString += col.getCollection().getName() + ", ";
         	}
         	collectionString = collectionString.substring(0, collectionString.lastIndexOf(","));
-        	throw new BadRequestException ("Cannot delete this glycan. It is used in the following collections " + collectionString);
+        	throw new BadRequestException ("Cannot delete this glycan. It is used in the following collections: " + collectionString);
         }
         glycanRepository.deleteById(glycanId);
         return new ResponseEntity<>(new SuccessResponse(glycanId, "Glycan deleted successfully"), HttpStatus.OK);
@@ -655,7 +703,7 @@ public class DataController {
         List<Collection> parentCollections = collectionRepository.findParentCollectionsByUser(user);
         for (Collection parent: parentCollections) {
         	for (Collection child: parent.getCollections()) {
-        		if (child.getCollectionId() == collectionId) {
+        		if (child.getCollectionId().equals(collectionId)) {
         			parentList.add(parent);
         			break;
         		}
@@ -666,8 +714,33 @@ public class DataController {
         	for (Collection p: parentList) {
         		parents += p.getName() + ", ";
         	}
-        	throw new BadRequestException("Cannot delete this collection since there collections referencing it.\n"
-        			+ "Delete from the parent collection first! Parents: " + parents.substring(0, parents.lastIndexOf(", ")));
+        	throw new BadRequestException("Cannot delete this collection since there are collections referencing it.\n"
+        			+ "Delete from the parent collection first! Collection of collections referencing it: " + parents.substring(0, parents.lastIndexOf(", ")));
+        }
+        collectionRepository.deleteById(collectionId);
+        return new ResponseEntity<>(new SuccessResponse(collectionId, "Collection deleted successfully"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Delete the given collection of collections from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value="/deletecoc/{collectionId}", method = RequestMethod.DELETE)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Collection deleted successfully"), 
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to delete collections"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> deleteCoC (
+            @Parameter(required=true, description="id of the collection to delete") 
+            @PathVariable("collectionId") Long collectionId) {
+        
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        Collection existing = collectionRepository.findByCollectionIdAndUser(collectionId, user);
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given collection of collections (" + collectionId + ") for the user");
         }
         collectionRepository.deleteById(collectionId);
         return new ResponseEntity<>(new SuccessResponse(collectionId, "Collection deleted successfully"), HttpStatus.OK);
@@ -908,6 +981,77 @@ public class DataController {
     	existing.setMetadata(c.getMetadata());
     	collectionRepository.save(existing);
     	return new ResponseEntity<>(new SuccessResponse(c, "collection updated"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "update collection of collections", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/updatecoc")
+    public ResponseEntity<SuccessResponse> updateCoC(@Valid @RequestBody CollectionView c) {
+    	if (c.getCollectionId() == null) {
+    		throw new IllegalArgumentException("collection id should be provided for update");
+    	}
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+    	Collection existing = collectionRepository.findByCollectionIdAndUser(c.getCollectionId(), user);
+    	if (existing == null) {
+    		throw new IllegalArgumentException("Collection of collections (" + c.getCollectionId() + ") to be updated cannot be found");
+    	}
+    	// check if name is a duplicate
+    	if (!existing.getName().equalsIgnoreCase(c.getName())) {   // changing the name
+	    	List<Collection> duplicate = collectionRepository.findAllByNameAndUser (c.getName(), user);
+	    	if (!duplicate.isEmpty()) {
+	    		throw new DuplicateException("Collection of collections with name: " + c.getName() + " already exists! Pick a different name");
+	    	}
+    	}
+    	existing.setName(c.getName());
+    	existing.setDescription(c.getDescription());
+    	if (existing.getCollections() == null) {
+    		existing.setCollections(new ArrayList<>());
+    	}
+    	
+    	if (c.getChildren() == null || c.getChildren().isEmpty()) {
+    		existing.getCollections().clear();
+    	} else {
+	    	// remove collections as necessary
+    		List<Collection> toBeRemoved = new ArrayList<>();
+	    	for (Collection child: existing.getCollections()) {
+	    		boolean found = false;
+	    		for (CollectionView col: c.getChildren()) {
+	    			if (child.getCollectionId().equals(col.getCollectionId())) {
+	    				// keep it
+	    				found = true;
+	    			}
+	    		}
+	    		if (!found) {
+	    			toBeRemoved.add(child);
+	    		}
+	    	}
+	    	existing.getCollections().removeAll(toBeRemoved);
+    	}
+    	
+    	if (c.getChildren() != null && !c.getChildren().isEmpty()) {
+    		// check if this collection already exists in the collection
+    		for (CollectionView child: c.getChildren()) {
+    			boolean exists = false;
+    			for (Collection col: existing.getCollections()) {
+        			if (col.getCollectionId().equals(child.getCollectionId())) {
+        				exists = true;
+        				break;
+        			}
+        		}
+    			if (!exists) {
+    				Collection collection = collectionRepository.getReferenceById(child.getCollectionId());
+    				collection.addParent(existing);
+	    			if (collection != null) existing.getCollections().add(collection);
+    			}
+    		}
+    	}
+    	
+    	collectionRepository.save(existing);
+    	return new ResponseEntity<>(new SuccessResponse(c, "collection of collections updated"), HttpStatus.OK);
     }
     
     @Operation(summary = "Add glycans from file", security = { @SecurityRequirement(name = "bearer-key") })
