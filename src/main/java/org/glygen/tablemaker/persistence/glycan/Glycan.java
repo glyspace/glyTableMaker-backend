@@ -2,21 +2,22 @@ package org.glygen.tablemaker.persistence.glycan;
 
 import java.util.Date;
 
+import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.SequenceGenerator;
@@ -43,7 +44,9 @@ public class Glycan {
     RegistrationStatus status;
     UserEntity user;
     java.util.Collection<GlycanInCollection> glycanCollections;
+    java.util.Collection<GlycanTag> tags;
     byte[] cartoon;
+    java.util.Collection<BatchUploadEntity> uploadFiles;
     
     /**
      * @return the glycanId
@@ -221,4 +224,20 @@ public class Glycan {
     public void setCartoon(byte[] cartoon) {
         this.cartoon = cartoon;
     }
+    
+    @ManyToMany
+	public java.util.Collection<GlycanTag> getTags() {
+		return tags;
+	}
+	public void setTags(java.util.Collection<GlycanTag> tags) {
+		this.tags = tags;
+	}
+	
+	@ManyToMany
+	public java.util.Collection<BatchUploadEntity> getUploadFiles() {
+		return uploadFiles;
+	}
+	public void setUploadFiles(java.util.Collection<BatchUploadEntity> uploadFiles) {
+		this.uploadFiles = uploadFiles;
+	}
 }

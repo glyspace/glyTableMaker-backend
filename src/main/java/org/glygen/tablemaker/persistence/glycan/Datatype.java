@@ -37,7 +37,7 @@ public class Datatype {
     /**
      * @return the uri
      */
-    @Column
+    @Column(nullable=false)
     public String getUri() {
         return uri;
     }
@@ -50,7 +50,7 @@ public class Datatype {
     /**
      * @return the name
      */
-    @Column
+    @Column(nullable=false)
     public String getName() {
         return name;
     }

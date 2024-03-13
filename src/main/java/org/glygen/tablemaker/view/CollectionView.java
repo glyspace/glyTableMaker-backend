@@ -2,7 +2,9 @@ package org.glygen.tablemaker.view;
 
 import java.util.List;
 
+import org.glygen.tablemaker.persistence.glycan.CollectionTag;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
+import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 
 public class CollectionView {
@@ -12,6 +14,7 @@ public class CollectionView {
 	List<Metadata> metadata;
 	List<Glycan> glycans;
 	List<CollectionView> children;
+	List<CollectionTag> tags;
 	
 	public String getName() {
 		return name;
@@ -48,5 +51,11 @@ public class CollectionView {
 	}
 	public void setChildren(List<CollectionView> children) {
 		this.children = children;
+	}
+	public List<CollectionTag> getTags() {
+		return tags;
+	}
+	public void setTags(List<CollectionTag> tags) {
+		this.tags = tags;
 	}
 }

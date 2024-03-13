@@ -30,6 +30,7 @@ public class Collection {
     java.util.Collection<Collection> parents;
     java.util.Collection<Collection> collections;  
     java.util.Collection<GlycanInCollection> glycans;
+    java.util.Collection<CollectionTag> tags;
     
     /**
      * @return the id
@@ -49,7 +50,7 @@ public class Collection {
     /**
      * @return the name
      */
-    @Column
+    @Column(nullable=false)
     public String getName() {
         return name;
     }
@@ -139,6 +140,14 @@ public class Collection {
 		if (!this.parents.contains(parent)) {
 			this.parents.add(parent);
 		}
+	}
+	
+	@ManyToMany
+	public java.util.Collection<CollectionTag> getTags() {
+		return tags;
+	}
+	public void setTags(java.util.Collection<CollectionTag> tags) {
+		this.tags = tags;
 	}
 
 }

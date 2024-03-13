@@ -38,7 +38,7 @@ public class DatatypeCategory {
     /**
      * @return the name
      */
-    @Column
+    @Column(nullable=false)
     public String getName() {
         return name;
     }

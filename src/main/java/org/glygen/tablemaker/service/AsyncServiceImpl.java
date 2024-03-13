@@ -5,14 +5,18 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import javax.imageio.ImageIO;
 
 import org.apache.commons.io.IOUtils;
 import org.glygen.tablemaker.controller.DataController;
+import org.glygen.tablemaker.exception.BatchUploadException;
 import org.glygen.tablemaker.exception.DuplicateException;
+import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
@@ -47,7 +51,7 @@ public class AsyncServiceImpl implements AsyncService {
             String[] structures = fileAsString.split(delimeter);
             int count = 0;
             int countSuccess = 0;
-            StringBuffer errorMessage = new StringBuffer();
+            List<UploadErrorEntity> errors = new ArrayList<>();
             for (String sequence: structures) {
                 if (sequence == null || sequence.trim().isEmpty())
                     continue;
@@ -82,17 +86,19 @@ public class AsyncServiceImpl implements AsyncService {
                     }
                 	countSuccess++;
                 } catch (DuplicateException e) {
-                	errorMessage.append("Row " + count + " is a duplicate.");
+                	errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));
                 } catch (Exception e) {
-                	errorMessage.append("Row " + count + " is not added. Reason: " + e.getMessage());
+                	errors.add(new UploadErrorEntity(count+"", e.getMessage(), sequence));
                 }
             }
-            if (!errorMessage.toString().isEmpty()) {
-            	return CompletableFuture.failedFuture(new IllegalArgumentException("There are errors in the file: " + errorMessage.toString()));
+            if (!errors.isEmpty()) {
+            	return CompletableFuture.failedFuture(new BatchUploadException("There are errors in the file", errors));
             }
             return CompletableFuture.completedFuture (new SuccessResponse(structures, countSuccess + " out of " + count + " glycans are added successfully"));
 		} catch (IOException e) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException("File is not valid. Reason: " + e.getMessage()));
+			List<UploadErrorEntity> errors = new ArrayList<>();
+			errors.add(new UploadErrorEntity(null, "File is not valid. Reason: " + e.getMessage(), null));
+            return CompletableFuture.failedFuture(new BatchUploadException("File is not valid.", errors));
         }
 	}
 

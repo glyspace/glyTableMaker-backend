@@ -1,9 +1,11 @@
 package org.glygen.tablemaker.persistence;
 
+import java.util.Collection;
 import java.util.Date;
 
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,22 +16,23 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name="uploads")
+@Table(name="glycan_file_upload")
 public class BatchUploadEntity {
 	Long id;
 	UploadStatus status;
-	String error;
 	Date startDate;
 	Date accessedDate;
 	String successMessage;
 	UserEntity user;
+	Collection<UploadErrorEntity> errors;
 	
 	@Id
 	@GeneratedValue
-	@Column(name="uploadid")
+	@Column(name="glycan_file_upload_id")
 	public Long getId() {
 		return id;
 	}
@@ -47,13 +50,6 @@ public class BatchUploadEntity {
 		this.status = status;
 	}
 	
-	@Column(name="error", columnDefinition="text")
-	public String getError() {
-		return error;
-	}
-	public void setError(String error) {
-		this.error = error;
-	}
 	
 	@Column
 	public Date getStartDate() {
@@ -93,4 +89,16 @@ public class BatchUploadEntity {
     public void setUser(UserEntity user) {
         this.user = user;
     }
+
+    @OneToMany(mappedBy = "upload", cascade = CascadeType.ALL, orphanRemoval = true)
+	public Collection<UploadErrorEntity> getErrors() {
+		return errors;
+	}
+
+	public void setErrors(Collection<UploadErrorEntity> errors) {
+		this.errors = errors;
+		for (UploadErrorEntity err: errors) {
+			err.setUpload(this);
+		}
+	}
 }

@@ -36,9 +36,11 @@ import org.glycoinfo.GlycanCompositionConverter.utils.DictionaryException;
 import org.glycoinfo.WURCSFramework.util.validation.WURCSValidator;
 import org.glycoinfo.application.glycanbuilder.converterWURCS2.WURCS2Parser;
 import org.glygen.tablemaker.exception.BadRequestException;
+import org.glygen.tablemaker.exception.BatchUploadException;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
+import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
@@ -353,6 +355,7 @@ public class DataController {
         	cv.setName(c.getName());
         	cv.setDescription(c.getDescription());
         	if (c.getMetadata() != null) cv.setMetadata(new ArrayList<>(c.getMetadata()));
+        	if (c.getTags() != null) cv.setTags(new ArrayList<>(c.getTags()));
         	cv.setGlycans(new ArrayList<Glycan>());
         	for (GlycanInCollection gic: c.getGlycans()) {
         		Glycan g = gic.getGlycan();
@@ -465,6 +468,7 @@ public class DataController {
         	cv.setCollectionId(c.getCollectionId());
         	cv.setName(c.getName());
         	cv.setDescription(c.getDescription());
+        	if (c.getTags() != null) cv.setTags(new ArrayList<>(c.getTags()));
         	cv.setChildren(new ArrayList<>());
         	for (Collection cc: c.getCollections()) {
         		CollectionView child = new CollectionView();
@@ -472,6 +476,7 @@ public class DataController {
         		child.setName(cc.getName());
         		child.setDescription(cc.getDescription());
         		if (cc.getMetadata() != null) child.setMetadata(new ArrayList<>(cc.getMetadata()));
+        		if (cc.getTags() != null) child.setTags(new ArrayList<>(cc.getTags()));
         		child.setGlycans(new ArrayList<Glycan>());
             	for (GlycanInCollection gic: cc.getGlycans()) {
             		Glycan g = gic.getGlycan();
@@ -520,6 +525,7 @@ public class DataController {
     	cv.setName(existing.getName());
     	cv.setDescription(existing.getDescription());
     	if (existing.getMetadata() != null) cv.setMetadata(new ArrayList<>(existing.getMetadata()));
+    	if (existing.getTags() != null) cv.setTags(new ArrayList<>(existing.getTags()));
     	cv.setGlycans(new ArrayList<Glycan>());
     	for (GlycanInCollection gic: existing.getGlycans()) {
     		Glycan g = gic.getGlycan();
@@ -556,6 +562,7 @@ public class DataController {
         cv.setCollectionId(existing.getCollectionId());
     	cv.setName(existing.getName());
     	cv.setDescription(existing.getDescription());
+    	if (existing.getTags() != null) cv.setTags(new ArrayList<>(existing.getTags()));
     	cv.setChildren(new ArrayList<>());
     	if (existing.getCollections() != null) {
 	    	for (Collection c: existing.getCollections()) {
@@ -564,6 +571,7 @@ public class DataController {
 	    		child.setName(c.getName());
 	    		child.setDescription(c.getDescription());
 	    		if (c.getMetadata() != null) child.setMetadata(new ArrayList<>(c.getMetadata()));
+	    		if (c.getTags() != null) child.setTags(new ArrayList<>(c.getTags()));
 	        	child.setGlycans(new ArrayList<Glycan>());
 	        	for (GlycanInCollection gic: c.getGlycans()) {
 	        		Glycan g = gic.getGlycan();
@@ -1119,7 +1127,11 @@ public class DataController {
                     	if (e != null) {
                             logger.error(e.getMessage(), e);
                             result.setStatus(UploadStatus.ERROR);
-                            result.setError(e.getMessage());
+                            if (e instanceof BatchUploadException) {
+                            	result.setErrors(((BatchUploadException)e).getErrors());
+                    		}
+                            uploadRepository.save(result);
+                            
                         } else {
                             result.setStatus(UploadStatus.DONE);    
                             result.setSuccessMessage(resp.getMessage());
@@ -1129,7 +1141,7 @@ public class DataController {
                     response.get(1000, TimeUnit.MILLISECONDS);
                 } catch (TimeoutException e) {
                 	synchronized (this) {
-                        if (result.getError() == null || result.getError().isEmpty()) 
+                        if (result.getErrors() == null || result.getErrors().isEmpty()) 
                             result.setStatus(UploadStatus.PROCESSING);
                         else 
                             result.setStatus(UploadStatus.ERROR);
