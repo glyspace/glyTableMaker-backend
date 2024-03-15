@@ -1,5 +1,6 @@
 package org.glygen.tablemaker.persistence.glycan;
 
+import java.util.ArrayList;
 import java.util.Date;
 
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
@@ -239,5 +240,11 @@ public class Glycan {
 	}
 	public void setUploadFiles(java.util.Collection<BatchUploadEntity> uploadFiles) {
 		this.uploadFiles = uploadFiles;
+	}
+	
+	public void addUploadFile (BatchUploadEntity upload) {
+		if (uploadFiles == null) 
+			uploadFiles = new ArrayList<BatchUploadEntity>();
+		uploadFiles.add(upload);
 	}
 }

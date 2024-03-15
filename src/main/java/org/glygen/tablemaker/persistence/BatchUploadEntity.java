@@ -26,8 +26,9 @@ public class BatchUploadEntity {
 	UploadStatus status;
 	Date startDate;
 	Date accessedDate;
-	String successMessage;
 	UserEntity user;
+	String filename;
+	String format;
 	Collection<UploadErrorEntity> errors;
 	
 	@Id
@@ -67,14 +68,6 @@ public class BatchUploadEntity {
 		this.accessedDate = accessedDate;
 	}
 	
-	@Column(name="message", length=2000)
-	public String getSuccessMessage() {
-		return successMessage;
-	}
-	public void setSuccessMessage(String sucessMessage) {
-		this.successMessage = sucessMessage;
-	}
-	
 	/**
      * @return the user
      */
@@ -100,5 +93,23 @@ public class BatchUploadEntity {
 		for (UploadErrorEntity err: errors) {
 			err.setUpload(this);
 		}
+	}
+
+	@Column
+	public String getFilename() {
+		return filename;
+	}
+
+	public void setFilename(String filename) {
+		this.filename = filename;
+	}
+
+	@Column
+	public String getFormat() {
+		return format;
+	}
+
+	public void setFormat(String format) {
+		this.format = format;
 	}
 }

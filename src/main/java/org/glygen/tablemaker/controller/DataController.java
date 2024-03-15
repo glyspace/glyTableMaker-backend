@@ -1106,18 +1106,28 @@ public class DataController {
                 result.setStartDate(new Date());
                 result.setStatus(UploadStatus.PROCESSING);
                 result.setUser(user);
-                uploadRepository.save(result);
-                
+                result.setFilename(fileWrapper.getOriginalName());
+                result.setFormat(format.name());
+                BatchUploadEntity saved = uploadRepository.save(result);
+                // keep the original file in the uploads directory
+                File uploadFolder = new File (uploadDir + File.separator + saved.getId());
+                if (!uploadFolder.exists()) {
+                	uploadFolder.mkdirs();
+                }
+                boolean success = file.renameTo(new File (uploadFolder + File.separator + fileWrapper.getOriginalName()));
+                if (!success) {
+                	logger.error("Could not store the original file");
+                }
                 try {    
                     CompletableFuture<SuccessResponse> response = null;
                     
                     // process the file and add the glycans 
                     switch (format) {
                     case GWS:
-                    	response = batchUploadService.addGlycanFromTextFile(fileContent, user, format, ";");
+                    	response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, ";");
                     	break;
                     case WURCS:
-                    	response = batchUploadService.addGlycanFromTextFile(fileContent, user, format, "\\n");
+                    	response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, "\\n");
                     	break;
 					default:
 						break;
@@ -1134,11 +1144,10 @@ public class DataController {
                             
                         } else {
                             result.setStatus(UploadStatus.DONE);    
-                            result.setSuccessMessage(resp.getMessage());
                             uploadRepository.save(result);
                         }                       
                     });
-                    response.get(1000, TimeUnit.MILLISECONDS);
+                    response.get(10000, TimeUnit.MILLISECONDS);
                 } catch (TimeoutException e) {
                 	synchronized (this) {
                         if (result.getErrors() == null || result.getErrors().isEmpty()) 

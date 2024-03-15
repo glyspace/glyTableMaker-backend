@@ -16,6 +16,7 @@ import org.apache.commons.io.IOUtils;
 import org.glygen.tablemaker.controller.DataController;
 import org.glygen.tablemaker.exception.BatchUploadException;
 import org.glygen.tablemaker.exception.DuplicateException;
+import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
@@ -43,7 +44,8 @@ public class AsyncServiceImpl implements AsyncService {
 
 	@Override
 	@Async("GlygenAsyncExecutor")
-	public CompletableFuture<SuccessResponse> addGlycanFromTextFile(byte[] contents, UserEntity user, SequenceFormat format,
+	public CompletableFuture<SuccessResponse> addGlycanFromTextFile(byte[] contents, 
+			BatchUploadEntity upload, UserEntity user, SequenceFormat format,
 			String delimeter) {
 		try {
             ByteArrayInputStream stream = new   ByteArrayInputStream(contents);
@@ -66,6 +68,7 @@ public class AsyncServiceImpl implements AsyncService {
                 	// save the glycan
                     glycan.setDateCreated(new Date());
                     glycan.setUser(user);
+                    glycan.addUploadFile(upload);
                     Glycan added = glycanRepository.save(glycan);
                     
                     if (added != null) {
@@ -87,6 +90,10 @@ public class AsyncServiceImpl implements AsyncService {
                 	countSuccess++;
                 } catch (DuplicateException e) {
                 	errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));
+                	if (e.getDuplicate() != null && e.getDuplicate() instanceof Glycan) {
+                		((Glycan) e.getDuplicate()).addUploadFile(upload);
+                		glycanRepository.save((Glycan) e.getDuplicate());
+                	}
                 } catch (Exception e) {
                 	errors.add(new UploadErrorEntity(count+"", e.getMessage(), sequence));
                 }
