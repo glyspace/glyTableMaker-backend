@@ -3,6 +3,7 @@ package org.glygen.tablemaker.persistence;
 import java.util.Collection;
 import java.util.Date;
 
+import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
 
 import jakarta.persistence.CascadeType;
@@ -15,6 +16,7 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -30,6 +32,7 @@ public class BatchUploadEntity {
 	String filename;
 	String format;
 	Collection<UploadErrorEntity> errors;
+	Collection<Glycan> glycans;
 	
 	@Id
 	@GeneratedValue
@@ -111,5 +114,14 @@ public class BatchUploadEntity {
 
 	public void setFormat(String format) {
 		this.format = format;
+	}
+
+	@ManyToMany (mappedBy="uploadFiles")
+	public Collection<Glycan> getGlycans() {
+		return glycans;
+	}
+
+	public void setGlycans(Collection<Glycan> glycans) {
+		this.glycans = glycans;
 	}
 }

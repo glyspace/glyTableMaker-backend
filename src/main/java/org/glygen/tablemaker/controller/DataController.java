@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -591,7 +592,7 @@ public class DataController {
         return new ResponseEntity<>(new SuccessResponse(cv, "collection retrieved"), HttpStatus.OK);
     }
     
-    @Operation(summary = "Get latest batch upload", security = { @SecurityRequirement(name = "bearer-key") })
+    @Operation(summary = "Get batch uploads", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/checkbatchupload")
     @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Check performed successfully", content = {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
@@ -606,7 +607,7 @@ public class DataController {
         }
         if (user != null) {
         	List<BatchUploadEntity> uploads = uploadRepository.findFirstByUserOrderByStartDateDesc(user);
-        	List<BatchUploadEntity>  notAccessed = new ArrayList<>();
+        	/*List<BatchUploadEntity>  notAccessed = new ArrayList<>();
         	for (BatchUploadEntity b: uploads) {
         		if (b.getAccessedDate() == null) {
         			notAccessed.add(b);
@@ -614,41 +615,39 @@ public class DataController {
         	}
         	if (notAccessed.isEmpty()) {
         		throw new DataNotFoundException("No active batch upload");
+        	}*/
+        	if (uploads.isEmpty()) {
+        		throw new DataNotFoundException("No active batch upload");
         	}
-        	return new ResponseEntity<>(new SuccessResponse(notAccessed.get(0), "most recent batch upload retrieved"), HttpStatus.OK);
+        	return new ResponseEntity<>(new SuccessResponse(uploads, "Batch uploads retrieved"), HttpStatus.OK);
         } else {
         	throw new BadRequestException("user cannot be found");
         }
     }
     
-    @Operation(summary = "Update (hide) active batch upload processes by type", 
+    @Operation(summary = "Mark batch upload process as read", 
             security = { @SecurityRequirement(name = "bearer-key") })
-    @RequestMapping(value = "/updatebatchupload", method = RequestMethod.POST,
+    @RequestMapping(value = "/updatebatchupload/{uploadId}", method = RequestMethod.POST,
             produces={"application/json", "application/xml"})
     @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Update performed successfully", content = {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
             @ApiResponse(responseCode="415", description= "Media type is not supported"),
             @ApiResponse(responseCode="500", description= "Internal Server Error") })
-    public ResponseEntity<SuccessResponse> updateActiveBatchUpload(){
+    public ResponseEntity<SuccessResponse> updateActiveBatchUpload(
+    		@Parameter(required=true, description="internal id of the file upload to mark as read") 
+            @PathVariable("uploadId")
+    		Long batchUploadId){
 
-    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+    	Optional<BatchUploadEntity> upload = uploadRepository.findById(batchUploadId);
+    	if (upload != null) {
+            BatchUploadEntity entity = upload.get();
+            entity.setAccessedDate(new Date());
+            uploadRepository.save(entity);
+            return new ResponseEntity<>(new SuccessResponse(entity, "file upload is marked as read"), HttpStatus.OK);
         }
-        if (user != null) {
-        	List<BatchUploadEntity> uploads = uploadRepository.findFirstByUserOrderByStartDateDesc(user);
-        	if (!uploads.isEmpty()) {
-        		BatchUploadEntity mostRecent = uploads.get(0);
-	            mostRecent.setAccessedDate(new Date());
-	            uploadRepository.save(mostRecent);
-	        }
 	
-        	return new ResponseEntity<>(new SuccessResponse(uploads.get(0), "most recent batch upload is updated, will not be shown again"), HttpStatus.OK);
-	    }
-        else {
-        	throw new BadRequestException("user cannot be found");
-        }
+        throw new BadRequestException("file upload cannot be found");
+        
     }
     
     @Operation(summary = "Delete given glycan from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1137,8 +1136,8 @@ public class DataController {
                     	if (e != null) {
                             logger.error(e.getMessage(), e);
                             result.setStatus(UploadStatus.ERROR);
-                            if (e instanceof BatchUploadException) {
-                            	result.setErrors(((BatchUploadException)e).getErrors());
+                            if (e.getCause() instanceof BatchUploadException) {
+                            	result.setErrors(((BatchUploadException)e.getCause()).getErrors());
                     		}
                             uploadRepository.save(result);
                             
@@ -1147,7 +1146,7 @@ public class DataController {
                             uploadRepository.save(result);
                         }                       
                     });
-                    response.get(10000, TimeUnit.MILLISECONDS);
+                    response.get(1000, TimeUnit.MILLISECONDS);
                 } catch (TimeoutException e) {
                 	synchronized (this) {
                         if (result.getErrors() == null || result.getErrors().isEmpty()) 

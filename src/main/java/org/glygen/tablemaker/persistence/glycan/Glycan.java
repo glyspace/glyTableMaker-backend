@@ -6,6 +6,7 @@ import java.util.Date;
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import jakarta.persistence.Column;
@@ -234,6 +235,7 @@ public class Glycan {
 		this.tags = tags;
 	}
 	
+	@JsonIgnore
 	@ManyToMany
 	public java.util.Collection<BatchUploadEntity> getUploadFiles() {
 		return uploadFiles;

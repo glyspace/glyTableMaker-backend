@@ -1,9 +1,10 @@
 package org.glygen.tablemaker.persistence;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -63,6 +64,7 @@ public class UploadErrorEntity {
 		this.sequence = sequence;
 	}
 
+	@JsonIgnore
 	@ManyToOne(targetEntity = BatchUploadEntity.class, fetch = FetchType.EAGER)
     @JoinColumn(nullable = false, name = "glycan_file_upload_id")
 	public BatchUploadEntity getUpload() {
