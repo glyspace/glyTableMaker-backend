@@ -1143,16 +1143,16 @@ public class DataController {
                             
                         } else {
                             result.setStatus(UploadStatus.DONE);    
+                            result.setErrors(new ArrayList<>());
                             uploadRepository.save(result);
                         }                       
                     });
                     response.get(1000, TimeUnit.MILLISECONDS);
                 } catch (TimeoutException e) {
                 	synchronized (this) {
-                        if (result.getErrors() == null || result.getErrors().isEmpty()) 
-                            result.setStatus(UploadStatus.PROCESSING);
-                        else 
+                        if (result.getErrors() != null && !result.getErrors().isEmpty()) {
                             result.setStatus(UploadStatus.ERROR);
+                        } 
                         uploadRepository.save(result);
                     }
                 } catch (InterruptedException e1) {
