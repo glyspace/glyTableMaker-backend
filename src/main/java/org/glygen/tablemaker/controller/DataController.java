@@ -606,7 +606,7 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
         if (user != null) {
-        	List<BatchUploadEntity> uploads = uploadRepository.findFirstByUserOrderByStartDateDesc(user);
+        	List<BatchUploadEntity> uploads = uploadRepository.findByUserOrderByStartDateDesc(user);
         	/*List<BatchUploadEntity>  notAccessed = new ArrayList<>();
         	for (BatchUploadEntity b: uploads) {
         		if (b.getAccessedDate() == null) {

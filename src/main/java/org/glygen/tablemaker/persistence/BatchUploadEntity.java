@@ -20,6 +20,8 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
 @Entity
 @Table(name="glycan_file_upload")
@@ -56,6 +58,7 @@ public class BatchUploadEntity {
 	
 	
 	@Column
+	@Temporal(TemporalType.DATE)
 	public Date getStartDate() {
 		return startDate;
 	}
@@ -64,6 +67,7 @@ public class BatchUploadEntity {
 	}
 	
 	@Column
+	@Temporal(TemporalType.DATE)
 	public Date getAccessedDate() {
 		return accessedDate;
 	}
