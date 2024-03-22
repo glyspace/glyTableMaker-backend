@@ -227,7 +227,7 @@ public class Glycan {
         this.cartoon = cartoon;
     }
     
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
 	public java.util.Collection<GlycanTag> getTags() {
 		return tags;
 	}
@@ -235,8 +235,14 @@ public class Glycan {
 		this.tags = tags;
 	}
 	
+	public void addTag(GlycanTag tag) {
+		if (tags == null) 
+			tags = new ArrayList<>();
+		tags.add(tag);
+	}
+	
 	@JsonIgnore
-	@ManyToMany
+	@ManyToMany(fetch = FetchType.EAGER)
 	public java.util.Collection<BatchUploadEntity> getUploadFiles() {
 		return uploadFiles;
 	}

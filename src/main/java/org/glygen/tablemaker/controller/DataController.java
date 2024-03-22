@@ -48,6 +48,7 @@ import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
+import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
@@ -55,6 +56,7 @@ import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
 import org.glygen.tablemaker.service.AsyncService;
+import org.glygen.tablemaker.service.GlycanManagerImpl;
 import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.SequenceUtils;
@@ -127,6 +129,8 @@ public class DataController {
     final private UserRepository userRepository;
     final private BatchUploadRepository uploadRepository;
     final private AsyncService batchUploadService;
+    final private GlycanManagerImpl glycanManager;
+    final private UploadErrorRepository uploadErrorRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -135,12 +139,15 @@ public class DataController {
 	String uploadDir;
     
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository,
-    		BatchUploadRepository uploadRepository, AsyncService uploadService, CollectionRepository collectionRepository) {
+    		BatchUploadRepository uploadRepository, AsyncService uploadService, 
+    		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, UploadErrorRepository uploadErrorRepository) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
         this.uploadRepository = uploadRepository;
 		this.batchUploadService = uploadService;
+		this.glycanManager = glycanManager;
+		this.uploadErrorRepository = uploadErrorRepository;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -650,6 +657,75 @@ public class DataController {
         
     }
     
+    @Operation(summary = "Send error report email", 
+            security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value = "/senderrorreport/{uploadId}", method = RequestMethod.POST,
+            produces={"application/json", "application/xml"})
+    @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Email sent successfully", content = {
+            @Content( schema = @Schema(implementation = SuccessResponse.class))}),
+            @ApiResponse(responseCode="415", description= "Media type is not supported"),
+            @ApiResponse(responseCode="500", description= "Internal Server Error") })
+    public ResponseEntity<SuccessResponse> sendErrorReport(
+    		@Parameter(required=true, description="internal id of the file upload") 
+            @PathVariable("errorId")
+    		Long errorId){
+
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+    	Optional<UploadErrorEntity> upload = uploadErrorRepository.findById(errorId);
+    	if (upload != null) {
+            //TODO 
+    		// email
+            return new ResponseEntity<>(new SuccessResponse(upload, "file upload report is sent"), HttpStatus.OK);
+        }
+	
+        throw new BadRequestException("file upload cannot be found");
+        
+    }
+    
+    @Operation(summary = "Add tag for all glycans of the given file upload", 
+            security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value = "/addtagforfileupload/{uploadId}", method = RequestMethod.POST,
+            produces={"application/json", "application/xml"})
+    @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Update performed successfully", content = {
+            @Content( schema = @Schema(implementation = SuccessResponse.class))}),
+            @ApiResponse(responseCode="415", description= "Media type is not supported"),
+            @ApiResponse(responseCode="500", description= "Internal Server Error") })
+    public ResponseEntity<SuccessResponse> addTagForFileUpload(
+    		@Parameter(required=true, description="internal id of the file upload") 
+            @PathVariable("uploadId")
+    		Long batchUploadId,
+    		@RequestBody Object tag){
+    	
+    	if (tag == null) {
+    		throw new IllegalArgumentException("Tag cannnot be empty");
+    	}
+    	
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+
+    	Optional<BatchUploadEntity> upload = uploadRepository.findById(batchUploadId);
+    	if (upload != null) {
+            BatchUploadEntity entity = upload.get();
+            if (entity.getGlycans() != null) {
+            	glycanManager.addTagToGlycans(entity.getGlycans(), (String)tag, user);
+            }
+            return new ResponseEntity<>(new SuccessResponse(entity, "the tag is added to all glycans of this file upload"), HttpStatus.OK);
+        }
+	
+        throw new BadRequestException("file upload cannot be found");
+        
+    }
+    
     @Operation(summary = "Delete given glycan from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
     @RequestMapping(value="/deleteglycan/{glycanId}", method = RequestMethod.DELETE)
     @ApiResponses (value ={@ApiResponse(responseCode="200", description="Glycan deleted successfully"), 
@@ -776,7 +852,7 @@ public class DataController {
             // error if there is already a glycan in the system
             Glycan existing = glycanRepository.findByGlytoucanIDIgnoreCaseAndUser(g.getGlytoucanID().trim(), user);
             if (existing != null) {
-                throw new DuplicateException ("There is already a glycan with GlyTouCan ID " + g.getGlytoucanID());
+                throw new DuplicateException ("There is already a glycan with GlyTouCan ID " + g.getGlytoucanID(), null, existing);
             }
             // check glytoucan to see if the id is correct!
             String sequence = SequenceUtils.getSequenceFromGlytoucan(g.getGlytoucanID().trim());
@@ -817,7 +893,7 @@ public class DataController {
                 }
                 Glycan existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
                 if (existing != null) {
-                    throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs());
+                    throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs(), null, existing);
                 }
                 SequenceUtils.getWurcsAndGlytoucanID(glycan, null);
                 if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
@@ -1199,14 +1275,14 @@ public class DataController {
                 
                 Glycan existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
                 if (existing != null) {
-                    throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs());
+                    throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs(), null, existing);
                 }
                 break;
             case GWS:
                 glycan.setGws(g.getSequence().trim());
                 existing = glycanRepository.findByGwsIgnoreCaseAndUser(glycan.getGws(), user);
                 if (existing != null) {
-                    throw new DuplicateException ("There is already a glycan with glycoworkbench sequence " + glycan.getGws());
+                    throw new DuplicateException ("There is already a glycan with glycoworkbench sequence " + glycan.getGws(), null, existing);
                 }
                 try {
                     // parse and convert to GlycoCT
@@ -1257,7 +1333,7 @@ public class DataController {
                 }
                 existing = glycanRepository.findByGlycoCTIgnoreCaseAndUser(glycan.getGlycoCT(), user);
                 if (existing != null) {
-                    throw new DuplicateException ("There is already a glycan with GlycoCT " + glycan.getGlycoCT());
+                    throw new DuplicateException ("There is already a glycan with GlycoCT " + glycan.getGlycoCT(), null, existing);
                 }    
             }
             // check if the glycan has an accession number in Glytoucan
