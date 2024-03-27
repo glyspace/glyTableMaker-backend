@@ -1,5 +1,7 @@
 package org.glygen.tablemaker.persistence.dao;
 
+import java.util.List;
+
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.springframework.data.domain.Page;
@@ -17,4 +19,5 @@ public interface GlycanRepository extends JpaRepository<Glycan, Long>,  JpaSpeci
     public Glycan findByGlycanIdAndUser (Long id, UserEntity user);
     public Page<Glycan> findAllByUser(UserEntity user, Pageable pageable);
     public Page<Glycan> findAll(Specification<Glycan> spec, Pageable pageable);
+    public List<Glycan> findByUserAndUploadFiles_Id (UserEntity user, Long uploadId);
 }

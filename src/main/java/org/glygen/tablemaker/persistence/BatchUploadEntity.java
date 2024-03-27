@@ -1,5 +1,6 @@
 package org.glygen.tablemaker.persistence;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 
@@ -22,6 +23,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import jakarta.persistence.Transient;
 
 @Entity
 @Table(name="glycan_file_upload")
@@ -33,8 +35,11 @@ public class BatchUploadEntity {
 	UserEntity user;
 	String filename;
 	String format;
+	Integer duplicateCount=0;
+	Integer existingCount=0;
 	Collection<UploadErrorEntity> errors;
 	Collection<Glycan> glycans;
+	Collection<Glycan> existingGlycans = new ArrayList<>();
 	
 	@Id
 	@GeneratedValue
@@ -127,5 +132,32 @@ public class BatchUploadEntity {
 
 	public void setGlycans(Collection<Glycan> glycans) {
 		this.glycans = glycans;
+	}
+
+	@Transient
+	public Collection<Glycan> getExistingGlycans() {
+		return existingGlycans;
+	}
+
+	public void setExistingGlycans(Collection<Glycan> existingGlycans) {
+		this.existingGlycans = existingGlycans;
+	}
+
+	@Column
+	public Integer getDuplicateCount() {
+		return duplicateCount;
+	}
+
+	public void setDuplicateCount(Integer duplicateCount) {
+		this.duplicateCount = duplicateCount;
+	}
+
+	@Column
+	public Integer getExistingCount() {
+		return existingCount;
+	}
+
+	public void setExistingCount(Integer existingCount) {
+		this.existingCount = existingCount;
 	}
 }

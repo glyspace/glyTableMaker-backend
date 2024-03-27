@@ -89,9 +89,17 @@ public class AsyncServiceImpl implements AsyncService {
                     }
                 	countSuccess++;
                 } catch (DuplicateException e) {
-                	errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));
+                	//errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));
                 	if (e.getDuplicate() != null && e.getDuplicate() instanceof Glycan) {
-                		((Glycan) e.getDuplicate()).addUploadFile(upload);
+                		Glycan existing = (Glycan) e.getDuplicate();
+                		if (existing.getUploadFiles().contains(upload)) {
+                			// duplicate within the file
+                			int duplicateCount = upload.getDuplicateCount() != null ? upload.getDuplicateCount() : 0;
+                			upload.setDuplicateCount(duplicateCount+1);
+                		} else {
+                			upload.getExistingGlycans().add(existing);
+                			existing.addUploadFile(upload);
+                		}
                 		glycanRepository.save((Glycan) e.getDuplicate());
                 	}
                 } catch (Exception e) {
@@ -101,7 +109,7 @@ public class AsyncServiceImpl implements AsyncService {
             if (!errors.isEmpty()) {
             	return CompletableFuture.failedFuture(new BatchUploadException("There are errors in the file", errors));
             }
-            return CompletableFuture.completedFuture (new SuccessResponse(structures, countSuccess + " out of " + count + " glycans are added successfully"));
+            return CompletableFuture.completedFuture (new SuccessResponse(upload, countSuccess + " out of " + count + " glycans are added successfully"));
 		} catch (IOException e) {
 			List<UploadErrorEntity> errors = new ArrayList<>();
 			errors.add(new UploadErrorEntity(null, "File is not valid. Reason: " + e.getMessage(), null));

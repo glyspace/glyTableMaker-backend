@@ -622,16 +622,7 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
         if (user != null) {
-        	List<BatchUploadEntity> uploads = uploadRepository.findByUserOrderByStartDateDesc(user);
-        	/*List<BatchUploadEntity>  notAccessed = new ArrayList<>();
-        	for (BatchUploadEntity b: uploads) {
-        		if (b.getAccessedDate() == null) {
-        			notAccessed.add(b);
-        		}
-        	}
-        	if (notAccessed.isEmpty()) {
-        		throw new DataNotFoundException("No active batch upload");
-        	}*/
+        	List<BatchUploadEntity> uploads = uploadRepository.findByUserOrderByStartDateDesc(user);	
         	if (uploads.isEmpty()) {
         		throw new DataNotFoundException("No active batch upload");
         	}
@@ -663,7 +654,31 @@ public class DataController {
         }
 	
         throw new BadRequestException("file upload cannot be found");
+    }
+    
+    @Operation(summary = "Delete the given file upload", security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value="/deletefileupload/{uploadId}", method = RequestMethod.DELETE)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Collection deleted successfully"), 
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to delete collections"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> deleteBatchUpload (
+            @Parameter(required=true, description="id of the file upload to delete") 
+            @PathVariable("uploadId") Long uploadId) {
         
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        List<BatchUploadEntity> found = uploadRepository.findByUserAndId(user, uploadId);
+        if (found.isEmpty()) {
+        	throw new IllegalArgumentException("Could not find upload entry with the given id (" + uploadId + ") for this user");
+        }
+        uploadRepository.deleteById(uploadId);
+        return new ResponseEntity<>(new SuccessResponse(uploadId, "Collection deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Send error report email", 
@@ -1233,6 +1248,9 @@ public class DataController {
                             uploadRepository.save(result);
                             
                         } else {
+                        	BatchUploadEntity upload = (BatchUploadEntity) resp.getData();
+                        	result.setExistingCount(upload.getExistingGlycans().size());
+                        	result.setDuplicateCount(upload.getDuplicateCount());
                             result.setStatus(UploadStatus.DONE);    
                             result.setErrors(new ArrayList<>());
                             uploadRepository.save(result);

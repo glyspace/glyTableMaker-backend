@@ -255,4 +255,16 @@ public class Glycan {
 			uploadFiles = new ArrayList<BatchUploadEntity>();
 		uploadFiles.add(upload);
 	}
+	
+	public void removeUploadFile (BatchUploadEntity upload) {
+		if (uploadFiles != null) {
+			java.util.Collection<BatchUploadEntity> newList = new ArrayList<>();
+			for (BatchUploadEntity u: uploadFiles) {
+				if (!u.getId().equals(upload.getId())) {
+					newList.add(u);
+				}
+			}
+			this.uploadFiles = newList;
+		}
+	}
 }

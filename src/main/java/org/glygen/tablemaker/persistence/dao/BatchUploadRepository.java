@@ -9,4 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface BatchUploadRepository extends JpaRepository<BatchUploadEntity, Long> {
 	List<BatchUploadEntity> findByUser (UserEntity user);
 	List<BatchUploadEntity> findByUserOrderByStartDateDesc(UserEntity user);
+	List<BatchUploadEntity> findByUserAndId (UserEntity user, Long uploadId);
 }
