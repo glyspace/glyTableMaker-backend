@@ -1,7 +1,9 @@
 package org.glygen.tablemaker.service;
 
+import java.io.File;
 import java.util.UUID;
 
+import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.VerificationTokenRepository;
 import org.glygen.tablemaker.util.RandomPasswordGenerator;
@@ -9,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -42,6 +43,9 @@ public class MailService implements EmailManager {
     
     @Value("${glygen.frontend.emailVerificationPage}")
     String emailVerificationPage;
+    
+    @Value("${spring.file.uploaddirectory}")
+	String uploadDir;
     
     PasswordEncoder passwordEncoder;
     
@@ -116,5 +120,21 @@ public class MailService implements EmailManager {
         sendMessage(recipientAddress, subject,  "Dear " + user.getFirstName() + " " + user.getLastName()
             + ", \n\nYour GlyTableMaker account email has been changed. If you have not made this change, please contact us at " + email);
     }
+
+	@Override
+	public void sendErrorReport(UploadErrorEntity uploadErrorEntity, String... emails) {
+		if (emails == null) {
+            throw new IllegalArgumentException("email list cannot be null");
+        }
+        String subject = "GlyTableMaker Upload Error: ErrorId [" + uploadErrorEntity.getId() + "]";
+        String message = "Error message: " + uploadErrorEntity.getMessage() + "\nPosition: " + 
+        		(uploadErrorEntity.getPosition() !=null ? uploadErrorEntity.getPosition() : "unknown")+ 
+        		"\nSequence: " + uploadErrorEntity.getSequence() + "\nFile: " + 
+        		uploadDir + File.separator + uploadErrorEntity.getUpload().getId() + File.separator + uploadErrorEntity.getUpload().getFilename() +
+        		"\nUser: " + uploadErrorEntity.getUpload().getUser().getUsername();
+        for (String email: emails) {
+           sendMessage(email, subject, message);
+        }
+	}
 
 }

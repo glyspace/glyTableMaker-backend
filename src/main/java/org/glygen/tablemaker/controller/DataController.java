@@ -1,9 +1,12 @@
 package org.glygen.tablemaker.controller;
 
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
@@ -56,6 +59,7 @@ import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
 import org.glygen.tablemaker.service.AsyncService;
+import org.glygen.tablemaker.service.EmailManager;
 import org.glygen.tablemaker.service.GlycanManagerImpl;
 import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
@@ -70,7 +74,9 @@ import org.glygen.tablemaker.view.SuccessResponse;
 import org.glygen.tablemaker.view.UserStatisticsView;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -81,6 +87,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -131,6 +138,7 @@ public class DataController {
     final private AsyncService batchUploadService;
     final private GlycanManagerImpl glycanManager;
     final private UploadErrorRepository uploadErrorRepository;
+    private final EmailManager emailManager;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -140,7 +148,7 @@ public class DataController {
     
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository,
     		BatchUploadRepository uploadRepository, AsyncService uploadService, 
-    		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, UploadErrorRepository uploadErrorRepository) {
+    		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, UploadErrorRepository uploadErrorRepository, EmailManager emailManager) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
@@ -148,6 +156,7 @@ public class DataController {
 		this.batchUploadService = uploadService;
 		this.glycanManager = glycanManager;
 		this.uploadErrorRepository = uploadErrorRepository;
+		this.emailManager = emailManager;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -659,7 +668,7 @@ public class DataController {
     
     @Operation(summary = "Send error report email", 
             security = { @SecurityRequirement(name = "bearer-key") })
-    @RequestMapping(value = "/senderrorreport/{uploadId}", method = RequestMethod.POST,
+    @RequestMapping(value = "/senderrorreport/{errorId}", method = RequestMethod.POST,
             produces={"application/json", "application/xml"})
     @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Email sent successfully", content = {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
@@ -668,23 +677,29 @@ public class DataController {
     public ResponseEntity<SuccessResponse> sendErrorReport(
     		@Parameter(required=true, description="internal id of the file upload") 
             @PathVariable("errorId")
-    		Long errorId){
-
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    		Long errorId) {
         
     	Optional<UploadErrorEntity> upload = uploadErrorRepository.findById(errorId);
     	if (upload != null) {
-            //TODO 
-    		// email
+    		// email error to admins
+    		List<String> emails = new ArrayList<String>();
+            try {
+                Resource classificationNamespace = new ClassPathResource("adminemails.txt");
+                final InputStream inputStream = classificationNamespace.getInputStream();
+                final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+                String line;
+                while ((line = bufferedReader.readLine()) != null) {
+                    emails.add(line.trim());
+                }
+            } catch (Exception e) {
+                logger.error("Cannot locate admin emails", e);
+                throw new IllegalArgumentException("Error report not sent! Cannot locate admin emails");
+            }
+    		emailManager.sendErrorReport(upload.get(), emails.toArray(new String[0]));
             return new ResponseEntity<>(new SuccessResponse(upload, "file upload report is sent"), HttpStatus.OK);
         }
 	
-        throw new BadRequestException("file upload cannot be found");
+        throw new BadRequestException("File upload error with the given id " + errorId + " cannot be found");
         
     }
     
