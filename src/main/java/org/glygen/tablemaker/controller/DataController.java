@@ -56,6 +56,7 @@ import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
+import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
 import org.glygen.tablemaker.service.AsyncService;
@@ -692,30 +693,42 @@ public class DataController {
     public ResponseEntity<SuccessResponse> sendErrorReport(
     		@Parameter(required=true, description="internal id of the file upload") 
             @PathVariable("errorId")
-    		Long errorId) {
-        
-    	Optional<UploadErrorEntity> upload = uploadErrorRepository.findById(errorId);
-    	if (upload != null) {
-    		// email error to admins
-    		List<String> emails = new ArrayList<String>();
-            try {
-                Resource classificationNamespace = new ClassPathResource("adminemails.txt");
-                final InputStream inputStream = classificationNamespace.getInputStream();
-                final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-                String line;
-                while ((line = bufferedReader.readLine()) != null) {
-                    emails.add(line.trim());
-                }
-            } catch (Exception e) {
-                logger.error("Cannot locate admin emails", e);
-                throw new IllegalArgumentException("Error report not sent! Cannot locate admin emails");
+    		Long errorId,
+    		@Parameter(required=false, description="is report related to the upload")
+    		@RequestParam (defaultValue="false")
+    		Boolean isUpload) {
+    	
+    	// email error to admins
+		List<String> emails = new ArrayList<String>();
+        try {
+            Resource classificationNamespace = new ClassPathResource("adminemails.txt");
+            final InputStream inputStream = classificationNamespace.getInputStream();
+            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                emails.add(line.trim());
             }
-    		emailManager.sendErrorReport(upload.get(), emails.toArray(new String[0]));
-            return new ResponseEntity<>(new SuccessResponse(upload, "file upload report is sent"), HttpStatus.OK);
+        } catch (Exception e) {
+            logger.error("Cannot locate admin emails", e);
+            throw new IllegalArgumentException("Error report not sent! Cannot locate admin emails");
+        }
+        
+        if (isUpload) {
+        	Optional<BatchUploadEntity> upload = uploadRepository.findById(errorId);
+        	if (upload != null) {
+        		emailManager.sendErrorReport(upload.get(), emails.toArray(new String[0]));
+        		return new ResponseEntity<>(new SuccessResponse(upload, "file upload report is sent"), HttpStatus.OK);
+        	}
+        	
+        } else {
+	    	Optional<UploadErrorEntity> upload = uploadErrorRepository.findById(errorId);
+	    	if (upload != null) {
+	    		emailManager.sendErrorReport(upload.get(), emails.toArray(new String[0]));
+	            return new ResponseEntity<>(new SuccessResponse(upload, "file upload report is sent"), HttpStatus.OK);
+	        }
         }
 	
-        throw new BadRequestException("File upload error with the given id " + errorId + " cannot be found");
-        
+        throw new BadRequestException("File upload error with the given id " + errorId + " cannot be found"); 
     }
     
     @Operation(summary = "Add tag for all glycans of the given file upload", 
@@ -753,7 +766,21 @@ public class DataController {
         }
 	
         throw new BadRequestException("file upload cannot be found");
-        
+    }
+    
+
+    @Operation(summary = "Get current glycan tags for the user", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getglycantags")
+    public ResponseEntity<SuccessResponse> getGlycanTags() {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+
+    	List<GlycanTag> tags = glycanManager.getTags(user);
+    	return new ResponseEntity<>(new SuccessResponse(tags, "user's glycan tags retrieved successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Delete given glycan from the user's list", security = { @SecurityRequirement(name = "bearer-key") })

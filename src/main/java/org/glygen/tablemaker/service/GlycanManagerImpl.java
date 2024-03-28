@@ -1,5 +1,6 @@
 package org.glygen.tablemaker.service;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -51,5 +52,10 @@ public class GlycanManagerImpl implements GlycanManager {
 			glycanRepository.save(g);
 		}
 		uploadRepository.deleteById(upload.getId());
+	}
+	
+	@Override
+	public List<GlycanTag> getTags(UserEntity user) {
+		return new ArrayList<>(glycanTagRepository.findAllByUser(user));
 	}
 }

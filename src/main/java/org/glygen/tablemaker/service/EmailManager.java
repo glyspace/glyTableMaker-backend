@@ -1,5 +1,6 @@
 package org.glygen.tablemaker.service;
 
+import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 
@@ -11,4 +12,5 @@ public interface EmailManager {
 	//void sendFeedbackNotice (FeedbackEntity feedback);
     //void sendFeedback(FeedbackEntity feedback, String... emails);
 	void sendErrorReport(UploadErrorEntity uploadErrorEntity, String...emails);
+	void sendErrorReport(BatchUploadEntity batchUploadEntity, String...emails);
 }

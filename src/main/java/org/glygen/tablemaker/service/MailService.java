@@ -3,6 +3,7 @@ package org.glygen.tablemaker.service;
 import java.io.File;
 import java.util.UUID;
 
+import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.VerificationTokenRepository;
@@ -135,6 +136,20 @@ public class MailService implements EmailManager {
         for (String email: emails) {
            sendMessage(email, subject, message);
         }
+	}
+
+	@Override
+	public void sendErrorReport(BatchUploadEntity batchUploadEntity, String... emails) {
+		if (emails == null) {
+            throw new IllegalArgumentException("email list cannot be null");
+        }
+        String subject = "GlyTableMaker Upload Error: UploadId [" + batchUploadEntity.getId() + "]";
+        String message = "Upload process [" + batchUploadEntity.getId() + "] that started at " + 
+        		batchUploadEntity.getStartDate() + " is still processing!";
+        
+        for (String email: emails) {
+            sendMessage(email, subject, message);
+         }
 	}
 
 }
