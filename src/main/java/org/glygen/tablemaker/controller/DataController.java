@@ -745,7 +745,7 @@ public class DataController {
     		Long batchUploadId,
     		@RequestBody Object tag){
     	
-    	if (tag == null) {
+    	if (tag == null || !(tag instanceof String) || ((String)tag).isEmpty()) {
     		throw new IllegalArgumentException("Tag cannnot be empty");
     	}
     	
@@ -766,6 +766,43 @@ public class DataController {
         }
 	
         throw new BadRequestException("file upload cannot be found");
+    }
+    
+    @Operation(summary = "Add tag for the given glycan", 
+            security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value = "/addglycantag/{glycanId}", method = RequestMethod.POST,
+            produces={"application/json", "application/xml"})
+    @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Update performed successfully", content = {
+            @Content( schema = @Schema(implementation = SuccessResponse.class))}),
+            @ApiResponse(responseCode="415", description= "Media type is not supported"),
+            @ApiResponse(responseCode="500", description= "Internal Server Error") })
+    public ResponseEntity<SuccessResponse> addGlycanTag(
+    		@Parameter(required=true, description="internal id of the glycan") 
+            @PathVariable("glycanId")
+    		Long glycanId,
+    		@RequestBody Object tag){
+    	
+    	if (tag == null || !(tag instanceof String) || ((String)tag).isEmpty()) {
+    		throw new IllegalArgumentException("Tag cannnot be empty");
+    	}
+    	
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+
+    	Optional<Glycan> glycan = glycanRepository.findById(glycanId);
+    	if (glycan != null) {
+            Glycan g = glycan.get();
+            List<Glycan> glycans = new ArrayList<>();
+            glycans.add(g);
+            glycanManager.addTagToGlycans(glycans, (String)tag, user);
+            return new ResponseEntity<>(new SuccessResponse(g, "the tag is added to the given glycan"), HttpStatus.OK);
+        }
+	
+        throw new BadRequestException("glycan cannot be found");
     }
     
 
@@ -1202,8 +1239,8 @@ public class DataController {
     		FileWrapper fileWrapper, 
     		@Parameter(required=true, name="filetype", description="type of the file", schema = @Schema(type = "string",
     		allowableValues= {"GWS", "WURCS"})) 
-	        @RequestParam(required=true, value="filetype") String fileType) {
-    	
+	        @RequestParam(required=true, value="filetype") String fileType,
+	        @RequestParam(required=false, value="tag") String tag) {
     	
     	SequenceFormat format = SequenceFormat.valueOf(fileType);
     	
@@ -1256,10 +1293,10 @@ public class DataController {
                     // process the file and add the glycans 
                     switch (format) {
                     case GWS:
-                    	response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, ";");
+                    	response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, ";", tag);
                     	break;
                     case WURCS:
-                    	response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, "\\n");
+                    	response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, "\\n", tag);
                     	break;
 					default:
 						break;

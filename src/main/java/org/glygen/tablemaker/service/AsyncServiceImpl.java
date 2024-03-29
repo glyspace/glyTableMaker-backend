@@ -34,19 +34,21 @@ public class AsyncServiceImpl implements AsyncService {
 	 static Logger logger = org.slf4j.LoggerFactory.getLogger(AsyncServiceImpl.class);
 	
 	final private GlycanRepository glycanRepository;
+	final private GlycanManager glycanManager;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
 	
-	public AsyncServiceImpl(GlycanRepository repository) {
+	public AsyncServiceImpl(GlycanRepository repository, GlycanManager glycanManager) {
 		this.glycanRepository = repository;
+		this.glycanManager = glycanManager;
 	}
 
 	@Override
 	@Async("GlygenAsyncExecutor")
 	public CompletableFuture<SuccessResponse> addGlycanFromTextFile(byte[] contents, 
 			BatchUploadEntity upload, UserEntity user, SequenceFormat format,
-			String delimeter) {
+			String delimeter, String tag) {
 		try {
             ByteArrayInputStream stream = new   ByteArrayInputStream(contents);
             String fileAsString = IOUtils.toString(stream, StandardCharsets.UTF_8.name());
@@ -54,6 +56,7 @@ public class AsyncServiceImpl implements AsyncService {
             int count = 0;
             int countSuccess = 0;
             List<UploadErrorEntity> errors = new ArrayList<>();
+            List<Glycan> allGlycans = new ArrayList<>();
             for (String sequence: structures) {
                 if (sequence == null || sequence.trim().isEmpty())
                     continue;
@@ -70,7 +73,7 @@ public class AsyncServiceImpl implements AsyncService {
                     glycan.setUser(user);
                     glycan.addUploadFile(upload);
                     Glycan added = glycanRepository.save(glycan);
-                    
+                    allGlycans.add(added);
                     if (added != null) {
                         BufferedImage t_image = DataController.createImageForGlycan(added);
                         if (t_image != null) {
@@ -99,12 +102,17 @@ public class AsyncServiceImpl implements AsyncService {
                 		} else {
                 			upload.getExistingGlycans().add(existing);
                 			existing.addUploadFile(upload);
+                			glycanRepository.save(existing);
+                			allGlycans.add(existing);
                 		}
-                		glycanRepository.save((Glycan) e.getDuplicate());
+                		
                 	}
                 } catch (Exception e) {
                 	errors.add(new UploadErrorEntity(count+"", e.getMessage(), sequence));
                 }
+            }
+            if (tag != null && !tag.trim().isEmpty()) {
+            	glycanManager.addTagToGlycans(allGlycans, tag, user);
             }
             if (!errors.isEmpty()) {
             	return CompletableFuture.failedFuture(new BatchUploadException("There are errors in the file", errors));

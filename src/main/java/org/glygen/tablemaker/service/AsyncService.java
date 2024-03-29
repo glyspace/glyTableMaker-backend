@@ -10,5 +10,5 @@ import org.glygen.tablemaker.view.SuccessResponse;
 public interface AsyncService {
 	CompletableFuture<SuccessResponse> addGlycanFromTextFile(byte[] contents,
 			BatchUploadEntity upload,
-            UserEntity user, SequenceFormat format, String delimeter);
+            UserEntity user, SequenceFormat format, String delimeter, String tag);
 }
