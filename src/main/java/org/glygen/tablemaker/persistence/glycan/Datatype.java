@@ -17,8 +17,10 @@ public class Datatype {
     String uri;
     String name;
     String description;
-    String namespace;
+    Namespace namespace;
     UserEntity user;
+    Boolean multiple = false;
+    
     /**
      * @return the id
      */
@@ -63,7 +65,7 @@ public class Datatype {
     /**
      * @return the description
      */
-    @Column
+    @Column (length=4000)
     public String getDescription() {
         return description;
     }
@@ -76,14 +78,15 @@ public class Datatype {
     /**
      * @return the namespace
      */
-    @Column
-    public String getNamespace() {
+    @ManyToOne(targetEntity = Namespace.class, fetch = FetchType.EAGER)
+    @JoinColumn(nullable = false, name = "namespaceid", foreignKey = @ForeignKey(name = "FK_VERIFY_NAMESPACE"))
+    public Namespace getNamespace() {
         return namespace;
     }
     /**
      * @param namespace the namespace to set
      */
-    public void setNamespace(String namespace) {
+    public void setNamespace(Namespace namespace) {
         this.namespace = namespace;
     }
     /**
@@ -100,5 +103,13 @@ public class Datatype {
     public void setUser(UserEntity user) {
         this.user = user;
     }
+    
+    @Column
+	public Boolean getMultiple() {
+		return multiple;
+	}
+	public void setMultiple(Boolean multiple) {
+		this.multiple = multiple;
+	}
 
 }

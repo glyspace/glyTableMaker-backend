@@ -14,6 +14,8 @@ public class Metadata {
     Long metadataId;
     Datatype type;
     String value;
+    String valueUri;
+ 	String valueId;
     Collection collection;
     
     /**
@@ -69,5 +71,21 @@ public class Metadata {
     
     public void setCollection(Collection collection) {
 		this.collection = collection;
+	}
+    
+    @Column(length=4000)
+    public String getValueUri() {
+		return valueUri;
+	}
+	public void setValueUri(String valueUri) {
+		this.valueUri = valueUri;
+	}
+	
+	@Column
+	public String getValueId() {
+		return valueId;
+	}
+	public void setValueId(String valueId) {
+		this.valueId = valueId;
 	}
 }

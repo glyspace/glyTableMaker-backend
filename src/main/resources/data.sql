@@ -1,0 +1,14 @@
+insert into Namespace (namespaceid, name, dictionary) values (1, 'String', null) ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (2, 'Integer', null) ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (3, 'Double', null) ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (4, 'NCBI Taxonomy', 'https://www.ncbi.nlm.nih.gov/taxonomy') ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (5, 'Paper', null) ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (6, 'UBERON', 'http://purl.obolibrary.org/obo/uberon.owl') ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (7, 'Cellosaurus', 'https://www.cellosaurus.org/') ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (8, 'Disease', 'http://purl.obolibrary.org/obo/doid.owl') ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (9, 'Boolean', null) ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (10, 'Glycan Function', 'https://www.glygen.org/dictionary/glycan_function') ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (11, 'Experimental technique', 'https://www.glygen.org/dictionary/experimental_technique') ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (12, 'Human Phenotype', 'https://hpo.jax.org/app/') ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary) values (13, 'BCO contributor', null) ON CONFLICT DO NOTHING; 
+insert into Category (categoryid, name, description) values(1, 'GlyGen Glycomics Data', 'Metadata required for the data export into the GlyGen Glycomics Data format.')  ON CONFLICT DO NOTHING; 

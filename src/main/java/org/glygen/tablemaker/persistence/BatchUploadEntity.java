@@ -63,7 +63,6 @@ public class BatchUploadEntity {
 	
 	
 	@Column
-	@Temporal(TemporalType.DATE)
 	public Date getStartDate() {
 		return startDate;
 	}
@@ -72,7 +71,6 @@ public class BatchUploadEntity {
 	}
 	
 	@Column
-	@Temporal(TemporalType.DATE)
 	public Date getAccessedDate() {
 		return accessedDate;
 	}
