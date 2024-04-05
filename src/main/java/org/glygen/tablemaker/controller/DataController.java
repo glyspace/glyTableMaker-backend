@@ -149,7 +149,8 @@ public class DataController {
     
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository,
     		BatchUploadRepository uploadRepository, AsyncService uploadService, 
-    		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, UploadErrorRepository uploadErrorRepository, EmailManager emailManager) {
+    		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, 
+    		UploadErrorRepository uploadErrorRepository, EmailManager emailManager) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
@@ -780,10 +781,10 @@ public class DataController {
     		@Parameter(required=true, description="internal id of the glycan") 
             @PathVariable("glycanId")
     		Long glycanId,
-    		@RequestBody Object tag){
+    		@RequestBody List<String> tags){
     	
-    	if (tag == null || !(tag instanceof String) || ((String)tag).isEmpty()) {
-    		throw new IllegalArgumentException("Tag cannnot be empty");
+    	if (tags == null || tags.isEmpty()) {
+    		throw new IllegalArgumentException("Tags cannnot be empty");
     	}
     	
     	// get user info
@@ -796,10 +797,8 @@ public class DataController {
     	Optional<Glycan> glycan = glycanRepository.findById(glycanId);
     	if (glycan != null) {
             Glycan g = glycan.get();
-            List<Glycan> glycans = new ArrayList<>();
-            glycans.add(g);
-            glycanManager.addTagToGlycans(glycans, (String)tag, user);
-            return new ResponseEntity<>(new SuccessResponse(g, "the tag is added to the given glycan"), HttpStatus.OK);
+            glycanManager.setGlycanTags(g, tags, user);
+            return new ResponseEntity<>(new SuccessResponse(g, "the given tags are added to the given glycan"), HttpStatus.OK);
         }
 	
         throw new BadRequestException("glycan cannot be found");

@@ -28,6 +28,7 @@ public class GlycanManagerImpl implements GlycanManager {
 		this.glycanTagRepository = glycanTagRepository;
 		this.uploadRepository = uploadRepository;
 	}
+    
 	@Override
 	public void addTagToGlycans(Collection<Glycan> glycans, String tag, UserEntity user) {
 		if (glycans != null) {
@@ -57,5 +58,23 @@ public class GlycanManagerImpl implements GlycanManager {
 	@Override
 	public List<GlycanTag> getTags(UserEntity user) {
 		return new ArrayList<>(glycanTagRepository.findAllByUser(user));
+	}
+
+	@Override
+	public void setGlycanTags(Glycan glycan, List<String> tags, UserEntity user) {
+		List<GlycanTag> newTagList = new ArrayList<>();
+		for (String tag: tags) {
+			GlycanTag gTag = new GlycanTag();
+			gTag.setLabel(tag);
+			gTag.setUser(user);
+			GlycanTag existing = glycanTagRepository.findByUserAndLabel(user, tag);
+			if (existing == null) {
+				existing = glycanTagRepository.save(gTag);
+			}
+			newTagList.add(existing);
+		}
+		glycan.setTags(newTagList);
+		glycanRepository.save(glycan);
+		
 	}
 }
