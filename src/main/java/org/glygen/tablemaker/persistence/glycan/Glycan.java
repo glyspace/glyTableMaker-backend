@@ -3,12 +3,11 @@ package org.glygen.tablemaker.persistence.glycan;
 import java.util.ArrayList;
 import java.util.Date;
 
-import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -48,7 +47,7 @@ public class Glycan {
     java.util.Collection<GlycanInCollection> glycanCollections;
     java.util.Collection<GlycanTag> tags;
     byte[] cartoon;
-    java.util.Collection<BatchUploadEntity> uploadFiles;
+    java.util.Collection<GlycanInFile> uploadFiles;
     
     /**
      * @return the glycanId
@@ -241,30 +240,37 @@ public class Glycan {
 		tags.add(tag);
 	}
 	
-	@JsonIgnore
-	@ManyToMany(fetch = FetchType.EAGER)
-	public java.util.Collection<BatchUploadEntity> getUploadFiles() {
+	@OneToMany(mappedBy = "glycan", cascade=CascadeType.ALL, orphanRemoval = true)
+	public java.util.Collection<GlycanInFile> getUploadFiles() {
 		return uploadFiles;
 	}
-	public void setUploadFiles(java.util.Collection<BatchUploadEntity> uploadFiles) {
+	public void setUploadFiles(java.util.Collection<GlycanInFile> uploadFiles) {
 		this.uploadFiles = uploadFiles;
 	}
 	
-	public void addUploadFile (BatchUploadEntity upload) {
+	public void addUploadFile (GlycanInFile upload) {
 		if (uploadFiles == null) 
-			uploadFiles = new ArrayList<BatchUploadEntity>();
+			uploadFiles = new ArrayList<GlycanInFile>();
 		uploadFiles.add(upload);
 	}
 	
-	public void removeUploadFile (BatchUploadEntity upload) {
+	public void removeUploadFile (GlycanInFile upload) {
 		if (uploadFiles != null) {
-			java.util.Collection<BatchUploadEntity> newList = new ArrayList<>();
-			for (BatchUploadEntity u: uploadFiles) {
+			java.util.Collection<GlycanInFile> newList = new ArrayList<>();
+			for (GlycanInFile u: uploadFiles) {
 				if (!u.getId().equals(upload.getId())) {
 					newList.add(u);
 				}
 			}
 			this.uploadFiles = newList;
 		}
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof Glycan) {
+			return ((Glycan) obj).getGlycanId() != null && ((Glycan)obj).getGlycanId().equals(this.glycanId);
+		}
+		return super.equals(obj);
 	}
 }

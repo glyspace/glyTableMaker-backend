@@ -6,10 +6,10 @@ import java.util.List;
 
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
-import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanTagRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
+import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.springframework.stereotype.Service;
 
@@ -21,12 +21,10 @@ public class GlycanManagerImpl implements GlycanManager {
 
 	final private GlycanRepository glycanRepository;
 	final private GlycanTagRepository glycanTagRepository;
-	final private BatchUploadRepository uploadRepository;
     
-    public GlycanManagerImpl(GlycanTagRepository glycanTagRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository) {
+    public GlycanManagerImpl(GlycanTagRepository glycanTagRepository, GlycanRepository glycanRepository) {
 		this.glycanRepository = glycanRepository;
 		this.glycanTagRepository = glycanTagRepository;
-		this.uploadRepository = uploadRepository;
 	}
     
 	@Override
@@ -45,14 +43,20 @@ public class GlycanManagerImpl implements GlycanManager {
         	}
         }
 	}
+	
 	@Override
-	public void deleteUploadEntity(BatchUploadEntity upload, UserEntity user) {
-		List<Glycan> glycans = glycanRepository.findByUserAndUploadFiles_Id(user, upload.getId());
-		for (Glycan g: glycans) {
-			g.removeUploadFile (upload);
-			glycanRepository.save(g);
-		}
-		uploadRepository.deleteById(upload.getId());
+	public Glycan addUploadToGlycan (Glycan glycan, BatchUploadEntity upload, Boolean isNew, UserEntity user) {
+		if (glycan != null) {
+			GlycanInFile u = new GlycanInFile();
+            u.setUploadFile(upload);
+            u.setGlycan(glycan);
+            u.setIsNew(isNew);
+            glycan.setUploadFiles(new ArrayList<>());
+            glycan.getUploadFiles().add(u);
+            Glycan added = glycanRepository.save(glycan);
+            return added;
+        }
+		return null;
 	}
 	
 	@Override

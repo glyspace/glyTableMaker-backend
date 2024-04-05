@@ -56,6 +56,7 @@ import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
+import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
@@ -761,7 +762,11 @@ public class DataController {
     	if (upload != null) {
             BatchUploadEntity entity = upload.get();
             if (entity.getGlycans() != null) {
-            	glycanManager.addTagToGlycans(entity.getGlycans(), (String)tag, user);
+            	List<Glycan> glycans = new ArrayList<>();
+            	for (GlycanInFile g: entity.getGlycans()) {
+            		glycans.add(g.getGlycan());
+            	}
+            	glycanManager.addTagToGlycans(glycans, (String)tag, user);
             }
             return new ResponseEntity<>(new SuccessResponse(entity, "the tag is added to all glycans of this file upload"), HttpStatus.OK);
         }
@@ -1312,8 +1317,13 @@ public class DataController {
                             
                         } else {
                         	BatchUploadEntity upload = (BatchUploadEntity) resp.getData();
-                        	result.setExistingCount(upload.getExistingGlycans().size());
-                        	result.setDuplicateCount(upload.getDuplicateCount());
+                        	int count = 0;
+                        	for (GlycanInFile g: upload.getGlycans()) {
+                        		if (!g.getIsNew()) {
+                        			count++;
+                        		}
+                        	}
+                        	result.setExistingCount(count);
                             result.setStatus(UploadStatus.DONE);    
                             result.setErrors(new ArrayList<>());
                             uploadRepository.save(result);

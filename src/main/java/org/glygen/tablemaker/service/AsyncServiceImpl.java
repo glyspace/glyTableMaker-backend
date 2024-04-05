@@ -21,6 +21,7 @@ import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
+import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.view.GlycanView;
 import org.glygen.tablemaker.view.SequenceFormat;
 import org.glygen.tablemaker.view.SuccessResponse;
@@ -71,8 +72,7 @@ public class AsyncServiceImpl implements AsyncService {
                 	// save the glycan
                     glycan.setDateCreated(new Date());
                     glycan.setUser(user);
-                    glycan.addUploadFile(upload);
-                    Glycan added = glycanRepository.save(glycan);
+                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
                     allGlycans.add(added);
                     if (added != null) {
                         BufferedImage t_image = DataController.createImageForGlycan(added);
@@ -95,14 +95,12 @@ public class AsyncServiceImpl implements AsyncService {
                 	//errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));
                 	if (e.getDuplicate() != null && e.getDuplicate() instanceof Glycan) {
                 		Glycan existing = (Glycan) e.getDuplicate();
-                		if (existing.getUploadFiles().contains(upload)) {
+                		if (allGlycans.contains(existing)) {
                 			// duplicate within the file
-                			int duplicateCount = upload.getDuplicateCount() != null ? upload.getDuplicateCount() : 0;
-                			upload.setDuplicateCount(duplicateCount+1);
+                			// error
+                			errors.add(new UploadErrorEntity(count+"", "This sequence is a duplicate in the file", sequence));
                 		} else {
-                			upload.getExistingGlycans().add(existing);
-                			existing.addUploadFile(upload);
-                			glycanRepository.save(existing);
+                			glycanManager.addUploadToGlycan(existing, upload, false, user);
                 			allGlycans.add(existing);
                 		}
                 		

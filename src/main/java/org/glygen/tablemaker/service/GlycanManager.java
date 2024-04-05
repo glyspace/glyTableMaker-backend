@@ -10,7 +10,7 @@ import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 
 public interface GlycanManager {
 	void addTagToGlycans (Collection<Glycan> glycans, String tag, UserEntity user);
-	void deleteUploadEntity(BatchUploadEntity upload, UserEntity user);
 	List<GlycanTag> getTags(UserEntity user);
+	Glycan addUploadToGlycan(Glycan glycan, BatchUploadEntity upload, Boolean isNew, UserEntity user);
 	void setGlycanTags (Glycan glycan, List<String> tags, UserEntity user);
 }

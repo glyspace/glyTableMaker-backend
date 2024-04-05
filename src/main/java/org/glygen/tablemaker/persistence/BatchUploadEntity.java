@@ -1,10 +1,9 @@
 package org.glygen.tablemaker.persistence;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 
-import org.glygen.tablemaker.persistence.glycan.Glycan;
+import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
 
 import jakarta.persistence.CascadeType;
@@ -17,13 +16,9 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
-import jakarta.persistence.Transient;
 
 @Entity
 @Table(name="glycan_file_upload")
@@ -35,11 +30,9 @@ public class BatchUploadEntity {
 	UserEntity user;
 	String filename;
 	String format;
-	Integer duplicateCount=0;
 	Integer existingCount=0;
 	Collection<UploadErrorEntity> errors;
-	Collection<Glycan> glycans;
-	Collection<Glycan> existingGlycans = new ArrayList<>();
+	Collection<GlycanInFile> glycans;
 	
 	@Id
 	@GeneratedValue
@@ -123,31 +116,13 @@ public class BatchUploadEntity {
 		this.format = format;
 	}
 
-	@ManyToMany (mappedBy="uploadFiles")
-	public Collection<Glycan> getGlycans() {
+	@OneToMany(mappedBy = "uploadFile")
+	public Collection<GlycanInFile> getGlycans() {
 		return glycans;
 	}
 
-	public void setGlycans(Collection<Glycan> glycans) {
+	public void setGlycans(Collection<GlycanInFile> glycans) {
 		this.glycans = glycans;
-	}
-
-	@Transient
-	public Collection<Glycan> getExistingGlycans() {
-		return existingGlycans;
-	}
-
-	public void setExistingGlycans(Collection<Glycan> existingGlycans) {
-		this.existingGlycans = existingGlycans;
-	}
-
-	@Column
-	public Integer getDuplicateCount() {
-		return duplicateCount;
-	}
-
-	public void setDuplicateCount(Integer duplicateCount) {
-		this.duplicateCount = duplicateCount;
 	}
 
 	@Column
