@@ -247,7 +247,7 @@ public class DataController {
         	for (int i=1; i < specificationList.size(); i++) {
         		spec = Specification.where(spec).or(specificationList.get(i)); 
         	}
-        	
+        	spec = Specification.where(spec).or(GlycanSpecifications.hasGlycanTag(globalFilter));   // add glycan tag to searchable list
         	spec = Specification.where(spec).and(GlycanSpecifications.hasUserWithId(user.getUserId()));
         }
         
@@ -782,14 +782,14 @@ public class DataController {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
             @ApiResponse(responseCode="415", description= "Media type is not supported"),
             @ApiResponse(responseCode="500", description= "Internal Server Error") })
-    public ResponseEntity<SuccessResponse> addGlycanTag(
+    public ResponseEntity<SuccessResponse> updateGlycanTags(
     		@Parameter(required=true, description="internal id of the glycan") 
             @PathVariable("glycanId")
     		Long glycanId,
     		@RequestBody List<String> tags){
     	
-    	if (tags == null || tags.isEmpty()) {
-    		throw new IllegalArgumentException("Tags cannnot be empty");
+    	if (tags == null) {
+    		throw new IllegalArgumentException("Tags cannnot be null");
     	}
     	
     	// get user info
