@@ -1312,6 +1312,9 @@ public class DataController {
                             result.setStatus(UploadStatus.ERROR);
                             if (e.getCause() instanceof BatchUploadException) {
                             	result.setErrors(((BatchUploadException)e.getCause()).getErrors());
+                    		} else if (result.getErrors() == null) {
+                    			result.setErrors(new ArrayList<>());
+                    			result.getErrors().add(new UploadErrorEntity(null, e.getCause().getMessage(), null));
                     		}
                             uploadRepository.save(result);
                             

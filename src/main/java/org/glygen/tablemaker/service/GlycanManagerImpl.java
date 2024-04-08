@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanTagRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
@@ -21,10 +22,12 @@ public class GlycanManagerImpl implements GlycanManager {
 
 	final private GlycanRepository glycanRepository;
 	final private GlycanTagRepository glycanTagRepository;
+	final private BatchUploadRepository uploadRepository;
     
-    public GlycanManagerImpl(GlycanTagRepository glycanTagRepository, GlycanRepository glycanRepository) {
+    public GlycanManagerImpl(GlycanTagRepository glycanTagRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository) {
 		this.glycanRepository = glycanRepository;
 		this.glycanTagRepository = glycanTagRepository;
+		this.uploadRepository = uploadRepository;
 	}
     
 	@Override
@@ -49,11 +52,20 @@ public class GlycanManagerImpl implements GlycanManager {
 		if (glycan != null) {
 			GlycanInFile u = new GlycanInFile();
             u.setUploadFile(upload);
+            if (upload.getGlycans() == null) {
+            	upload.setGlycans(new ArrayList<>());
+            }
+            if (upload.getErrors() == null) {
+            	upload.setErrors(new ArrayList<>());
+            }
             u.setGlycan(glycan);
             u.setIsNew(isNew);
-            glycan.setUploadFiles(new ArrayList<>());
+            if (glycan.getUploadFiles() == null) 
+            	glycan.setUploadFiles(new ArrayList<>());
             glycan.getUploadFiles().add(u);
             Glycan added = glycanRepository.save(glycan);
+            upload.getGlycans().add(u);
+            uploadRepository.save(upload);
             return added;
         }
 		return null;

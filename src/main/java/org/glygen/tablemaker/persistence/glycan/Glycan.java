@@ -240,7 +240,7 @@ public class Glycan {
 		tags.add(tag);
 	}
 	
-	@OneToMany(mappedBy = "glycan", cascade=CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(mappedBy = "glycan", fetch=FetchType.EAGER, cascade=CascadeType.ALL, orphanRemoval=true)
 	public java.util.Collection<GlycanInFile> getUploadFiles() {
 		return uploadFiles;
 	}
