@@ -15,6 +15,9 @@ public class Namespace {
 	Long namespaceId;
 	String name;
 	String dictionary;
+	Boolean hasUri = false;
+	Boolean hasId = false;
+	String fileIdentifier;
 	
 	@Id
 	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="namespace_seq")
@@ -41,6 +44,30 @@ public class Namespace {
 	}
 	public void setDictionary(String dictionary) {
 		this.dictionary = dictionary;
+	}
+	
+	@Column
+	public Boolean getHasUri() {
+		return hasUri;
+	}
+	public void setHasUri(Boolean hasUri) {
+		this.hasUri = hasUri;
+	}
+	
+	@Column
+	public Boolean getHasId() {
+		return hasId;
+	}
+	public void setHasId(Boolean hasId) {
+		this.hasId = hasId;
+	}
+	
+	@Column
+	public String getFileIdentifier() {
+		return fileIdentifier;
+	}
+	public void setFileIdentifier(String fileIdentifier) {
+		this.fileIdentifier = fileIdentifier;
 	}
 	
 	

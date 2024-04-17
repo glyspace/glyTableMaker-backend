@@ -1,12 +1,15 @@
 package org.glygen.tablemaker;
 
+import org.glygen.tablemaker.config.NamespaceHandler;
 import org.glygen.tablemaker.persistence.RoleEntity;
 import org.glygen.tablemaker.persistence.dao.RoleRepository;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.event.EventListener;
 
 import com.ulisesbocchio.jasyptspringboot.environment.StandardEncryptableEnvironment;
 
@@ -30,5 +33,10 @@ public class TablemakerApplication {
 	        RoleEntity user = roleRepository.findByRoleName ("ROLE_" + RoleEntity.USER);
 	        if (user == null) roleRepository.save(new RoleEntity("ROLE_" + RoleEntity.USER));
 	      };
+	}
+	
+	@EventListener(ApplicationReadyEvent.class)
+	public void doSomethingAfterStartup() {
+	    NamespaceHandler.loadNamespaces();
 	}
 }
