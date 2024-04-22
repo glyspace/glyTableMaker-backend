@@ -1,0 +1,8 @@
+package org.glygen.tablemaker.persistence.dao;
+
+import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface DatatypeCategoryRepository extends JpaRepository<DatatypeCategory, Long> {
+
+}

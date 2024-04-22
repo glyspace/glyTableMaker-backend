@@ -7,8 +7,8 @@ insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentif
 insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentifier) values (7, 'Cellosaurus', 'https://www.cellosaurus.org/', FALSE, TRUE, 'cellline.txt.gz') ON CONFLICT DO NOTHING; 
 insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentifier) values (8, 'Disease', 'http://purl.obolibrary.org/obo/doid.owl', TRUE, TRUE, 'doid-base.txt') ON CONFLICT DO NOTHING; 
 insert into Namespace (namespaceid, name, dictionary) values (9, 'Boolean', null) ON CONFLICT DO NOTHING; 
-insert into Namespace (namespaceid, name, dictionary) values (10, 'Glycan Function', 'https://www.glygen.org/dictionary/glycan_function') ON CONFLICT DO NOTHING; 
-insert into Namespace (namespaceid, name, dictionary) values (11, 'Experimental technique', 'https://www.glygen.org/dictionary/experimental_technique') ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentifier) values (10, 'Glycan Function', 'https://www.glygen.org/dictionary/glycan_function', FALSE, FALSE, 'function.txt') ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentifier) values (11, 'Experimental technique', 'https://www.glygen.org/dictionary/experimental_technique', FALSE, FALSE, 'experiment.txt') ON CONFLICT DO NOTHING; 
 insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentifier) values (12, 'Human Phenotype', 'https://hpo.jax.org/app/', TRUE, TRUE, 'hp.txt') ON CONFLICT DO NOTHING; 
 insert into Namespace (namespaceid, name, dictionary) values (13, 'BCO contributor', null) ON CONFLICT DO NOTHING; 
 insert into Category (categoryid, name, description) values(1, 'GlyGen Glycomics Data', 'Metadata required for the data export into the GlyGen Glycomics Data format.')  ON CONFLICT DO NOTHING; 

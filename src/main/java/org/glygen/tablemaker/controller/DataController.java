@@ -89,7 +89,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -1038,6 +1037,10 @@ public class DataController {
         }
         
         // check if duplicate
+    	List<Collection> existing = collectionRepository.findAllByNameAndUser(c.getName(), user);
+    	if (existing.size() > 0) {
+    		throw new DuplicateException("A collection with this name already exists! "+ c.getName());
+    	}
     	
     	Collection collection = new Collection();
     	collection.setName(c.getName());
@@ -1056,8 +1059,8 @@ public class DataController {
     	}
     	
         collection.setUser(user);
-    	collectionRepository.save(collection);
-    	return new ResponseEntity<>(new SuccessResponse(collection, "collection added"), HttpStatus.OK);
+    	Collection saved = collectionRepository.save(collection);
+    	return new ResponseEntity<>(new SuccessResponse(saved, "collection added"), HttpStatus.OK);
     }
     
     @Operation(summary = "Add collection of collections", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1075,6 +1078,11 @@ public class DataController {
         }
         
         // check if duplicate
+    	List<Collection> existing = collectionRepository.findAllByNameAndUser(c.getName(), user);
+    	if (existing.size() > 0) {
+    		throw new DuplicateException("A collection of collections with this name already exists! "+ c.getName());
+    	}
+        
     	Collection collection = new Collection();
     	collection.setName(c.getName());
     	collection.setDescription(c.getDescription());
@@ -1516,5 +1524,4 @@ public class DataController {
             throw new DataNotFoundException("Image for glycan " + glycanId + " is not available");
         }
     }
-
 }
