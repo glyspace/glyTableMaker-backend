@@ -93,7 +93,7 @@ public class Datatype {
      * @return the user
      */
     @ManyToOne(targetEntity = UserEntity.class, fetch = FetchType.EAGER)
-    @JoinColumn(nullable = false, name = "userid", foreignKey = @ForeignKey(name = "FK_VERIFY_USER"))
+    @JoinColumn(nullable = true, name = "userid", foreignKey = @ForeignKey(name = "FK_VERIFY_USER"))
     public UserEntity getUser() {
         return user;
     }

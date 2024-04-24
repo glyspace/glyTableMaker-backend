@@ -71,5 +71,26 @@ public class MetadataController {
     	datatypeRepository.save(saved);
     	return new ResponseEntity<>(new SuccessResponse(saved, "datatype added"), HttpStatus.OK);
     }
+	
+	@Operation(summary = "Add datatype category", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/addcategory")
+    public ResponseEntity<SuccessResponse> addCategory(@Valid @RequestBody DatatypeCategory d) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        // check if duplicate
+    	DatatypeCategory existing = datatypeCategoryRepository.findByNameIgnoreCaseAndUser(d.getName(), user);
+    	if (existing != null) {
+    		throw new DuplicateException("There is already a datatype category with this name " + d.getName());
+    	}
+    	
+        d.setUser(user);
+    	DatatypeCategory saved = datatypeCategoryRepository.save(d);
+    	return new ResponseEntity<>(new SuccessResponse(saved, "datatype category added"), HttpStatus.OK);
+    }
 
 }

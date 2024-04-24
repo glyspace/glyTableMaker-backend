@@ -1,15 +1,19 @@
 package org.glygen.tablemaker.persistence.glycan;
 
+import org.glygen.tablemaker.persistence.UserEntity;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
@@ -21,6 +25,7 @@ public class DatatypeCategory {
     String name;
     String description;
     java.util.Collection<Datatype> dataTypes;
+    UserEntity user;
     
     /**
      * @return the id
@@ -81,5 +86,18 @@ public class DatatypeCategory {
     public void setDataTypes(java.util.Collection<Datatype> dataTypes) {
         this.dataTypes = dataTypes;
     }
+    
+    /**
+     * @return the user
+     */
+    @ManyToOne(targetEntity = UserEntity.class, fetch = FetchType.EAGER)
+    @JoinColumn(nullable = true, name = "userid")
+    public UserEntity getUser() {
+        return user;
+    }
+    
+    public void setUser(UserEntity user) {
+		this.user = user;
+	}
 
 }
