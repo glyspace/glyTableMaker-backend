@@ -21,7 +21,7 @@ public class Namespace {
 	
 	@Id
 	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="namespace_seq")
-    @SequenceGenerator(name="namespace_seq", sequenceName="NAMESPACE_SEQ", initialValue=50)
+    @SequenceGenerator(name="namespace_seq", sequenceName="NAMESPACE_SEQ", initialValue=50, allocationSize = 50)
     @Column(name="namespaceid", unique = true, nullable = false)
 	public Long getNamespaceId() {
 		return namespaceId;

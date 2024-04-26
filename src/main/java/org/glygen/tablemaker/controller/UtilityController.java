@@ -56,8 +56,7 @@ public class UtilityController {
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
     public ResponseEntity<SuccessResponse> getTypeAheadSuggestions (
-            @Parameter(required=true, description="Name of the namespace to retrieve matches "
-                    + "(dataset, printedslide, pmid, username, organization, group, lastname, firstname, or any other namespace that is registered in the repository ontology)")
+            @Parameter(required=true, description="Name of the namespace to retrieve matches ")
             @RequestParam("namespace")
             String namespace, 
             @Parameter(required=true, description="value to match") 

@@ -6,7 +6,6 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -16,6 +15,7 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(name="Category")
@@ -32,7 +32,7 @@ public class DatatypeCategory {
      */
     @Id
     @GeneratedValue(strategy=GenerationType.SEQUENCE, generator="category_seq")
-    @SequenceGenerator(name="category_seq", sequenceName="CATEGORY_SEQ", initialValue=10)
+    @SequenceGenerator(name="category_seq", sequenceName="CATEGORY_SEQ", initialValue=10, allocationSize=50)
     @Column(name="categoryid", unique = true, nullable = false)
     public Long getCategoryId() {
         return categoryId;
@@ -76,7 +76,8 @@ public class DatatypeCategory {
     @JoinTable(name = "datatype_category", joinColumns = { 
             @JoinColumn(name = "categoryid", nullable = false) }, 
             inverseJoinColumns = { @JoinColumn(name = "datatypeid", 
-                    nullable = false) })
+                    nullable = false) }, uniqueConstraints={
+            @UniqueConstraint(columnNames = {"datatypeid", "categoryid"})})
     public java.util.Collection<Datatype> getDataTypes() {
         return dataTypes;
     }

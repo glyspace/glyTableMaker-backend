@@ -1,6 +1,7 @@
 package org.glygen.tablemaker.controller;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.UserEntity;
@@ -9,6 +10,7 @@ import org.glygen.tablemaker.persistence.dao.DatatypeRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
+import org.glygen.tablemaker.service.MetadataManager;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +20,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
@@ -31,11 +35,13 @@ public class MetadataController {
 	private final DatatypeCategoryRepository datatypeCategoryRepository;
 	final private UserRepository userRepository;
 	private final DatatypeRepository datatypeRepository;
+	final private MetadataManager metadataManager;
 	
-	public MetadataController(DatatypeCategoryRepository datatypeCategoryRepository, UserRepository userRepository, DatatypeRepository datatypeRepository) {
+	public MetadataController(DatatypeCategoryRepository datatypeCategoryRepository, UserRepository userRepository, DatatypeRepository datatypeRepository, MetadataManager metadataManager) {
 		this.datatypeCategoryRepository = datatypeCategoryRepository;
 		this.userRepository = userRepository;
 		this.datatypeRepository = datatypeRepository;
+		this.metadataManager = metadataManager;
 	}
 	
 	@Operation(summary = "Get datatype categories", security = { @SecurityRequirement(name = "bearer-key") })
@@ -50,7 +56,11 @@ public class MetadataController {
 	
 	@Operation(summary = "Add datatype", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/adddatatype")
-    public ResponseEntity<SuccessResponse> addDatatype(@Valid @RequestBody Datatype d) {
+    public ResponseEntity<SuccessResponse> addDatatype(
+    		@Parameter(required=false, description="if provided, the created datatype is assigned to the given category")
+    		@RequestParam("categoryid")
+    		Long categoryId, 
+    		@Valid @RequestBody Datatype d) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -64,12 +74,21 @@ public class MetadataController {
     		throw new DuplicateException("There is already a datatype with this name " + d.getName());
     	}
     	
-        d.setUser(user);
+    	d.setUser(user);
         d.setUri("https://www.glygen.org/datatype/");
-    	Datatype saved = datatypeRepository.save(d);
-    	saved.setUri(d.getUri()+saved.getDatatypeId());
-    	datatypeRepository.save(saved);
-    	return new ResponseEntity<>(new SuccessResponse(saved, "datatype added"), HttpStatus.OK);
+    	
+    	if (categoryId != null) {
+    		Optional<DatatypeCategory> category = datatypeCategoryRepository.findById(categoryId);
+    		DatatypeCategory cat = category.get();
+    		Datatype saved = metadataManager.addDatatypeToCategory (d, cat);
+    		return new ResponseEntity<>(new SuccessResponse(saved, "datatype added to given category"), HttpStatus.OK);
+    	} else {
+	    	Datatype saved = datatypeRepository.save(d);
+	    	saved.setUri(d.getUri()+saved.getDatatypeId());
+	    	datatypeRepository.save(saved);
+	    	return new ResponseEntity<>(new SuccessResponse(saved, "datatype added"), HttpStatus.OK);
+    	}
+    	
     }
 	
 	@Operation(summary = "Add datatype category", security = { @SecurityRequirement(name = "bearer-key") })
@@ -91,6 +110,37 @@ public class MetadataController {
         d.setUser(user);
     	DatatypeCategory saved = datatypeCategoryRepository.save(d);
     	return new ResponseEntity<>(new SuccessResponse(saved, "datatype category added"), HttpStatus.OK);
+    }
+	
+	@Operation(summary = "Update datatype category", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/updatecategory")
+    public ResponseEntity<SuccessResponse> updateCategory(@Valid @RequestBody DatatypeCategory d) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        DatatypeCategory existing = null;
+        if (d.getCategoryId() != null) {
+        	Optional<DatatypeCategory> found = datatypeCategoryRepository.findById(d.getCategoryId());
+        	existing = found.get();
+        }
+        
+        if (!existing.getName().equalsIgnoreCase(d.getName())) {
+	        // check if the name is duplicate
+	    	DatatypeCategory sameName = datatypeCategoryRepository.findByNameIgnoreCaseAndUser(d.getName(), user);
+	    	if (sameName != null && !sameName.getCategoryId().equals(d.getCategoryId())) {
+	    		throw new DuplicateException("There is already a datatype category with this name " + d.getName());
+	    	}
+        }
+    	
+        existing.setDescription(d.getDescription());
+        existing.setName(d.getName());
+        existing.setDataTypes(d.getDataTypes());
+    	DatatypeCategory saved = datatypeCategoryRepository.save(d);
+    	return new ResponseEntity<>(new SuccessResponse(saved, "datatype category updated"), HttpStatus.OK);
     }
 
 }

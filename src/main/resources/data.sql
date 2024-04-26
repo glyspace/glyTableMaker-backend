@@ -28,9 +28,9 @@ insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid)
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (14, 'Organismal/cellular Phenotype', 'HPO (human) https://hpo.jax.org/app/', 'https://www.glygen.org/datatype/14', FALSE, 12) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (15, 'Molecular Phenotype', 'Gene name', 'https://www.glygen.org/datatype/15', FALSE, 1) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (16, 'Contributor', 'If you are curating the paper use curatedBy, if you are using a software/tool/code to add information to the dataset use createdWith. For final dataset to be integrated GW will use createdBy. If the initial dataset is shared to you by a researcher use contributedBy or authoredBy whichever is applicable as per this. There is no need to add corresponding author or other author name list if curating the paper by yourself.', 'https://www.glygen.org/datatype/16', FALSE, 13) ON CONFLICT DO NOTHING;
-insert into datatype_category (datatypeid, categoryid) values (1, 1) on conflict do nothing;
-insert into datatype_category (datatypeid, categoryid) values (2, 1) on conflict do nothing;
-insert into datatype_category (datatypeid, categoryid) values (3, 1) on conflict do nothing;
+insert into datatype_category (datatypeid, categoryid) values (1, 1) ON CONFLICT DO NOTHING;
+insert into datatype_category (datatypeid, categoryid) values (2, 1) ON CONFLICT DO NOTHING;
+insert into datatype_category (datatypeid, categoryid) values (3, 1) ON CONFLICT DO NOTHING;
 insert into datatype_category (datatypeid, categoryid) values (4, 1) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid) values (5, 1) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid) values (6, 1) on conflict do nothing;
