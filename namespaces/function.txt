@@ -1,10 +1,22 @@
-MS	MS
-MS/MS	MS/MS
-LC-MS/MS	LC-MS/MS
-LC-MS	LC-MS
-CE-MS	CE-MS
-CE-MS/MS	CE-MS/MS
-CE	CE
-HPLC	HPLC
-GC	GC
-GC-MS	GC-MS
+adhesion	adhesion
+homing	homing
+inflammation	inflammation
+protein targeting	protein targeting
+protein secretion	protein secretion
+protein stability	protein stability
+protein folding	protein folding
+ER stress	ER stress
+protein degradation	protein degradation
+circulating half-life	circulating half-life
+clearance	clearance
+internalization	internalization
+metastasis	metastasis
+shielding	shielding
+recognition	recognition
+toxin receptor	toxin receptor
+viral receptor	viral receptor
+microbial receptor	microbial receptor
+receptor signaling	receptor signaling
+sperm maturation	sperm maturation
+biomarker	biomarker
+differentiation	differentiation

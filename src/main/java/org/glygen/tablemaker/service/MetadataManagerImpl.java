@@ -34,4 +34,16 @@ public class MetadataManagerImpl implements MetadataManager {
 		datatypeCategoryRepository.save(cat);
 		return saved;
 	}
+
+	@Override
+	public void deleteDatatypeCategory(DatatypeCategory cat) {
+		if (cat != null) {
+			// delete datatypes, TODO how to delete from datatype_category table??
+	        for (Datatype d: cat.getDataTypes()) {
+	        	datatypeRepository.delete(d);
+	        }
+	        datatypeCategoryRepository.deleteById(cat.getCategoryId());
+		}
+		
+	}
 }
