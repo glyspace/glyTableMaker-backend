@@ -58,9 +58,11 @@ import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
+import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
 import org.glygen.tablemaker.service.AsyncService;
+import org.glygen.tablemaker.service.CollectionManager;
 import org.glygen.tablemaker.service.EmailManager;
 import org.glygen.tablemaker.service.GlycanManagerImpl;
 import org.glygen.tablemaker.util.FixGlycoCtUtil;
@@ -140,6 +142,7 @@ public class DataController {
     final private GlycanManagerImpl glycanManager;
     final private UploadErrorRepository uploadErrorRepository;
     private final EmailManager emailManager;
+    final private CollectionManager collectionManager;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -150,7 +153,7 @@ public class DataController {
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository,
     		BatchUploadRepository uploadRepository, AsyncService uploadService, 
     		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, 
-    		UploadErrorRepository uploadErrorRepository, EmailManager emailManager) {
+    		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
@@ -159,6 +162,7 @@ public class DataController {
 		this.glycanManager = glycanManager;
 		this.uploadErrorRepository = uploadErrorRepository;
 		this.emailManager = emailManager;
+		this.collectionManager = collectionManager;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1167,9 +1171,60 @@ public class DataController {
     		}
     	}
     	
-    	existing.setMetadata(c.getMetadata());
-    	collectionRepository.save(existing);
-    	return new ResponseEntity<>(new SuccessResponse(c, "collection updated"), HttpStatus.OK);
+    	if (existing.getMetadata() == null) {
+    		existing.setMetadata(new ArrayList<>());
+    	}
+    	
+    	if (c.getMetadata() == null || c.getMetadata().isEmpty()) {
+    		existing.getMetadata().clear();
+    	} else {
+	    	// remove metadata as necessary
+    		List<Metadata> toBeRemoved = new ArrayList<>();
+	    	for (Metadata metadata: existing.getMetadata()) {
+	    		boolean found = false;
+	    		for (Metadata m: c.getMetadata()) {
+	    			if (metadata.getMetadataId().equals(m.getMetadataId())) {
+	    				// keep it
+	    				found = true;
+	    			}
+	    		}
+	    		if (!found) {
+	    			toBeRemoved.add(metadata);
+	    		}
+	    	}
+	    	existing.getMetadata().removeAll(toBeRemoved);
+    	}
+    	
+    	if (c.getMetadata() != null && !c.getMetadata().isEmpty()) {
+    		// check if this metadata already exists in the collection
+    		for (Metadata m: c.getMetadata()) {
+    			boolean exists = false;
+    			for (Metadata metadata: existing.getMetadata()) {
+        			if (metadata.getMetadataId() != null && metadata.getMetadataId().equals(m.getMetadataId())) {
+        				exists = true;
+        				break;
+        			}
+        		}
+    			if (!exists) {
+    				Metadata newMetadata = new Metadata();
+    				newMetadata.setCollection(existing);
+    				newMetadata.setType(m.getType());
+    				newMetadata.setValue(m.getValue());
+    				newMetadata.setValueUri(m.getValueUri());
+    				if (m.getValueUri() != null) {
+    					// last part of the uri is the id, either ../../<id> or ../../id=<id>
+    					if (m.getValueUri().contains("id=")) {
+    						newMetadata.setValueId (m.getValueUri().substring(m.getValueUri().indexOf("id=")+3));
+    					} else {
+    						newMetadata.setValueId (m.getValueUri().substring(m.getValueUri().lastIndexOf("/")+1));
+    					}
+    				}
+	    			existing.getMetadata().add(newMetadata);
+    			}
+    		}
+    	}
+    	Collection saved = collectionManager.saveCollectionWithMetadata(existing);
+    	return new ResponseEntity<>(new SuccessResponse(saved, "collection updated"), HttpStatus.OK);
     }
     
     @Operation(summary = "update collection of collections", security = { @SecurityRequirement(name = "bearer-key") })

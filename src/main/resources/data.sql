@@ -20,7 +20,7 @@ insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid)
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (7, 'Disease', 'From Human disease ontology', 'https://www.glygen.org/datatype/7', FALSE, 8) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (8, 'Glycan dictionary term ID', '', 'https://www.glygen.org/datatype/8', FALSE, 1) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (9, 'has_abundance', 'Are there Numbers associated with the amount present in a sample', 'https://www.glygen.org/datatype/9', FALSE, 9) ON CONFLICT DO NOTHING;
-insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (10, 'has_expression', 'yes or no', 'https://www.glygen.org/datatype/10', FALSE, 1) ON CONFLICT DO NOTHING;
+insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (10, 'has_expression', 'yes or no', 'https://www.glygen.org/datatype/10', FALSE, 9) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (11, 'Functional annotation/Keyword', '', 'https://www.glygen.org/datatype/11', TRUE, 10) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (12, 'Experimental technique', '', 'https://www.glygen.org/datatype/12', FALSE, 11) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (13, 'Variant (Fly, yeast, mouse)', 'Gene name and position (if known) as text', 'https://www.glygen.org/datatype/13', FALSE, 1) ON CONFLICT DO NOTHING;

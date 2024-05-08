@@ -1,5 +1,7 @@
 package org.glygen.tablemaker.persistence.glycan;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -8,6 +10,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.xml.bind.annotation.XmlTransient;
 
 @Entity
 public class Metadata {
@@ -35,6 +40,7 @@ public class Metadata {
     /**
      * @return the type
      */
+    @NotNull
     @ManyToOne(targetEntity = Datatype.class, fetch = FetchType.EAGER)
     @JoinColumn(nullable = false, name = "datatypeid", foreignKey = @ForeignKey(name = "FK_VERIFY_DATATYPE"))
     public Datatype getType() {
@@ -49,6 +55,7 @@ public class Metadata {
     /**
      * @return the value
      */
+    @NotEmpty
     @Column (name="value", columnDefinition="text", nullable=false)
     public String getValue() {
         return value;
@@ -65,6 +72,8 @@ public class Metadata {
      */
     @ManyToOne(targetEntity = Collection.class, fetch = FetchType.EAGER)
     @JoinColumn(nullable = false, name = "collectionid", foreignKey = @ForeignKey(name = "FK_VERIFY_COLLECTION"))
+    @XmlTransient  // so that from the metadata we should not go back to collection - prevent cycles
+	@JsonIgnore
     public Collection getCollection() {
         return collection;
     }

@@ -1,8 +1,18 @@
 package org.glygen.tablemaker.controller;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.SortedMap;
 
+import org.apache.commons.collections4.trie.PatriciaTrie;
+import org.glygen.tablemaker.config.NamespaceHandler;
 import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.UserEntity;
@@ -13,7 +23,10 @@ import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
+import org.glygen.tablemaker.persistence.glycan.Metadata;
+import org.glygen.tablemaker.persistence.glycan.Namespace;
 import org.glygen.tablemaker.service.MetadataManager;
+import org.glygen.tablemaker.view.NamespaceEntry;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -180,5 +193,6 @@ public class MetadataController {
         metadataManager.deleteDatatypeCategory(existing.get());
         return new ResponseEntity<>(new SuccessResponse(categoryId, "Category deleted successfully"), HttpStatus.OK);
     }
+	
 	
 }

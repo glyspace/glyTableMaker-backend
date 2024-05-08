@@ -125,7 +125,7 @@ public class Collection {
 		this.parents = parents;
 	}
     
-    @Transient
+    @OneToMany(mappedBy = "collection", cascade=CascadeType.ALL, orphanRemoval = true)
 	public java.util.Collection<Metadata> getMetadata() {
 		return metadata;
 	}
