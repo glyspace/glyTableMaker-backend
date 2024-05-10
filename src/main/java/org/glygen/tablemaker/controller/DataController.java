@@ -1051,7 +1051,6 @@ public class DataController {
     	Collection collection = new Collection();
     	collection.setName(c.getName());
     	collection.setDescription(c.getDescription());
-    	collection.setMetadata(c.getMetadata());
     	
     	if (c.getGlycans() != null && !c.getGlycans().isEmpty()) {
     		collection.setGlycans(new ArrayList<>());
@@ -1066,6 +1065,23 @@ public class DataController {
     	
         collection.setUser(user);
     	Collection saved = collectionRepository.save(collection);
+    	
+    	if (c.getMetadata() != null) {
+    		for (Metadata m: c.getMetadata()) {
+    			m.setCollection(saved);
+    			if (m.getValueUri() != null) {
+					// last part of the uri is the id, either ../../<id> or ../../id=<id>
+					if (m.getValueUri().contains("id=")) {
+						m.setValueId (m.getValueUri().substring(m.getValueUri().indexOf("id=")+3));
+					} else {
+						m.setValueId (m.getValueUri().substring(m.getValueUri().lastIndexOf("/")+1));
+					}
+				}
+    			
+    		}
+    		saved.setMetadata(c.getMetadata());
+    		saved = collectionManager.saveCollectionWithMetadata(saved);
+    	}
     	return new ResponseEntity<>(new SuccessResponse(saved, "collection added"), HttpStatus.OK);
     }
     

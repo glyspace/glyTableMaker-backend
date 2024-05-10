@@ -127,7 +127,10 @@ public class UtilityController {
 			detailMessage = "value cannot be left blank";
 		} else {
 			Namespace namespace = meta.getType().getNamespace();
-			if (namespace.getName().equals ("Integer")) {
+			if (namespace.getName().equals ("String")) {
+				// do nothing
+			}
+			else if (namespace.getName().equals ("Integer")) {
 				try {
 					Integer.parseInt(meta.getValue());
 				} catch (Exception e) {

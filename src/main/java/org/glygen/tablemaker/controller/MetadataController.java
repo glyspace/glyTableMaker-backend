@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -16,9 +17,11 @@ import org.glygen.tablemaker.config.NamespaceHandler;
 import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
 import org.glygen.tablemaker.persistence.dao.DatatypeRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
+import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
@@ -58,7 +61,10 @@ public class MetadataController {
 	private final DatatypeRepository datatypeRepository;
 	final private MetadataManager metadataManager;
 	
-	public MetadataController(DatatypeCategoryRepository datatypeCategoryRepository, UserRepository userRepository, DatatypeRepository datatypeRepository, MetadataManager metadataManager) {
+	public MetadataController(DatatypeCategoryRepository datatypeCategoryRepository, 
+			UserRepository userRepository, 
+			DatatypeRepository datatypeRepository, 
+			MetadataManager metadataManager) {
 		this.datatypeCategoryRepository = datatypeCategoryRepository;
 		this.userRepository = userRepository;
 		this.datatypeRepository = datatypeRepository;
@@ -78,7 +84,7 @@ public class MetadataController {
 	@Operation(summary = "Add datatype", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/adddatatype")
     public ResponseEntity<SuccessResponse> addDatatype(
-    		@Parameter(required=false, description="if provided, the created datatype is assigned to the given category")
+    		@Parameter(required=true, description="the created datatype is assigned to the given category")
     		@RequestParam("categoryid")
     		Long categoryId, 
     		@Valid @RequestBody Datatype d) {
@@ -164,6 +170,37 @@ public class MetadataController {
     	return new ResponseEntity<>(new SuccessResponse(saved, "datatype category updated"), HttpStatus.OK);
     }
 	
+	@Operation(summary = "Update datatype", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/updatedatatype")
+    public ResponseEntity<SuccessResponse> updateDatatype(@Valid @RequestBody Datatype d) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        Datatype existing = null;
+        if (d.getDatatypeId() != null) {
+        	Optional<Datatype> found = datatypeRepository.findById(d.getDatatypeId());
+        	existing = found.get();
+        }
+        
+        if (!existing.getName().equalsIgnoreCase(d.getName())) {
+	        // check if the name is duplicate
+	    	Datatype sameName = datatypeRepository.findByNameIgnoreCaseAndUser(d.getName(), user);
+	    	if (sameName != null && !sameName.getDatatypeId().equals(d.getDatatypeId())) {
+	    		throw new DuplicateException("There is already a datatype with this name " + d.getName());
+	    	}
+        }
+    	
+        existing.setDescription(d.getDescription());
+        existing.setName(d.getName());
+        existing.setMultiple(d.getMultiple());
+    	Datatype saved = datatypeRepository.save(d);
+    	return new ResponseEntity<>(new SuccessResponse(saved, "datatype updated"), HttpStatus.OK);
+    }
+	
 	@Operation(summary = "Delete given datatype category from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
     @RequestMapping(value="/deletecategory/{categoryId}", method = RequestMethod.DELETE)
     @ApiResponses (value ={@ApiResponse(responseCode="200", description="Category deleted successfully"), 
@@ -193,6 +230,62 @@ public class MetadataController {
         metadataManager.deleteDatatypeCategory(existing.get());
         return new ResponseEntity<>(new SuccessResponse(categoryId, "Category deleted successfully"), HttpStatus.OK);
     }
+	
+	@Operation(summary = "Delete given datatype from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value="/deletedatatype/{datatypeId}", method = RequestMethod.DELETE)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Datatype deleted successfully"), 
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to delete datatypes"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> deleteDatatype (
+            @Parameter(required=true, description="internal id of the datatype to delete") 
+            @PathVariable("datatypeId") Long datatypeId) {
+		
+		if (datatypeId < 17) {
+			// cannot delete Glygen datatypes
+			throw new AccessDeniedException("Not allowed to delete default datatypes");
+		}
+        
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        Optional<Datatype> existing = datatypeRepository.findById(datatypeId);
+        if (existing.get() == null || existing.get().getUser() == null || !existing.get().getUser().getUserId().equals(user.getUserId())) {
+            throw new IllegalArgumentException ("Could not find the given datatype " + datatypeId + " for the user");
+        }
+        metadataManager.deleteDatatype(existing.get());
+        return new ResponseEntity<>(new SuccessResponse(datatypeId, "Datatype deleted successfully"), HttpStatus.OK);
+    }
+	
+	@Operation(summary = "Get datatype collections", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getcollectionsfordatatype")
+	public ResponseEntity<SuccessResponse> getCollectionsWithDatatype (
+			@Parameter(required=true, description="datatype id")
+    		@RequestParam("datatypeId")
+    		Long datatypeId) {
+		
+		// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+		Optional<Datatype> existing = datatypeRepository.findById(datatypeId);
+        if (existing.get() == null || existing.get().getUser() == null || !existing.get().getUser().getUserId().equals(user.getUserId())) {
+            throw new IllegalArgumentException ("Could not find the given datatype " + datatypeId + " for the user");
+        }
+        List<Metadata> metadata = metadataManager.getMetadata(existing.get());
+        List<Collection> collections = new ArrayList<>();
+        for (Metadata m: metadata) {
+        	collections.add(m.getCollection());
+        }
+        return new ResponseEntity<>(new SuccessResponse(collections, "Collections with the given datatype retrieved"), HttpStatus.OK);
+	}
+	
 	
 	
 }
