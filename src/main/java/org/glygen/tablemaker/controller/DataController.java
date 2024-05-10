@@ -250,7 +250,9 @@ public class DataController {
         	for (int i=1; i < specificationList.size(); i++) {
         		spec = Specification.where(spec).or(specificationList.get(i)); 
         	}
-        	spec = Specification.where(spec).or(GlycanSpecifications.hasGlycanTag(globalFilter));   // add glycan tag to searchable list
+        	if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+        		spec = Specification.where(spec).or(GlycanSpecifications.hasGlycanTag(globalFilter));   // add glycan tag to searchable list
+        	}
         	spec = Specification.where(spec).and(GlycanSpecifications.hasUserWithId(user.getUserId()));
         }
         
