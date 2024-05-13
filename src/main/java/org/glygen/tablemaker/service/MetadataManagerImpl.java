@@ -61,6 +61,12 @@ public class MetadataManagerImpl implements MetadataManager {
 	
 	@Override
 	public void deleteDatatype(Datatype dat) {
+		// find the category for the datatype
+		List<DatatypeCategory> categories = datatypeCategoryRepository.findByDataTypes_datatypeId(dat.getDatatypeId());
+		for (DatatypeCategory cat: categories) {
+			cat.getDataTypes().remove(dat);
+			datatypeCategoryRepository.save(cat);
+		}
 		// find metadata using this datatype and delete them as well
 		List<Metadata> metadata = getMetadata(dat);
 		for (Metadata m: metadata) {
