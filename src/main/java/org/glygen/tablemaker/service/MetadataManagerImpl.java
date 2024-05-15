@@ -37,8 +37,10 @@ public class MetadataManagerImpl implements MetadataManager {
 		Datatype saved = datatypeRepository.save(d);
     	saved.setUri(d.getUri()+saved.getDatatypeId());
     	datatypeRepository.save(saved);
-		cat.getDataTypes().add(saved);
-		datatypeCategoryRepository.save(cat);
+    	if (!cat.getDataTypes().contains(saved)) {
+    		cat.getDataTypes().add(saved);
+    		datatypeCategoryRepository.save(cat);
+    	}
 		return saved;
 	}
 
@@ -51,7 +53,6 @@ public class MetadataManagerImpl implements MetadataManager {
 	        }
 	        datatypeCategoryRepository.deleteById(cat.getCategoryId());
 		}
-		
 	}
 	
 	@Override

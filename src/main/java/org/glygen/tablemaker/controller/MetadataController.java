@@ -107,6 +107,7 @@ public class MetadataController {
     	if (categoryId != null) {
     		Optional<DatatypeCategory> category = datatypeCategoryRepository.findById(categoryId);
     		DatatypeCategory cat = category.get();
+    		d.setDatatypeId(null); // needs to be a new datatype
     		Datatype saved = metadataManager.addDatatypeToCategory (d, cat);
     		return new ResponseEntity<>(new SuccessResponse(saved, "datatype added to given category"), HttpStatus.OK);
     	} else {
@@ -141,7 +142,8 @@ public class MetadataController {
 	
 	@Operation(summary = "Update datatype category", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatecategory")
-    public ResponseEntity<SuccessResponse> updateCategory(@Valid @RequestBody DatatypeCategory d) {
+    public ResponseEntity<SuccessResponse> updateCategory(
+    		@Valid @RequestBody DatatypeCategory d) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -172,7 +174,11 @@ public class MetadataController {
 	
 	@Operation(summary = "Update datatype", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatedatatype")
-    public ResponseEntity<SuccessResponse> updateDatatype(@Valid @RequestBody Datatype d) {
+    public ResponseEntity<SuccessResponse> updateDatatype(
+    		@Parameter(required=false, description="the created datatype is assigned to the given category")
+    		@RequestParam(required=false, name="categoryid")
+    		Long categoryId, 
+    		@Valid @RequestBody Datatype d) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -197,8 +203,24 @@ public class MetadataController {
         existing.setDescription(d.getDescription());
         existing.setName(d.getName());
         existing.setMultiple(d.getMultiple());
-    	Datatype saved = datatypeRepository.save(d);
-    	return new ResponseEntity<>(new SuccessResponse(saved, "datatype updated"), HttpStatus.OK);
+        
+        if (categoryId != null) {
+        	// find existing datatype
+        	List<DatatypeCategory> catList = datatypeCategoryRepository.findByDataTypes_datatypeId(existing.getDatatypeId());
+        	DatatypeCategory existingCat = catList.get(0);
+        	if (existingCat.getCategoryId() != categoryId) {
+        		// changing the category
+        		existingCat.getDataTypes().remove(existing);
+        	}
+    		Optional<DatatypeCategory> category = datatypeCategoryRepository.findById(categoryId);
+    		DatatypeCategory cat = category.get();
+    		Datatype saved = metadataManager.addDatatypeToCategory (existing, cat);
+    		datatypeCategoryRepository.save(existingCat);
+    		return new ResponseEntity<>(new SuccessResponse(saved, "datatype updated to given category"), HttpStatus.OK);
+    	} else {
+	    	datatypeRepository.save(existing);
+	    	return new ResponseEntity<>(new SuccessResponse(existing, "datatype updated"), HttpStatus.OK);
+    	}
     }
 	
 	@Operation(summary = "Delete given datatype category from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
