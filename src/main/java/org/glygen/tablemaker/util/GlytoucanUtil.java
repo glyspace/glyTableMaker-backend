@@ -34,6 +34,8 @@ import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class GlytoucanUtil {
 	
@@ -71,7 +73,7 @@ public class GlytoucanUtil {
 		this.userId = userId;
 	}
 	
-	public String registerGlycan (String wurcsSequence) {
+	public String registerGlycan (String wurcsSequence) throws Exception {
 	    
 	    Sequence input = new Sequence();
 	    input.setSequence(wurcsSequence);
@@ -83,9 +85,23 @@ public class GlytoucanUtil {
 			return response.getBody().getMessage();
 		} catch (HttpClientErrorException e) {
 			logger.error("Client Error: Exception adding glycan " + ((HttpClientErrorException) e).getResponseBodyAsString());
+			String error = ((HttpClientErrorException) e).getResponseBodyAsString();
+			try {
+				RegistrationErrorMessage m = new ObjectMapper().readValue(error, RegistrationErrorMessage.class);
+				throw new Exception ("Cannot register the glycan. Reason: " + m.error + " . Message: " + m.message);
+			} catch (JsonProcessingException e1) {
+				logger.error("Could not parse the error message: ", e1);
+			}
 			logger.info("Sequence: " + wurcsSequence);
 		} catch (HttpServerErrorException e) {
 			logger.error("Server Error: Exception adding glycan " + ((HttpServerErrorException) e).getResponseBodyAsString());
+			String error = ((HttpServerErrorException) e).getResponseBodyAsString();
+			try {
+				RegistrationErrorMessage m = new ObjectMapper().readValue(error, RegistrationErrorMessage.class);
+				throw new Exception ("Cannot register the glycan. Reason: " + m.error + " . Message: " + m.message);
+			} catch (JsonProcessingException e1) {
+				logger.error("Could not parse the error message: ", e1);
+			}
 			logger.info("Sequence: " + wurcsSequence);
 		} catch (Exception e) {
 		    logger.error("General Error: Exception adding glycan " + e.getMessage());
@@ -224,8 +240,13 @@ public class GlytoucanUtil {
 		GlytoucanUtil.getInstance().setApiKey("6d9fbfb1c0a52cbbffae7c113395a203ae0e3995a455c42ff3932862cbf7e62a");
         GlytoucanUtil.getInstance().setUserId("ff2dda587eb4597ab1dfb995b520e99b7ef68d7786af0f3ea626555e2c609c3d");
 		
-		String glyTouCanId = GlytoucanUtil.getInstance().registerGlycan("WURCS=2.0/6,13,12/[a2122h-1b_1-5_2*NCC/3=O][a1122h-1b_1-5][a1122h-1a_1-5][a1221m-1a_1-5][a2112h-1b_1-5][Aad21122h-2a_2-6_5*NCC/3=O]/1-1-2-3-1-4-5-6-1-3-1-5-4/a4-b1_a6-m1_b4-c1_c3-d1_c4-i1_c6-j1_d2-e1_e3-f1_e4-g1_g3-h2_j2-k1_k4-l1");
-		System.out.println(glyTouCanId);
+		String glyTouCanId;
+		try {
+			glyTouCanId = GlytoucanUtil.getInstance().registerGlycan("WURCS=2.0/6,12,11/[a2122h-1b_1-5_2*NCC/3=O][a1122h-1b_1-5][a1122h-1a_1-5][a2112h-1b_1-5]");
+			System.out.println(glyTouCanId);
+		} catch (Exception e1) {
+			System.out.println ("Registration Error " + e1.getMessage());
+		}
 		
 		String glycoCTSeq = "RES\n"
 		        + "1b:b-dglc-HEX-1:5\n"
@@ -599,4 +620,43 @@ class ExceptionMessage {
     public void setM_strMessage(String m_strMessage) {
         this.m_strMessage = m_strMessage;
     }
+}
+
+class RegistrationErrorMessage {
+	String timestamp;
+	Integer status;
+	String error;
+	String message;
+	String path;
+	
+	public String getTimestamp() {
+		return timestamp;
+	}
+	public void setTimestamp(String timestamp) {
+		this.timestamp = timestamp;
+	}
+	public Integer getStatus() {
+		return status;
+	}
+	public void setStatus(Integer status) {
+		this.status = status;
+	}
+	public String getError() {
+		return error;
+	}
+	public void setError(String error) {
+		this.error = error;
+	}
+	public String getMessage() {
+		return message;
+	}
+	public void setMessage(String message) {
+		this.message = message;
+	}
+	public String getPath() {
+		return path;
+	}
+	public void setPath(String path) {
+		this.path = path;
+	}
 }

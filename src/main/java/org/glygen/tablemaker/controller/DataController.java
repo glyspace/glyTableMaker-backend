@@ -1045,7 +1045,7 @@ public class DataController {
         // check if duplicate
     	List<Collection> existing = collectionRepository.findAllByNameAndUser(c.getName(), user);
     	if (existing.size() > 0) {
-    		throw new DuplicateException("A collection with this name already exists! "+ c.getName());
+    		throw new DuplicateException("A collection with this name already exists! ");
     	}
     	
     	Collection collection = new Collection();
@@ -1102,7 +1102,7 @@ public class DataController {
         // check if duplicate
     	List<Collection> existing = collectionRepository.findAllByNameAndUser(c.getName(), user);
     	if (existing.size() > 0) {
-    		throw new DuplicateException("A collection of collections with this name already exists! "+ c.getName());
+    		throw new DuplicateException("A collection of collections with this name already exists!");
     	}
         
     	Collection collection = new Collection();

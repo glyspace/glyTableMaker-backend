@@ -23,14 +23,14 @@ public class SequenceUtils {
 	public static void registerGlycan (Glycan glycan) {
     	// if not, register
         // store the hash and update status 
+		try {
         String glyToucanId = GlytoucanUtil.getInstance().registerGlycan(glycan.getWurcs());
         logger.info("Got glytoucan id after registering the glycan: " + glyToucanId);
     
         if (glyToucanId == null) {
         	// error 
-        	// TODO how to get the error
         	glycan.setStatus(RegistrationStatus.ERROR);
-        	glycan.setError("Registration API sent an error!");
+        	glycan.setError("Internal Server Error!");
         } else if (glyToucanId.length() > 10) {
             // this is new registration, hash returned
             String glyToucanHash = glyToucanId;
@@ -41,6 +41,11 @@ public class SequenceUtils {
             glycan.setGlytoucanID(glyToucanId);
             glycan.setStatus(RegistrationStatus.NEWLY_REGISTERED);
         }
+		} catch (Exception e) { 
+			// error
+			glycan.setStatus(RegistrationStatus.ERROR);
+			glycan.setError (e.getMessage());
+		}
     }
 	
 	public static Double computeMassFromWurcs (String wurcs) throws Exception {
@@ -103,6 +108,7 @@ public class SequenceUtils {
                 }
                 throw new IllegalArgumentException ("WURCS conversion error. Reason " + String.join(",", codes));
             }
+            glycan.setWurcs(wurcs);
         } 
         try {
 	        String glyToucanId = GlytoucanUtil.getInstance().getAccessionNumber(wurcs);
