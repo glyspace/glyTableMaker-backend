@@ -20,6 +20,7 @@ import org.glycoinfo.WURCSFramework.io.GlycoCT.WURCSExporterGlycoCT;
 import org.glycoinfo.WURCSFramework.util.WURCSException;
 import org.glycoinfo.WURCSFramework.util.WURCSFactory;
 import org.glycoinfo.WURCSFramework.wurcs.graph.WURCSGraph;
+import org.glygen.tablemaker.exception.GlytoucanFailedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -48,6 +49,7 @@ public class GlytoucanUtil {
 	static String validateURL = "wurcsframework/wurcsvalidator/1.0.1/";
 	static String apiURL = "https://api.glycosmos.org/";
 	static String retrieveAPIURL ="https://sparqlist.glyconavi.org/";
+	static String statusURL = "https://sparqlist.glycosmos.org/sparqlist/api/check_batch_processing_by_hashkey?hashKey=";
 	
 	private static RestTemplate restTemplate = new RestTemplate();
 	
@@ -73,7 +75,40 @@ public class GlytoucanUtil {
 		this.userId = userId;
 	}
 	
-	public String registerGlycan (String wurcsSequence) throws Exception {
+	/**
+	 * checks the status of registered glycan by the hashkey that was assigned during registration, returns glytoucan id if assigned
+	 * 
+	 * @param hashKey hash key to check for status
+	 * @return accession number if assigned
+	 * @throws GlytoucanFailedException throws GlytoucanFailedException if there were errors during registration
+	 */
+	public String checkBatchStatus (String hashKey) throws GlytoucanFailedException {
+		
+		HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(createHeaders(userId, apiKey));
+		try {
+			ResponseEntity<StatusResponse[]> response = restTemplate.exchange(statusURL+hashKey, HttpMethod.GET, requestEntity, StatusResponse[].class);
+			for (StatusResponse status: response.getBody()) {
+				if (status.batch_value.equalsIgnoreCase("invalid")) {
+					String errorJson = null;
+					try {
+						errorJson = new ObjectMapper().writeValueAsString(response.getBody());
+					} catch (JsonProcessingException e) {
+						logger.warn ("Could not write error response as json ", e);
+					}
+					throw new GlytoucanFailedException(status.batch_p + " " + status.batch_value, errorJson);
+				} else if (status.batch_p.contains("AccessionNumber")) {  // there is an accession number
+					return status.batch_value.substring(status.batch_value.lastIndexOf("/")+1); 
+				}
+			}
+		} catch (HttpClientErrorException e) {
+			logger.info("Exception retrieving glycan " + ((HttpClientErrorException) e).getResponseBodyAsString());
+		} catch (HttpServerErrorException e) {
+			logger.info("Exception retrieving glycan " + ((HttpServerErrorException) e).getResponseBodyAsString());
+		}
+		return null;
+	}
+	
+	public String registerGlycan (String wurcsSequence) throws GlytoucanFailedException {
 	    
 	    Sequence input = new Sequence();
 	    input.setSequence(wurcsSequence);
@@ -88,7 +123,7 @@ public class GlytoucanUtil {
 			String error = ((HttpClientErrorException) e).getResponseBodyAsString();
 			try {
 				RegistrationErrorMessage m = new ObjectMapper().readValue(error, RegistrationErrorMessage.class);
-				throw new Exception ("Cannot register the glycan. Reason: " + m.error + " . Message: " + m.message);
+				throw new GlytoucanFailedException ("Cannot register the glycan. Reason: " + m.error + " . Message: " + m.message, error);
 			} catch (JsonProcessingException e1) {
 				logger.error("Could not parse the error message: ", e1);
 			}
@@ -98,7 +133,7 @@ public class GlytoucanUtil {
 			String error = ((HttpServerErrorException) e).getResponseBodyAsString();
 			try {
 				RegistrationErrorMessage m = new ObjectMapper().readValue(error, RegistrationErrorMessage.class);
-				throw new Exception ("Cannot register the glycan. Reason: " + m.error + " . Message: " + m.message);
+				throw new GlytoucanFailedException ("Cannot register the glycan. Reason: " + m.error + " . Message: " + m.message, error);
 			} catch (JsonProcessingException e1) {
 				logger.error("Could not parse the error message: ", e1);
 			}
@@ -118,10 +153,6 @@ public class GlytoucanUtil {
                 .path(retrieveURL)
                 .queryParam("WURCS", wurcsSequence)
                 .build();
-		
-		String url;
-		
-		url = retrieveURL + wurcsSequence;
 		
 		HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(createHeaders(userId, apiKey));
 		try {
@@ -242,10 +273,16 @@ public class GlytoucanUtil {
 		
 		String glyTouCanId;
 		try {
-			glyTouCanId = GlytoucanUtil.getInstance().registerGlycan("WURCS=2.0/6,12,11/[a2122h-1b_1-5_2*NCC/3=O][a1122h-1b_1-5][a1122h-1a_1-5][a2112h-1b_1-5]");
+			glyTouCanId = GlytoucanUtil.getInstance().registerGlycan(null);
 			System.out.println(glyTouCanId);
 		} catch (Exception e1) {
 			System.out.println ("Registration Error " + e1.getMessage());
+		}
+		
+		try {
+			GlytoucanUtil.getInstance().checkBatchStatus("6407df5cefbbd62860b9f762158657f1663d51423e25d85e1293a903c0681031");
+		} catch (GlytoucanFailedException e) {
+			System.out.println ("Received error: " + e.getErrorJson());
 		}
 		
 		String glycoCTSeq = "RES\n"
@@ -658,5 +695,27 @@ class RegistrationErrorMessage {
 	}
 	public void setPath(String path) {
 		this.path = path;
+	}
+}
+
+
+class StatusResponse {
+	String batch_p;
+    String batch_value;
+    
+    @JsonProperty("batch_p")
+	public String getBatch_p() {
+		return batch_p;
+	}
+	public void setBatch_p(String batch_p) {
+		this.batch_p = batch_p;
+	}
+	
+	@JsonProperty("batch_value")
+	public String getBatch_value() {
+		return batch_value;
+	}
+	public void setBatch_value(String batch_value) {
+		this.batch_value = batch_value;
 	}
 }

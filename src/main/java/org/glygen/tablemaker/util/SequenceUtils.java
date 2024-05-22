@@ -13,6 +13,7 @@ import org.glycoinfo.WURCSFramework.util.WURCSException;
 import org.glycoinfo.WURCSFramework.util.validation.WURCSValidator;
 import org.glycoinfo.application.glycanbuilder.converterWURCS2.WURCS2Parser;
 import org.glygen.tablemaker.exception.DataNotFoundException;
+import org.glygen.tablemaker.exception.GlytoucanFailedException;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.slf4j.LoggerFactory;
@@ -24,27 +25,28 @@ public class SequenceUtils {
     	// if not, register
         // store the hash and update status 
 		try {
-        String glyToucanId = GlytoucanUtil.getInstance().registerGlycan(glycan.getWurcs());
-        logger.info("Got glytoucan id after registering the glycan: " + glyToucanId);
-    
-        if (glyToucanId == null) {
-        	// error 
-        	glycan.setStatus(RegistrationStatus.ERROR);
-        	glycan.setError("Internal Server Error!");
-        } else if (glyToucanId.length() > 10) {
-            // this is new registration, hash returned
-            String glyToucanHash = glyToucanId;
-            glycan.setGlytoucanHash(glyToucanHash);
-            logger.info("got glytoucan hash, no accession number!");
-            glycan.setStatus(RegistrationStatus.NEWLY_SUBMITTED_FOR_REGISTRATION);
-        } else {
-            glycan.setGlytoucanID(glyToucanId);
-            glycan.setStatus(RegistrationStatus.NEWLY_REGISTERED);
-        }
-		} catch (Exception e) { 
+	        String glyToucanId = GlytoucanUtil.getInstance().registerGlycan(glycan.getWurcs());
+	        logger.info("Got glytoucan id after registering the glycan: " + glyToucanId);
+	    
+	        if (glyToucanId == null) {
+	        	// error 
+	        	glycan.setStatus(RegistrationStatus.ERROR);
+	        	glycan.setError("Internal Server Error!");
+	        } else if (glyToucanId.length() > 10) {
+	            // this is new registration, hash returned
+	            String glyToucanHash = glyToucanId;
+	            glycan.setGlytoucanHash(glyToucanHash);
+	            logger.info("got glytoucan hash, no accession number!");
+	            glycan.setStatus(RegistrationStatus.NEWLY_SUBMITTED_FOR_REGISTRATION);
+	        } else {
+	            glycan.setGlytoucanID(glyToucanId);
+	            glycan.setStatus(RegistrationStatus.NEWLY_REGISTERED);
+	        }
+		} catch (GlytoucanFailedException e) { 
 			// error
 			glycan.setStatus(RegistrationStatus.ERROR);
 			glycan.setError (e.getMessage());
+			glycan.setErrorJson(e.getErrorJson());
 		}
     }
 	

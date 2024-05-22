@@ -40,6 +40,7 @@ public class Glycan {
     String gws;
     String glytoucanHash;
     String error;
+    String errorJson;
     Double mass;
     Date dateCreated;
     RegistrationStatus status;
@@ -272,5 +273,13 @@ public class Glycan {
 			return ((Glycan) obj).getGlycanId() != null && ((Glycan)obj).getGlycanId().equals(this.glycanId);
 		}
 		return super.equals(obj);
+	}
+	
+	@Column(name="error_json", columnDefinition="text")
+	public String getErrorJson() {
+		return errorJson;
+	}
+	public void setErrorJson(String errorJson) {
+		this.errorJson = errorJson;
 	}
 }

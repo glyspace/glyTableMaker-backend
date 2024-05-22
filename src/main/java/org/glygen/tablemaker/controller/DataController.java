@@ -43,6 +43,7 @@ import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.BatchUploadException;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
+import org.glygen.tablemaker.exception.GlytoucanFailedException;
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
@@ -273,8 +274,17 @@ public class DataController {
             try {
                 g.setCartoon(getImageForGlycan(g.getGlycanId()));
                 if (g.getGlytoucanID() == null && g.getGlytoucanHash() != null && g.getWurcs() != null) {
-                	// registered, try to get the accession number
-                	g.setGlytoucanID(GlytoucanUtil.getInstance().getAccessionNumber(g.getWurcs()));
+                	try {
+                		// registered, try to get the accession number
+                		g.setGlytoucanID(GlytoucanUtil.getInstance().getAccessionNumber(g.getWurcs()));
+                		if (g.getGlytoucanID() == null) {
+                			GlytoucanUtil.getInstance().checkBatchStatus(g.getGlytoucanHash());
+                		}
+                	} catch (GlytoucanFailedException e) {
+                		g.setError("Error registering. No additional information received from GlyTouCan.");
+                		g.setStatus(RegistrationStatus.ERROR);
+                		g.setErrorJson(e.getErrorJson());
+                	}
                 }
             } catch (DataNotFoundException e) {
                 // ignore
