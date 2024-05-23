@@ -416,7 +416,7 @@ public class DataController {
     }
     
     @Operation(summary = "Get collections of collections", security = { @SecurityRequirement(name = "bearer-key") })
-    @GetMapping("/getcoss")
+    @GetMapping("/getcocs")
     public ResponseEntity<SuccessResponse> getCollectionsOfCollections(
             @RequestParam("start")
             Integer start, 

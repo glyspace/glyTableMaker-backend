@@ -14,8 +14,10 @@ import java.util.Map.Entry;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.glygen.tablemaker.config.NamespaceHandler;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
+import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.Namespace;
+import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.view.NamespaceEntry;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.slf4j.Logger;
@@ -58,6 +60,25 @@ public class UtilityController {
 	})
     public ResponseEntity<SuccessResponse> getNamespaces() {
 		return new ResponseEntity<> (new SuccessResponse (namespaceRepository.findAll(), "namespace list retrieved"), HttpStatus.OK);
+	}
+	
+	@Operation(summary = "Get glycan related columns for tablemaker")
+    @GetMapping("/getglycanmetadata")
+	@ApiResponses (value ={
+			@ApiResponse(responseCode="200", description="Return available glycan columns"), 
+            @ApiResponse(responseCode="500", description="Internal Server Error")
+	})
+    public ResponseEntity<SuccessResponse> getGlycanMetadata() {
+		List<Datatype> datatypes = new ArrayList<>();
+		Long i = -1L;
+		for (GlycanColumns col: GlycanColumns.values()) {
+			Datatype type = new Datatype();
+			type.setName(col.getLabel());
+			type.setDatatypeId(i--);
+			datatypes.add(type);
+		}
+		
+		return new ResponseEntity<> (new SuccessResponse (datatypes, "glycan metadata list retrieved"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Retrieve type ahead suggestions")
