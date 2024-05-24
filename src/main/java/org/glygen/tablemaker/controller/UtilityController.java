@@ -74,6 +74,7 @@ public class UtilityController {
 		for (GlycanColumns col: GlycanColumns.values()) {
 			Datatype type = new Datatype();
 			type.setName(col.getLabel());
+			type.setDescription(col.name());
 			type.setDatatypeId(i--);
 			datatypes.add(type);
 		}
