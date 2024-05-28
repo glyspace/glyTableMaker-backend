@@ -77,6 +77,13 @@
 	        <artifactId>jasypt-spring-boot</artifactId>
 	        <version>3.0.5</version>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/com.opencsv/opencsv -->
+		<dependency>
+		    <groupId>com.opencsv</groupId>
+		    <artifactId>opencsv</artifactId>
+		    <version>5.9</version>
+		</dependency>
+
 		<!-- GLIC -->
 		<!-- https://gitlab.com/api/v4/projects/17725126/packages/maven -->
 		<dependency>

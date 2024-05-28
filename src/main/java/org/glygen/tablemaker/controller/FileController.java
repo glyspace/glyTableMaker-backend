@@ -135,7 +135,7 @@ public class FileController {
         }
     }
 	
-	public static ResponseEntity<Resource> download (File file, String originalName) {
+	public static ResponseEntity<Resource> download (File file, String originalName, String fileId) {
         FileSystemResource r = new FileSystemResource(file);
         MediaType mediaType = MediaTypeFactory
                 .getMediaType(r)
@@ -145,6 +145,7 @@ public class FileController {
         HttpHeaders respHeaders = new HttpHeaders();
         respHeaders.setContentType(mediaType);
         respHeaders.setContentLength(file.length());
+        respHeaders.set("fileid", fileId);
 
         ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
                 .filename(originalName)
