@@ -7,10 +7,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.TableReportRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
@@ -32,6 +34,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,7 +45,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVWriter;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 
 @RestController
@@ -55,11 +60,13 @@ public class TableController {
 	final private UserRepository userRepository;
 	final private TemplateRepository templateRepository;
 	final private TableReportRepository reportRepository;
+	final private CollectionRepository collectionRepository;
 	
-	public TableController(UserRepository userRepository, TemplateRepository templateRepository, TableReportRepository reportRepository) {
+	public TableController(UserRepository userRepository, TemplateRepository templateRepository, TableReportRepository reportRepository, CollectionRepository collectionRepository) {
 		this.userRepository = userRepository;
 		this.templateRepository = templateRepository;
 		this.reportRepository = reportRepository;
+		this.collectionRepository = collectionRepository;
 	}
 	
 	@Operation(summary = "Get all templates for the user", security = { @SecurityRequirement(name = "bearer-key") })
@@ -74,6 +81,29 @@ public class TableController {
 		List<TableMakerTemplate> templates = templateRepository.findAllByUser(user);
     	return new ResponseEntity<SuccessResponse>(
     			new SuccessResponse (templates, "templates retrieved"), HttpStatus.OK);
+    	
+    }
+	
+	@Operation(summary = "Get download report", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getreport/{reportId}")
+    public ResponseEntity<SuccessResponse> getTableReport(
+    		@Parameter(required=true, description="id of the report to be retrieved") 
+    		@PathVariable("reportId") Long reportId) {
+		Optional<TableReport> report = reportRepository.findById(reportId);
+		if (report.isPresent()) {
+			TableReport r = report.get();
+			if (r.getReportJSON() != null) {
+				try {
+					TableReportDetail detail = new ObjectMapper().readValue (r.getReportJSON(), TableReportDetail.class);
+					return new ResponseEntity<SuccessResponse>(
+			    			new SuccessResponse (detail, "report retrieved"), HttpStatus.OK);
+				} catch (JsonProcessingException e) {
+					throw new RuntimeException("Could not get report details");
+				}
+			}
+			
+		} 
+		throw new EntityNotFoundException("Download report with the given id " + reportId + " is not found");
     	
     }
 	
@@ -99,19 +129,25 @@ public class TableController {
     	return new ResponseEntity<>(new SuccessResponse(saved, "template added"), HttpStatus.OK);
 	}
 	
-	@Operation(summary = "Generate report and download", security = { @SecurityRequirement(name = "bearer-key") })
+	@Operation(summary = "Generate table and download", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/downloadtable")
 	public ResponseEntity<Resource> downloadTable (@Valid @RequestBody TableView table) {
 		String filename = "tablemakerexport";
 		String ext = (table.getFileFormat() == FileFormat.EXCEL ? ".xlsx" : ".csv");
-		File newFile = new File (uploadDir + File.pathSeparator + filename + System.currentTimeMillis() + ext);
+		File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ext);
 		
 		List<Collection> collectionList = new ArrayList<>();
 		for (Collection c: table.getCollections()) {
 			if (c.getCollections() != null) {
-				collectionList.addAll(c.getCollections());
+				for (Collection child: c.getCollections()) {
+					Optional<Collection> cc = collectionRepository.findById(child.getCollectionId());
+					if (cc.isPresent())
+						collectionList.add(cc.get());
+				}
 			} else {
-				collectionList.add(c);
+				Optional<Collection> cc = collectionRepository.findById(c.getCollectionId());
+				if (cc.isPresent())
+					collectionList.add(cc.get());
 			}
 		}
 		List<String[]> rows = new ArrayList<>();
@@ -121,21 +157,29 @@ public class TableController {
 		TableReportDetail report = new TableReportDetail();
 		
 		if (table.getFileFormat() == FileFormat.CSV) {
-			for (TableColumn col: table.getColums()) {
+			for (TableColumn col: table.getColumns()) {
 				if (col.getGlycanColumn() != null) {
 					if (col.getGlycanColumn() == GlycanColumns.CARTOON) {
-						throw new BadRequestException("Cartoons cannot be written in CSV files");
+						//throw new BadRequestException("Cartoons cannot be written in CSV files");
+						report.addError("Cartoons cannot be written in CSV files");
 					}
 				}
 			}
 		}
 		
+		// add header row
+		String[] row = new String[table.getColumns().size()];
+		int column = 0;
+		for (TableColumn col: table.getColumns()) {
+			row[column++] = col.getName();
+		}
+		rows.add(row);
 		for (Collection c: collectionList) {
 			for (GlycanInCollection g: c.getGlycans()) {
-				String[] row = new String[table.getColums().size()];
+				row = new String[table.getColumns().size()];
 				rows.add(row);
 				int i=0;
-				for (TableColumn col: table.getColums()) {
+				for (TableColumn col: table.getColumns()) {
 					if (col.getGlycanColumn() != null) {
 						switch (col.getGlycanColumn()) {
 						case CARTOON:
@@ -147,7 +191,7 @@ public class TableController {
 									cartoons.put ("IMAGE" + g.getGlycan().getGlycanId(), g.getGlycan().getCartoon());
 								} else {
 									// warning
-									report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in collection " + c.getName() + " does not have a cartoon. Column left empty");
+									report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in collection " + c.getName() + " does not have a cartoon. Column is left empty");
 									row[i] = "";
 								}
 							}
@@ -182,42 +226,51 @@ public class TableController {
 						boolean found = false;
 						for (Metadata metadata: c.getMetadata()) {
 							if (metadata.getType().getDatatypeId().equals(col.getDatatype().getDatatypeId())) {
-								switch (col.getType()) {
-								case ID:
-									if (!metadata.getType().getNamespace().getHasId()) {
-										// ERROR!
-										report.addError(metadata.getType().getNamespace().getName() + " does not have value ID but \"ID\" is requested for " + col.getName() + " column");
-									} else {
-										if (metadata.getValueId() == null && col.getDefaultValue() != null) {
+								found = true;
+								if (col.getType() != null) {
+									switch (col.getType()) {
+									case ID:
+										if (!metadata.getType().getNamespace().getHasId()) {
+											// ERROR!
+											report.addError(metadata.getType().getNamespace().getName() + " does not have value ID but \"ID\" is requested for " + col.getName() + " column.");
+										} else {
+											if (metadata.getValueId() == null && col.getDefaultValue() != null) {
+												row[i] = col.getDefaultValue();
+											} else {
+												row[i] = metadata.getValueId();
+											}
+										}
+										break;
+									case URI:
+										if (!metadata.getType().getNamespace().getHasUri()) {
+											// ERROR!
+											report.addError(metadata.getType().getNamespace().getName() + " does not have value URI but \"URI\" is requested for " + col.getName() + " column.");
+										} else {
+											if (metadata.getValueUri() == null && col.getDefaultValue() != null) {
+												row[i] = col.getDefaultValue();
+											} else {
+												row[i] = metadata.getValueUri();
+											}
+										}
+										break;
+									case VALUE:
+									default:
+										if (metadata.getValue() == null && col.getDefaultValue() != null) {
 											row[i] = col.getDefaultValue();
 										} else {
-											row[i] = metadata.getValueId();
+											row[i] = metadata.getValue();
 										}
+										break;
 									}
-									break;
-								case URI:
-									if (!metadata.getType().getNamespace().getHasUri()) {
-										// ERROR!
-										report.addError(metadata.getType().getNamespace().getName() + " does not have value URI but \"URI\" is requested for " + col.getName() + " column");
-									} else {
-										if (metadata.getValueUri() == null && col.getDefaultValue() != null) {
-											row[i] = col.getDefaultValue();
-										} else {
-											row[i] = metadata.getValueUri();
-										}
-									}
-									break;
-								case VALUE:
-								default:
+								} else {
 									if (metadata.getValue() == null && col.getDefaultValue() != null) {
 										row[i] = col.getDefaultValue();
 									} else {
 										row[i] = metadata.getValue();
 									}
-									break;
 								}
+								break;
 							}
-							break;
 						}
 						if (!found) {
 							// add a warning to the report
@@ -235,26 +288,45 @@ public class TableController {
 				}
 			}
 		}
-		try {
-			// create the file
-			if (table.getFileFormat() == FileFormat.EXCEL) {
-				writeToExcel (rows, cartoons, newFile);
-			} else {
-				writeToCSV(rows, newFile);
+		
+		if (report.getErrors() == null || report.getErrors().isEmpty()) {
+			try {
+				// create the file
+				if (table.getFileFormat() == FileFormat.EXCEL) {
+					writeToExcel (rows, cartoons, newFile);
+				} else {
+					writeToCSV(rows, newFile);
+				}
+				// save the report
+				try {
+					report.setSuccess(true);
+					report.setMessage("Table creation successful");
+					String reportJson = new ObjectMapper().writeValueAsString(report);
+					tableReport.setReportJSON(reportJson);
+					TableReport saved = reportRepository.save(tableReport);
+					return FileController.download(newFile, filename+ext, saved.getReportId()+"");
+				} catch (JsonProcessingException e) {
+					throw new RuntimeException ("Failed to generate the report", e);
+				}	
+			} catch (IOException e) {
+				throw new BadRequestException ("Table creation failed", e);
 			}
-		} catch (IOException e) {
-			throw new RuntimeException ("Failed to generate the report", e);
+		} else {
+			// save the report
+			report.setSuccess(false);
+			report.setMessage("Table creation failed");
+			try {
+				String reportJson = new ObjectMapper().writeValueAsString(report);
+				tableReport.setReportJSON(reportJson);
+				TableReport saved = reportRepository.save(tableReport);
+				throw new BadRequestException(saved.getReportId()+"");
+			} catch (JsonProcessingException e) {
+				throw new RuntimeException ("Failed to generate the report", e);
+			}
+			
 		}
-		// save the report
-		try {
-			String reportJson = new ObjectMapper().writeValueAsString(report);
-			tableReport.setReportJSON(reportJson);
-			TableReport saved = reportRepository.save(tableReport);
-			return FileController.download(newFile, filename+ext, saved.getReportId()+"");
-		} catch (JsonProcessingException e) {
-			throw new RuntimeException ("Failed to generate the report", e);
-		}	
 	}
+		
 
 	private void writeToCSV(List<String[]> rows, File newFile) throws IOException {
 		try (CSVWriter writer = new CSVWriter(new FileWriter(newFile.getPath().toString()))) {

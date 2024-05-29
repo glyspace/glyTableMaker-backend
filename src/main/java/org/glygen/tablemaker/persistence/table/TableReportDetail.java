@@ -38,13 +38,15 @@ public class TableReportDetail {
 		if (errors == null) {
 			errors = new ArrayList<>();
 		}
-		errors.add(error);
+		if (!errors.contains(error))
+			errors.add(error);
 	}
 	
 	public void addWarning (String warning) {
 		if (warnings == null) {
 			warnings = new ArrayList<>();
 		}
-		warnings.add(warning);
+		if (!warnings.contains(warning))
+			warnings.add(warning);
 	}
 }

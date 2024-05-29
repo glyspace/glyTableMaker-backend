@@ -7,7 +7,7 @@ import org.glygen.tablemaker.persistence.glycan.Collection;
 public class TableView {
 	
 	List<Collection> collections;
-	List<TableColumn> colums;
+	List<TableColumn> columns;
 	FileFormat fileFormat;
 	String filename;
 	
@@ -17,11 +17,11 @@ public class TableView {
 	public void setCollections(List<Collection> collections) {
 		this.collections = collections;
 	}
-	public List<TableColumn> getColums() {
-		return colums;
+	public List<TableColumn> getColumns() {
+		return columns;
 	}
-	public void setColums(List<TableColumn> colums) {
-		this.colums = colums;
+	public void setColumns(List<TableColumn> colums) {
+		this.columns = colums;
 	}
 	public FileFormat getFileFormat() {
 		return fileFormat;

@@ -145,10 +145,9 @@ public class FileController {
         HttpHeaders respHeaders = new HttpHeaders();
         respHeaders.setContentType(mediaType);
         respHeaders.setContentLength(file.length());
-        respHeaders.set("fileid", fileId);
 
         ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
-                .filename(originalName)
+                .filename(originalName + ":" + fileId)
                 .build();
 
         respHeaders.set(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString());

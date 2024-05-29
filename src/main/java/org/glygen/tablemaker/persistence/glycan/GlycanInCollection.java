@@ -2,7 +2,6 @@ package org.glygen.tablemaker.persistence.glycan;
 
 import java.util.Date;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
