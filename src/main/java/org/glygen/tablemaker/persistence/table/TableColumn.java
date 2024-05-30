@@ -2,8 +2,6 @@ package org.glygen.tablemaker.persistence.table;
 
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,11 +9,12 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import jakarta.xml.bind.annotation.XmlTransient;
 
 @Entity
 @Table(name="table_column")
@@ -29,7 +28,8 @@ public class TableColumn {
 	String defaultValue;
 	
 	@Id
-	@GeneratedValue
+	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="tablecolumn_seq")
+    @SequenceGenerator(name="tablecolumn_seq", sequenceName="TABLECOLUMN_SEQ", initialValue=50, allocationSize = 50)
 	public Long getColumnId() {
 		return columnId;
 	}

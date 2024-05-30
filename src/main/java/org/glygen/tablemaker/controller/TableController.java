@@ -1,15 +1,32 @@
 package org.glygen.tablemaker.controller;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import javax.imageio.ImageIO;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Picture;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.glygen.tablemaker.exception.BadRequestException;
+import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
@@ -27,6 +44,8 @@ import org.glygen.tablemaker.persistence.table.TableReport;
 import org.glygen.tablemaker.persistence.table.TableReportDetail;
 import org.glygen.tablemaker.persistence.table.TableView;
 import org.glygen.tablemaker.view.SuccessResponse;
+import org.grits.toolbox.glycanarray.om.util.ExcelWriterHelper;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
@@ -44,6 +63,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVWriter;
 
+import io.jsonwebtoken.lang.Arrays;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -54,8 +74,13 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/table")
 public class TableController {
 	
+	static Logger logger = org.slf4j.LoggerFactory.getLogger(TableController.class);
+	
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
+	
+	@Value("${spring.file.imagedirectory}")
+	String imageLocation;
 	
 	final private UserRepository userRepository;
 	final private TemplateRepository templateRepository;
@@ -71,7 +96,7 @@ public class TableController {
 	
 	@Operation(summary = "Get all templates for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/gettemplates")
-    public ResponseEntity<SuccessResponse> getCategories() {
+    public ResponseEntity<SuccessResponse> getTemplates() {
 		// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -79,6 +104,15 @@ public class TableController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
 		List<TableMakerTemplate> templates = templateRepository.findAllByUser(user);
+		Optional<TableMakerTemplate> glygenTemplate = templateRepository.findById(1L);
+		if (glygenTemplate.isPresent()) templates.add(0, glygenTemplate.get());
+		
+		// order columns according to the given order
+		for (TableMakerTemplate template: templates) {
+			ArrayList<TableColumn> columns = new ArrayList<>(template.getColumns());
+			Collections.sort(columns, Comparator.comparing(TableColumn::getOrder));
+			template.setColumns(columns);
+		}
     	return new ResponseEntity<SuccessResponse>(
     			new SuccessResponse (templates, "templates retrieved"), HttpStatus.OK);
     	
@@ -162,6 +196,23 @@ public class TableController {
 					if (col.getGlycanColumn() == GlycanColumns.CARTOON) {
 						//throw new BadRequestException("Cartoons cannot be written in CSV files");
 						report.addError("Cartoons cannot be written in CSV files");
+					}
+				}
+			}
+		}
+		
+		// generate cartoons for glycans, if CARTOON column is requested
+		for (TableColumn col: table.getColumns()) {
+			if (col.getGlycanColumn() == GlycanColumns.CARTOON) {
+				for (Collection c: collectionList) {
+					for (GlycanInCollection g: c.getGlycans()) {
+						try {
+			                g.getGlycan().setCartoon(
+			                		DataController.getImageForGlycan(
+			                				imageLocation, g.getGlycan().getGlycanId()));
+						} catch (DataNotFoundException e) {
+							// do nothing, warning will be added later
+						}
 					}
 				}
 			}
@@ -275,7 +326,7 @@ public class TableController {
 						if (!found) {
 							// add a warning to the report
 							// warning
-							report.addWarning("Collection " + c.getName() + " does not have metadata for column " + col.getName() + ". Column is left empty!");
+							report.addWarning(c.getName() + " does not have metadata for \"" + col.getName() + "\" column. Column is left empty!");
 							row[i] = "";
 							
 						}
@@ -334,8 +385,68 @@ public class TableController {
 	    }
 	}
 
-	private void writeToExcel(List<String[]> rows, Map<String, byte[]> cartoons, File newFile) {
-		// TODO Auto-generated method stub
-		
+	private void writeToExcel(List<String[]> rows, Map<String, byte[]> cartoons, File newFile) throws IOException {
+		FileOutputStream excelWriter = new FileOutputStream(newFile);
+		ExcelWriterHelper helper = new ExcelWriterHelper();
+		Workbook workbook = new XSSFWorkbook();
+		List<Picture> m_lPictures = new ArrayList<>(); 
+        
+        XSSFFont font= (XSSFFont) workbook.createFont();
+        font.setBold(true);
+        font.setItalic(false);
+        CellStyle boldStyle = workbook.createCellStyle();
+        boldStyle.setFont(font);
+        
+        Sheet sheet = workbook.createSheet("TableMaker");
+        CellStyle wrapTextStyle = workbook.createCellStyle();
+        wrapTextStyle.setWrapText(true);
+        
+        // first row is the header row
+        if (rows.size() > 0) {
+        	String[] headerRow = rows.get(0);
+        	Row header = sheet.createRow(0);
+        	int i=0;
+        	for (String col: headerRow) {
+        		Cell cell = header.createCell(i++);
+        		cell.setCellValue(col);
+        		cell.setCellStyle(boldStyle);
+        	}
+        	
+        	for (i=1; i< rows.size(); i++) {
+        		String[] row = rows.get(i);
+        		Row entry = sheet.createRow(i);
+        		int j=0;
+        		for (String col: row) {
+        			Cell cell = entry.createCell(j++);
+        			if (col.startsWith ("IMAGE")) {
+        				// find the cartoon 
+        				String glycanId = col.substring(col.indexOf("IMAGE")+5);
+        				byte[] cartoon = cartoons.get(col);
+        				if (cartoon != null) {
+        					InputStream is = new ByteArrayInputStream(cartoon);
+        			        try {
+								BufferedImage newBi = ImageIO.read(is);
+	        				    helper.writeCellImage(workbook, sheet, i, j-1, newBi, m_lPictures);
+							} catch (Exception e) {
+								logger.warn ("Could not write cartoon for row " + i + " glycan " + glycanId, e);
+							}
+        			        
+        				}
+        			} else {
+        				cell.setCellStyle(wrapTextStyle);
+        				cell.setCellValue(col);
+        			}
+        		}
+        	}
+        }
+        
+        //resize pictures
+		for (Picture pic: m_lPictures) {
+			pic.resize();
+		}
+        
+        workbook.write(excelWriter);
+        excelWriter.close();
+        workbook.close();
 	}
 }

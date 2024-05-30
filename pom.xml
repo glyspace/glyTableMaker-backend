@@ -83,7 +83,23 @@
 		    <artifactId>opencsv</artifactId>
 		    <version>5.9</version>
 		</dependency>
-
+		<!-- https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml -->
+		<dependency>
+		    <groupId>org.apache.poi</groupId>
+		    <artifactId>poi-ooxml</artifactId>
+		    <version>4.0.0</version>
+		    <exclusions>
+		    	<exclusion>
+		    		<groupId>xml-apis</groupId>
+		    		<artifactId>xml-apis</artifactId>
+		    	</exclusion>
+		    </exclusions>
+		</dependency>
+		<dependency>
+		  <groupId>grits</groupId>
+		  <artifactId>glycanarray</artifactId>
+		  <version>1.50</version>
+		</dependency>
 		<!-- GLIC -->
 		<!-- https://gitlab.com/api/v4/projects/17725126/packages/maven -->
 		<dependency>

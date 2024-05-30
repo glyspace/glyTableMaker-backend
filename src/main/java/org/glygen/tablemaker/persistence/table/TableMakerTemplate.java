@@ -10,11 +10,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
 public class TableMakerTemplate {
@@ -26,7 +29,8 @@ public class TableMakerTemplate {
 	UserEntity user;
 	
 	@Id
-	@GeneratedValue
+	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="tabletemplate_seq")
+    @SequenceGenerator(name="tabletemplate_seq", sequenceName="TABLETEMPLATE_SEQ", initialValue=50, allocationSize = 50)
 	public Long getTemplateId() {
 		return templateId;
 	}
@@ -51,6 +55,11 @@ public class TableMakerTemplate {
 	}
 	
 	@ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+	@JoinTable(name = "tablemakertemplate_table_column", joinColumns = { 
+            @JoinColumn(name = "templateid", nullable = false) }, 
+            inverseJoinColumns = { @JoinColumn(name = "columnid", 
+                    nullable = false) }, uniqueConstraints={
+            @UniqueConstraint(columnNames = {"columnid", "templateid"})})
 	public Collection<TableColumn> getColumns() {
 		return columns;
 	}

@@ -272,7 +272,7 @@ public class DataController {
         // retrieve cartoon images
         for (Glycan g: glycansInPage.getContent()) {
             try {
-                g.setCartoon(getImageForGlycan(g.getGlycanId()));
+                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
                 if (g.getGlytoucanID() == null && g.getGlytoucanHash() != null && g.getWurcs() != null) {
                 	try {
                 		// registered, try to get the accession number
@@ -396,7 +396,7 @@ public class DataController {
         		Glycan g = gic.getGlycan();
         		g.setGlycanCollections(null);
         		try {
-                    g.setCartoon(getImageForGlycan(g.getGlycanId()));
+                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
                 } catch (DataNotFoundException e) {
                     // ignore
                     logger.warn ("no image found for glycan " + g.getGlycanId());
@@ -517,7 +517,7 @@ public class DataController {
             		Glycan g = gic.getGlycan();
             		g.setGlycanCollections(null);
             		try {
-                        g.setCartoon(getImageForGlycan(g.getGlycanId()));
+                        g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
                     } catch (DataNotFoundException e) {
                         // ignore
                         logger.warn ("no image found for glycan " + g.getGlycanId());
@@ -566,7 +566,7 @@ public class DataController {
     		Glycan g = gic.getGlycan();
     		g.setGlycanCollections(null);
     		try {
-                g.setCartoon(getImageForGlycan(g.getGlycanId()));
+                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
             } catch (DataNotFoundException e) {
                 // ignore
                 logger.warn ("no image found for glycan " + g.getGlycanId());
@@ -612,7 +612,7 @@ public class DataController {
 	        		Glycan g = gic.getGlycan();
 	        		g.setGlycanCollections(null);
 	        		try {
-	                    g.setCartoon(getImageForGlycan(g.getGlycanId()));
+	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 	                } catch (DataNotFoundException e) {
 	                    // ignore
 	                    logger.warn ("no image found for glycan " + g.getGlycanId());
@@ -1597,7 +1597,7 @@ public class DataController {
         return t_image;
     }
     
-    public byte[] getImageForGlycan (Long glycanId) {
+    public static byte[] getImageForGlycan (String imageLocation, Long glycanId) {
         try {
             File imageFile = new File(imageLocation + File.separator + glycanId + ".png");
             InputStreamResource resource = new InputStreamResource(new FileInputStream(imageFile));

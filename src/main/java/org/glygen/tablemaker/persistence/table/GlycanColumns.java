@@ -12,11 +12,11 @@ public enum GlycanColumns {
 	
 	@JsonCreator
 	public static GlycanColumns forValue(String value) {
-		if (value.equals("GlytoucanID"))
+		if (value.toLowerCase().equals("glytoucanid"))
 			return GLYTOUCANID;
-		else if (value.equals("Mass"))
+		else if (value.toLowerCase().equals("mass"))
 			return MASS;
-		else if (value.equals("Cartoon"))
+		else if (value.toLowerCase().equals("cartoon"))
             return CARTOON;
 		return GLYTOUCANID;
 	}
