@@ -38,7 +38,7 @@ public class TableMakerTemplate {
 		this.templateId = templateId;
 	}
 	
-	@Column
+	@Column(unique=true, nullable=false)
 	public String getName() {
 		return name;
 	}

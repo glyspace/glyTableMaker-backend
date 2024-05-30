@@ -45,7 +45,7 @@ public class TableColumn {
 		this.order = order;
 	}
 	
-	@Column
+	@Column(unique=true, nullable=false)
 	public String getName() {
 		return name;
 	}
