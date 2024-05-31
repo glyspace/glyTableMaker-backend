@@ -172,8 +172,9 @@ public class TableController {
 		
 		List<Collection> collectionList = new ArrayList<>();
 		for (Collection c: table.getCollections()) {
-			if (c.getCollections() != null) {
-				for (Collection child: c.getCollections()) {
+			Optional<Collection> loaded = collectionRepository.findById(c.getCollectionId());
+			if (loaded.isPresent() && loaded.get().getCollections() != null) {
+				for (Collection child: loaded.get().getCollections()) {
 					Optional<Collection> cc = collectionRepository.findById(child.getCollectionId());
 					if (cc.isPresent())
 						collectionList.add(cc.get());
@@ -338,6 +339,11 @@ public class TableController {
 					i++;
 				}
 			}
+		}
+		
+		if (rows.size() == 1) {
+			// no glycans found in the collections
+			report.addError("There are no glycans in the selected collections");
 		}
 		
 		if (report.getErrors() == null || report.getErrors().isEmpty()) {
