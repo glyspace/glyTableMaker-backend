@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -28,6 +29,9 @@ import org.eurocarbdb.MolecularFramework.sugar.Sugar;
 import org.eurocarbdb.MolecularFramework.util.analytical.mass.GlycoVisitorMass;
 import org.eurocarbdb.MolecularFramework.util.visitor.GlycoVisitorException;
 import org.eurocarbdb.application.glycanbuilder.BuilderWorkspace;
+import org.eurocarbdb.application.glycanbuilder.ResidueType;
+import org.eurocarbdb.application.glycanbuilder.dataset.ResidueDictionary;
+import org.eurocarbdb.application.glycanbuilder.massutil.IonCloud;
 import org.eurocarbdb.application.glycanbuilder.massutil.MassOptions;
 import org.eurocarbdb.application.glycanbuilder.renderutil.GlycanRendererAWT;
 import org.eurocarbdb.application.glycanbuilder.util.GraphicOptions;
@@ -52,16 +56,23 @@ import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
+import org.glygen.tablemaker.persistence.dao.TableReportRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
+import org.glygen.tablemaker.persistence.glycan.GlycanFileFormat;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
+import org.glygen.tablemaker.persistence.table.FileFormat;
+import org.glygen.tablemaker.persistence.table.TableColumn;
+import org.glygen.tablemaker.persistence.table.TableReport;
+import org.glygen.tablemaker.persistence.table.TableReportDetail;
+import org.glygen.tablemaker.persistence.table.TableView;
 import org.glygen.tablemaker.service.AsyncService;
 import org.glygen.tablemaker.service.CollectionManager;
 import org.glygen.tablemaker.service.EmailManager;
@@ -84,6 +95,7 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.domain.Sort.Order;
@@ -144,6 +156,7 @@ public class DataController {
     final private UploadErrorRepository uploadErrorRepository;
     private final EmailManager emailManager;
     final private CollectionManager collectionManager;
+    final private TableReportRepository reportRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -154,7 +167,7 @@ public class DataController {
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository,
     		BatchUploadRepository uploadRepository, AsyncService uploadService, 
     		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, 
-    		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager) {
+    		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, TableReportRepository reportRepository) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
@@ -164,6 +177,7 @@ public class DataController {
 		this.uploadErrorRepository = uploadErrorRepository;
 		this.emailManager = emailManager;
 		this.collectionManager = collectionManager;
+		this.reportRepository = reportRepository;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1443,6 +1457,151 @@ public class DataController {
     	    
         }
     	return new ResponseEntity<>(new SuccessResponse(null, "glycan added"), HttpStatus.OK); 
+    }
+    
+    @Operation(summary = "Download glycans", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/downloadglycans")
+	public ResponseEntity<Resource> downloadGlycans (
+			@Parameter(required=true, name="filetype", description="type of the file", schema = @Schema(type = "string",
+    		allowableValues= {"GWS","EXCEL"}))
+	        @RequestParam(required=true, value="filetype")
+			GlycanFileFormat format,
+			@Parameter(required=false, name="status", description="status filter")
+			@RequestParam(required=false, value="status")
+			Optional<RegistrationStatus> status) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        Page<Glycan> allGlycans = glycanRepository.findAllByUser(user, Pageable.unpaged());
+        StringBuffer fileContent = new StringBuffer();
+        
+        String filename = "glycanexport";
+		String ext = (format == GlycanFileFormat.EXCEL ? ".xlsx" : ".gws");
+		File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ext);
+        
+        TableReport tableReport = new TableReport();
+		TableReportDetail report = new TableReportDetail();
+		
+        switch (format) {
+        case GWS:
+	        for (Glycan glycan: allGlycans) {
+	        	if (status.isPresent()) {
+	        		if (status.get() != glycan.getStatus()) {
+	        			continue;
+	        		}
+	        	}
+	        	if (glycan.getGws() != null) {
+	        		fileContent.append (glycan.getGws());
+	        		fileContent.append(";");
+	        	}
+	        	else {
+	        		// need to generate GWS, and add errors if it cannot be generated
+	        		if (glycan.getGlycoCT() != null) {
+	        			try {
+	                        org.eurocarbdb.application.glycanbuilder.Glycan glycanObject = 
+	                                org.eurocarbdb.application.glycanbuilder.Glycan.fromGlycoCTCondensed(glycan.getGlycoCT().trim());
+	                        if (glycanObject == null) {
+		        				report.addError("Cannot convert to GWS sequence");
+		        			} else {
+		        				fileContent.append(glycanObject.toString() + ";");
+		        			}
+	                    } catch (Exception e) {
+	                    	// cannot get GWS string
+	        				report.addError("Cannot convert to GWS sequence. Reason: " + e.getMessage());
+	                    }
+	        			
+	        		} else if (glycan.getWurcs() != null) {
+	        			try {
+		        			WURCS2Parser t_wurcsparser = new WURCS2Parser();
+		        	        MassOptions massOptions = new MassOptions();
+		        	        massOptions.setDerivatization(MassOptions.NO_DERIVATIZATION);
+		        	        massOptions.setIsotope(MassOptions.ISOTOPE_MONO);
+		        	        massOptions.ION_CLOUD = new IonCloud();
+		        	        massOptions.NEUTRAL_EXCHANGES = new IonCloud();
+		        	        ResidueType m_residueFreeEnd = ResidueDictionary.findResidueType("freeEnd");
+		        	        massOptions.setReducingEndType(m_residueFreeEnd);
+		        			org.eurocarbdb.application.glycanbuilder.Glycan glycanObject = t_wurcsparser.readGlycan(glycan.getWurcs(), massOptions);
+		        			if (glycanObject == null) {
+		        				report.addError("Cannot convert to GWS sequence");
+		        			} else {
+		        				fileContent.append(glycanObject.toString() + ";");
+		        			}
+	        			} catch (Exception e) {
+	        				// cannot get GWS string
+	        				report.addError("Cannot convert to GWS sequence. Reason: " + e.getMessage());
+	        			}
+	        		} 
+	        		
+	        	}
+	        }
+	        
+	        String content = fileContent.substring(0, fileContent.length()-1);
+	        
+	        try {
+		        FileWriter writer = new FileWriter(newFile);
+		        writer.write(content);
+		        writer.close();
+		        try {
+		        	if (report.getErrors() != null && report.getErrors().size() > 0) {
+		        		report.setSuccess(false);
+		        	} else {
+		        		report.setSuccess(true);
+		        	}
+					report.setMessage("Glycan download successful");
+					String reportJson = new ObjectMapper().writeValueAsString(report);
+					tableReport.setReportJSON(reportJson);
+					TableReport saved = reportRepository.save(tableReport);
+					return FileController.download(newFile, filename+ext, saved.getReportId()+"");
+		        } catch (JsonProcessingException e) {
+					throw new RuntimeException ("Failed to generate the error report", e);
+				}
+	        } catch (IOException e) {
+	        	throw new BadRequestException ("Glycan downkload failed", e);
+	        }
+	        
+        case EXCEL:
+        	List<String[]> rows = new ArrayList<>();
+        	Map<String, byte[]> cartoons = new HashMap<>();
+        	// add header row
+    		String[] row = new String[6];
+    		row[0] = "GlyToucan ID";
+    		row[1] = "Status";
+    		row[2] = "Image";
+    		row[3] = "Mass";
+    		row[4] = "# of Collections";
+    		row[5] = "Information";
+    		
+    		rows.add(row);
+    		//TODO add glycan rows and fill in the cartoons map
+    		
+    		
+    		try {
+    			TableController.writeToExcel(rows, cartoons, newFile);
+    			try {
+		        	if (report.getErrors() != null && report.getErrors().size() > 0) {
+		        		report.setSuccess(false);
+		        	} else {
+		        		report.setSuccess(true);
+		        	}
+					report.setMessage("Glycan download successful");
+					String reportJson = new ObjectMapper().writeValueAsString(report);
+					tableReport.setReportJSON(reportJson);
+					TableReport saved = reportRepository.save(tableReport);
+					return FileController.download(newFile, filename+ext, saved.getReportId()+"");
+		        } catch (JsonProcessingException e) {
+					throw new RuntimeException ("Failed to generate the error report", e);
+				}
+	        } catch (IOException e) {
+	        	throw new BadRequestException ("Glycan downkload failed", e);
+	        }
+        }
+        
+        return null;
+    	
     }
     
     public static void parseAndRegisterGlycan (Glycan glycan, GlycanView g, GlycanRepository glycanRepository, UserEntity user) {

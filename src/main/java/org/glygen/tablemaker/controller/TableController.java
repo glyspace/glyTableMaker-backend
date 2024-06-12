@@ -391,7 +391,7 @@ public class TableController {
 	    }
 	}
 
-	private void writeToExcel(List<String[]> rows, Map<String, byte[]> cartoons, File newFile) throws IOException {
+	public static void writeToExcel(List<String[]> rows, Map<String, byte[]> cartoons, File newFile) throws IOException {
 		FileOutputStream excelWriter = new FileOutputStream(newFile);
 		ExcelWriterHelper helper = new ExcelWriterHelper();
 		Workbook workbook = new XSSFWorkbook();
