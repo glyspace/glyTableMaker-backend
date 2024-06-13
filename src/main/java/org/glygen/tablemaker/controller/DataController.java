@@ -1479,6 +1479,42 @@ public class DataController {
         }
         
         Page<Glycan> allGlycans = glycanRepository.findAllByUser(user, Pageable.unpaged());
+        return downloadGlycans(allGlycans.getContent(), format, status);
+    }
+    
+    @Operation(summary = "Download glycans in a collection", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/downloadcollectionglycans")
+	public ResponseEntity<Resource> downloadCollectionGlycans (
+			@Parameter(required=true, name="filetype", description="type of the file", schema = @Schema(type = "string",
+    		allowableValues= {"GWS","EXCEL"}))
+	        @RequestParam(required=true, value="filetype")
+			GlycanFileFormat format,
+			@Parameter(required=false, name="status", description="status filter")
+			@RequestParam(required=false, value="status")
+			Optional<RegistrationStatus> status,
+			@Parameter(required=true, name="collectionid", description="collection whose glycans to be downloaded")
+			@RequestParam(required=true, value="collectionid")
+			Long collectionId
+			) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        Collection collection = collectionRepository.findByCollectionIdAndUser(collectionId, user);
+        List<Glycan> glycans = new ArrayList<>();
+        if (collection != null && collection.getGlycans() != null) {
+        	for (GlycanInCollection g: collection.getGlycans()) {
+        		glycans.add(g.getGlycan());
+        	}
+        }
+        
+        return downloadGlycans(glycans, format, status);
+    }
+    
+    ResponseEntity<Resource> downloadGlycans (List<Glycan> glycans, GlycanFileFormat format, Optional<RegistrationStatus> status) {
         StringBuffer fileContent = new StringBuffer();
         
         String filename = "glycanexport";
@@ -1504,7 +1540,7 @@ public class DataController {
 			rows.add(row);
 	    }
 		
-		for (Glycan glycan: allGlycans) {
+		for (Glycan glycan: glycans) {
         	if (status.isPresent()) {
         		if (status.get() != glycan.getStatus()) {
         			continue;
