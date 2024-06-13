@@ -299,6 +299,8 @@ public class DataController {
                 		g.setStatus(RegistrationStatus.ERROR);
                 		g.setErrorJson(e.getErrorJson());
                 	}
+                	// save glycan with the updated information
+                	glycanRepository.save(g);
                 }
             } catch (DataNotFoundException e) {
                 // ignore
@@ -1486,14 +1488,32 @@ public class DataController {
         TableReport tableReport = new TableReport();
 		TableReportDetail report = new TableReportDetail();
 		
-        switch (format) {
-        case GWS:
-	        for (Glycan glycan: allGlycans) {
-	        	if (status.isPresent()) {
-	        		if (status.get() != glycan.getStatus()) {
-	        			continue;
-	        		}
-	        	}
+		List<String[]> rows = new ArrayList<>();
+    	Map<String, byte[]> cartoons = new HashMap<>();
+    	
+    	if (format == GlycanFileFormat.EXCEL) {
+	    	// add header row
+			String[] row = new String[6];
+			row[0] = "GlyToucan ID";
+			row[1] = "Status";
+			row[2] = "Image";
+			row[3] = "Mass";
+			row[4] = "# of Collections";
+			row[5] = "Information";
+			
+			rows.add(row);
+	    }
+		
+		for (Glycan glycan: allGlycans) {
+        	if (status.isPresent()) {
+        		if (status.get() != glycan.getStatus()) {
+        			continue;
+        		}
+        	}
+		
+	        switch (format) {
+	        case GWS:
+	        
 	        	if (glycan.getGws() != null) {
 	        		fileContent.append (glycan.getGws());
 	        		fileContent.append(";");
@@ -1537,71 +1557,74 @@ public class DataController {
 	        		} 
 	        		
 	        	}
-	        }
 	        
-	        String content = fileContent.substring(0, fileContent.length()-1);
+	        case EXCEL:
+	    		//add glycan rows and fill in the cartoons map
+	        	String[] row = new String[6];
+	    		row[0] = glycan.getGlytoucanID() != null ? glycan.getGlytoucanID() : "";
+	    		row[1] = glycan.getStatus().name();
+	    		// retrieve/generate the cartoon
+	    		try {
+	                glycan.setCartoon(
+	                		DataController.getImageForGlycan(
+	                				imageLocation, glycan.getGlycanId()));
+				} catch (DataNotFoundException e) {
+					// do nothing, warning will be added later
+				}
+	    		if (glycan.getCartoon() != null) {
+					row[2] = "IMAGE" + glycan.getGlycanId();
+					cartoons.put ("IMAGE" + glycan.getGlycanId(), glycan.getCartoon());
+				} else {
+					// warning
+					report.addWarning("Glycan " + glycan.getGlycanId() + " does not have a cartoon. Column is left empty");
+					row[2] = "";
+				}
+	    		row[3] = glycan.getMass()+"";
+	    		row[4] = glycan.getGlycanCollections().size() + "";
+	    		row[5] = glycan.getError() != null ? "Glycan is submitted to Glytoucan on " + glycan.getDateCreated() + 
+	    	              ". Registration failed with the following error: " + glycan.getError() : glycan.getGlytoucanHash() != null ? 
+	    	                      "Glycan is submitted to Glytoucan on " + glycan.getDateCreated() + 
+	    	                      ". Glytoucan assigned temporary hash value: " + glycan.getGlytoucanHash() : "";
+	    		rows.add(row);
+	    		
+	        }
+		}
+		
+		switch (format) {
+		case GWS:
+			String content = fileContent.substring(0, fileContent.length()-1);
 	        
 	        try {
 		        FileWriter writer = new FileWriter(newFile);
 		        writer.write(content);
-		        writer.close();
-		        try {
-		        	if (report.getErrors() != null && report.getErrors().size() > 0) {
-		        		report.setSuccess(false);
-		        	} else {
-		        		report.setSuccess(true);
-		        	}
-					report.setMessage("Glycan download successful");
-					String reportJson = new ObjectMapper().writeValueAsString(report);
-					tableReport.setReportJSON(reportJson);
-					TableReport saved = reportRepository.save(tableReport);
-					return FileController.download(newFile, filename+ext, saved.getReportId()+"");
-		        } catch (JsonProcessingException e) {
-					throw new RuntimeException ("Failed to generate the error report", e);
-				}
+		        writer.close();  
 	        } catch (IOException e) {
 	        	throw new BadRequestException ("Glycan downkload failed", e);
 	        }
-	        
-        case EXCEL:
-        	List<String[]> rows = new ArrayList<>();
-        	Map<String, byte[]> cartoons = new HashMap<>();
-        	// add header row
-    		String[] row = new String[6];
-    		row[0] = "GlyToucan ID";
-    		row[1] = "Status";
-    		row[2] = "Image";
-    		row[3] = "Mass";
-    		row[4] = "# of Collections";
-    		row[5] = "Information";
-    		
-    		rows.add(row);
-    		//TODO add glycan rows and fill in the cartoons map
-    		
-    		
-    		try {
-    			TableController.writeToExcel(rows, cartoons, newFile);
-    			try {
-		        	if (report.getErrors() != null && report.getErrors().size() > 0) {
-		        		report.setSuccess(false);
-		        	} else {
-		        		report.setSuccess(true);
-		        	}
-					report.setMessage("Glycan download successful");
-					String reportJson = new ObjectMapper().writeValueAsString(report);
-					tableReport.setReportJSON(reportJson);
-					TableReport saved = reportRepository.save(tableReport);
-					return FileController.download(newFile, filename+ext, saved.getReportId()+"");
-		        } catch (JsonProcessingException e) {
-					throw new RuntimeException ("Failed to generate the error report", e);
-				}
+	        break;
+		case EXCEL: 
+			try {
+    			TableController.writeToExcel(rows, cartoons, newFile, "Glycans");
 	        } catch (IOException e) {
 	        	throw new BadRequestException ("Glycan downkload failed", e);
 	        }
-        }
-        
-        return null;
-    	
+			break;
+		}
+		
+		try {
+        	if (report.getErrors() != null && report.getErrors().size() > 0) {
+        		report.setSuccess(false);
+        	} else {
+        		report.setSuccess(true);
+        	}
+			report.setMessage("Glycan download successful");
+			String reportJson = new ObjectMapper().writeValueAsString(report);
+			tableReport.setReportJSON(reportJson);
+			TableReport saved = reportRepository.save(tableReport);
+			return FileController.download(newFile, filename+ext, saved.getReportId()+"");
+        } catch (JsonProcessingException e) {
+			throw new RuntimeException ("Failed to generate the error report", e);
+		}
     }
     
     public static void parseAndRegisterGlycan (Glycan glycan, GlycanView g, GlycanRepository glycanRepository, UserEntity user) {

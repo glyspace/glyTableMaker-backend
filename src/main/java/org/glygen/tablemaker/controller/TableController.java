@@ -350,7 +350,7 @@ public class TableController {
 			try {
 				// create the file
 				if (table.getFileFormat() == FileFormat.EXCEL) {
-					writeToExcel (rows, cartoons, newFile);
+					writeToExcel (rows, cartoons, newFile, "TableMaker");
 				} else {
 					writeToCSV(rows, newFile);
 				}
@@ -391,7 +391,7 @@ public class TableController {
 	    }
 	}
 
-	public static void writeToExcel(List<String[]> rows, Map<String, byte[]> cartoons, File newFile) throws IOException {
+	public static void writeToExcel(List<String[]> rows, Map<String, byte[]> cartoons, File newFile, String sheetName) throws IOException {
 		FileOutputStream excelWriter = new FileOutputStream(newFile);
 		ExcelWriterHelper helper = new ExcelWriterHelper();
 		Workbook workbook = new XSSFWorkbook();
@@ -403,7 +403,7 @@ public class TableController {
         CellStyle boldStyle = workbook.createCellStyle();
         boldStyle.setFont(font);
         
-        Sheet sheet = workbook.createSheet("TableMaker");
+        Sheet sheet = workbook.createSheet(sheetName);
         CellStyle wrapTextStyle = workbook.createCellStyle();
         wrapTextStyle.setWrapText(true);
         
