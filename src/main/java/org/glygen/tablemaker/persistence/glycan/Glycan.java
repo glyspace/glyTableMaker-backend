@@ -282,4 +282,14 @@ public class Glycan {
 	public void setErrorJson(String errorJson) {
 		this.errorJson = errorJson;
 	}
+	public boolean hasTag(String tag) {
+		if (this.getTags() != null) {
+			for (GlycanTag t: tags) {
+				if (t.getLabel().equalsIgnoreCase(tag)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 }

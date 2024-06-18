@@ -1470,7 +1470,10 @@ public class DataController {
 			GlycanFileFormat format,
 			@Parameter(required=false, name="status", description="status filter")
 			@RequestParam(required=false, value="status")
-			Optional<RegistrationStatus> status) {
+			Optional<RegistrationStatus> status,
+			@Parameter(required=false, name="tag", description="tag filter")
+			@RequestParam(required=false, value="tag")
+			Optional<String> tag) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -1479,7 +1482,7 @@ public class DataController {
         }
         
         Page<Glycan> allGlycans = glycanRepository.findAllByUser(user, Pageable.unpaged());
-        return downloadGlycans(allGlycans.getContent(), format, status);
+        return downloadGlycans(allGlycans.getContent(), format, status, tag);
     }
     
     @Operation(summary = "Download glycans in a collection", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1492,6 +1495,9 @@ public class DataController {
 			@Parameter(required=false, name="status", description="status filter")
 			@RequestParam(required=false, value="status")
 			Optional<RegistrationStatus> status,
+			@Parameter(required=false, name="tag", description="tag filter")
+			@RequestParam(required=false, value="tag")
+			Optional<String> tag,
 			@Parameter(required=true, name="collectionid", description="collection whose glycans to be downloaded")
 			@RequestParam(required=true, value="collectionid")
 			Long collectionId
@@ -1511,10 +1517,12 @@ public class DataController {
         	}
         }
         
-        return downloadGlycans(glycans, format, status);
+        return downloadGlycans(glycans, format, status, tag);
     }
     
-    ResponseEntity<Resource> downloadGlycans (List<Glycan> glycans, GlycanFileFormat format, Optional<RegistrationStatus> status) {
+    ResponseEntity<Resource> downloadGlycans (List<Glycan> glycans, GlycanFileFormat format, 
+    		Optional<RegistrationStatus> status,
+    		Optional<String> tag) {
         StringBuffer fileContent = new StringBuffer();
         
         String filename = "glycanexport";
@@ -1543,6 +1551,12 @@ public class DataController {
 		for (Glycan glycan: glycans) {
         	if (status.isPresent()) {
         		if (status.get() != glycan.getStatus()) {
+        			continue;
+        		}
+        	}
+        	
+        	if (tag.isPresent()) {
+        		if (!glycan.hasTag(tag.get())) {
         			continue;
         		}
         	}
