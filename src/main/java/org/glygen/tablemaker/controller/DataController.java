@@ -41,7 +41,15 @@ import org.glycoinfo.GlycanCompositionConverter.structure.Composition;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionParseException;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionUtils;
 import org.glycoinfo.GlycanCompositionConverter.utils.DictionaryException;
+import org.glycoinfo.WURCSFramework.util.WURCSException;
+import org.glycoinfo.WURCSFramework.util.WURCSFactory;
+import org.glycoinfo.WURCSFramework.util.subsumption.WURCSSubsumptionConverter;
 import org.glycoinfo.WURCSFramework.util.validation.WURCSValidator;
+import org.glycoinfo.WURCSFramework.wurcs.array.LIN;
+import org.glycoinfo.WURCSFramework.wurcs.array.MS;
+import org.glycoinfo.WURCSFramework.wurcs.array.RES;
+import org.glycoinfo.WURCSFramework.wurcs.array.UniqueRES;
+import org.glycoinfo.WURCSFramework.wurcs.array.WURCSArray;
 import org.glycoinfo.application.glycanbuilder.converterWURCS2.WURCS2Parser;
 import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.BatchUploadException;
@@ -1029,7 +1037,7 @@ public class DataController {
                 if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
                 	SequenceUtils.registerGlycan(glycan);
                 }
-            } catch (DictionaryException | CompositionParseException | ConversionException e1) {
+            } catch (DictionaryException | CompositionParseException | ConversionException | WURCSException e1) {
                 throw new IllegalArgumentException ("Composition parsing/conversion failed. Reason " + e1.getMessage());
             } catch (GlycoVisitorException e1) {
                 throw new IllegalArgumentException (e1);
