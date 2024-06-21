@@ -1000,7 +1000,8 @@ public class DataController {
             try {
                 Composition compo = CompositionUtils.parse(g.getComposition().trim());
                 String strWURCS = CompositionConverter.toWURCS(compo);
-                glycan.setWurcs(strWURCS);
+                String strWURCSUnknownForm = toUnknownForm(strWURCS);
+                glycan.setWurcs(strWURCSUnknownForm);
                 // recode the sequence
                 WURCSValidator validator = new WURCSValidator();
                 validator.start(glycan.getWurcs());
@@ -1057,6 +1058,40 @@ public class DataController {
         } 
         return new ResponseEntity<>(new SuccessResponse(glycan, "glycan added"), HttpStatus.OK);
     }
+    
+    private static String toUnknownForm(String strWURCS) throws WURCSException {
+
+        WURCSFactory factory = new WURCSFactory(strWURCS);
+        WURCSArray array = factory.getArray();
+
+        // copy array without UniqueRES
+        WURCSArray arrayNew = new WURCSArray(
+            array.getVersion(),
+            array.getUniqueRESCount(),
+            array.getRESCount(),
+            array.getLINCount(),
+            array.isComposition()
+        );
+
+        for (RES res : array.getRESs())
+          arrayNew.addRES(res);
+
+        for ( LIN lin : array.getLINs() )
+          arrayNew.addLIN(lin);
+
+        // add UniqueRES converted to unknown form
+        WURCSSubsumptionConverter converter = new WURCSSubsumptionConverter();
+        for (UniqueRES ures : array.getUniqueRESs()) {
+          MS ms = converter.convertAnomericCarbonToUncertain(ures);
+          UniqueRES uresNew = new UniqueRES(ures.getUniqueRESID(), ms);
+          arrayNew.addUniqueRES(uresNew);
+        }
+
+        // back to WURCS
+        WURCSFactory factoryNew = new WURCSFactory(arrayNew);
+        return factoryNew.getWURCS();
+    }
+
     
     @Operation(summary = "Add collection", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addcollection")
