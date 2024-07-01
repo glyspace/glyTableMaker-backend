@@ -2,7 +2,9 @@ package org.glygen.tablemaker.service;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
@@ -41,8 +43,10 @@ public class GlycanManagerImpl implements GlycanManager {
     			existing = glycanTagRepository.save(gTag);
     		}
         	for (Glycan g: glycans) {
-        		g.addTag (existing);
-        		glycanRepository.save(g);
+        		if (!g.hasTag(existing.getLabel())) {
+        			g.addTag (existing);
+        			glycanRepository.save(g);
+        		}
         	}
         }
 	}
@@ -79,7 +83,8 @@ public class GlycanManagerImpl implements GlycanManager {
 	@Override
 	public void setGlycanTags(Glycan glycan, List<String> tags, UserEntity user) {
 		List<GlycanTag> newTagList = new ArrayList<>();
-		for (String tag: tags) {
+		Set<String> noDuplicates = new HashSet<>(tags);
+		for (String tag: noDuplicates) {
 			GlycanTag gTag = new GlycanTag();
 			gTag.setLabel(tag);
 			gTag.setUser(user);

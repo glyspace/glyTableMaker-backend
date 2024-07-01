@@ -254,11 +254,15 @@ public class DataController {
         }
         
         // apply filters
-        List<GlycanSpecifications> specificationList = new ArrayList<>();
+        List<Specification<Glycan>> specificationList = new ArrayList<>();
         if (filterList != null) {
 	        for (Filter f: filterList) {
-	        	GlycanSpecifications spec = new GlycanSpecifications(f);
-	        	specificationList.add(spec);
+	        	if (!f.getId().equalsIgnoreCase("tags")) {
+	        		GlycanSpecifications spec = new GlycanSpecifications(f);
+	        		specificationList.add(spec);
+	        	} else {
+	        		specificationList.add(GlycanSpecifications.hasGlycanTag(f.getValue()));
+	        	}
 	        }
         }
         
