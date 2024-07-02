@@ -129,21 +129,22 @@ public class UtilityController {
     }
     
     public static List<NamespaceEntry> getSuggestions (PatriciaTrie<NamespaceEntry> trie, String key, Integer limit) {
-        //Entry<String, NamespaceEntry> entry = trie.select(key.toLowerCase());
+        Entry<String, NamespaceEntry> entry = trie.select(key.toLowerCase());
         SortedMap<String, NamespaceEntry> resultMap = trie.prefixMap(key.toLowerCase());
         List<NamespaceEntry> result = new ArrayList<>();
         int i=0;
-       /* if (entry != null && !resultMap.containsValue(entry.getValue())) {
+        if (entry != null && !resultMap.containsValue(entry.getValue())) {
             result.add(entry.getValue());
             i++;
         }
-        */   // do not put the best match
         for (Iterator<Entry<String, NamespaceEntry>> iterator = resultMap.entrySet().iterator(); iterator.hasNext();) {
             Entry<String, NamespaceEntry> match = iterator.next();
             if (limit != null && i >= limit)
                 break;
-            result.add(match.getValue());
-            i++;
+            if (!result.contains(match.getValue())) {
+            	result.add(match.getValue());
+            	i++;
+            }
         }
         
         return result;
