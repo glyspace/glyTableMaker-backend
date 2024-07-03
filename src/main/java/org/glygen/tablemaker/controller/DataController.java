@@ -41,7 +41,15 @@ import org.glycoinfo.GlycanCompositionConverter.structure.Composition;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionParseException;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionUtils;
 import org.glycoinfo.GlycanCompositionConverter.utils.DictionaryException;
+import org.glycoinfo.WURCSFramework.util.WURCSException;
+import org.glycoinfo.WURCSFramework.util.WURCSFactory;
+import org.glycoinfo.WURCSFramework.util.subsumption.WURCSSubsumptionConverter;
 import org.glycoinfo.WURCSFramework.util.validation.WURCSValidator;
+import org.glycoinfo.WURCSFramework.wurcs.array.LIN;
+import org.glycoinfo.WURCSFramework.wurcs.array.MS;
+import org.glycoinfo.WURCSFramework.wurcs.array.RES;
+import org.glycoinfo.WURCSFramework.wurcs.array.UniqueRES;
+import org.glycoinfo.WURCSFramework.wurcs.array.WURCSArray;
 import org.glycoinfo.application.glycanbuilder.converterWURCS2.WURCS2Parser;
 import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.BatchUploadException;
@@ -246,11 +254,15 @@ public class DataController {
         }
         
         // apply filters
-        List<GlycanSpecifications> specificationList = new ArrayList<>();
+        List<Specification<Glycan>> specificationList = new ArrayList<>();
         if (filterList != null) {
 	        for (Filter f: filterList) {
-	        	GlycanSpecifications spec = new GlycanSpecifications(f);
-	        	specificationList.add(spec);
+	        	if (!f.getId().equalsIgnoreCase("tags")) {
+	        		GlycanSpecifications spec = new GlycanSpecifications(f);
+	        		specificationList.add(spec);
+	        	} else {
+	        		specificationList.add(GlycanSpecifications.hasGlycanTag(f.getValue()));
+	        	}
 	        }
         }
         
@@ -1000,7 +1012,8 @@ public class DataController {
             try {
                 Composition compo = CompositionUtils.parse(g.getComposition().trim());
                 String strWURCS = CompositionConverter.toWURCS(compo);
-                glycan.setWurcs(strWURCS);
+                String strWURCSUnknownForm = toUnknownForm(strWURCS);
+                glycan.setWurcs(strWURCSUnknownForm);
                 // recode the sequence
                 WURCSValidator validator = new WURCSValidator();
                 validator.start(glycan.getWurcs());
@@ -1028,7 +1041,7 @@ public class DataController {
                 if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
                 	SequenceUtils.registerGlycan(glycan);
                 }
-            } catch (DictionaryException | CompositionParseException | ConversionException e1) {
+            } catch (DictionaryException | CompositionParseException | ConversionException | WURCSException e1) {
                 throw new IllegalArgumentException ("Composition parsing/conversion failed. Reason " + e1.getMessage());
             } catch (GlycoVisitorException e1) {
                 throw new IllegalArgumentException (e1);
@@ -1057,6 +1070,40 @@ public class DataController {
         } 
         return new ResponseEntity<>(new SuccessResponse(glycan, "glycan added"), HttpStatus.OK);
     }
+    
+    private static String toUnknownForm(String strWURCS) throws WURCSException {
+
+        WURCSFactory factory = new WURCSFactory(strWURCS);
+        WURCSArray array = factory.getArray();
+
+        // copy array without UniqueRES
+        WURCSArray arrayNew = new WURCSArray(
+            array.getVersion(),
+            array.getUniqueRESCount(),
+            array.getRESCount(),
+            array.getLINCount(),
+            array.isComposition()
+        );
+
+        for (RES res : array.getRESs())
+          arrayNew.addRES(res);
+
+        for ( LIN lin : array.getLINs() )
+          arrayNew.addLIN(lin);
+
+        // add UniqueRES converted to unknown form
+        WURCSSubsumptionConverter converter = new WURCSSubsumptionConverter();
+        for (UniqueRES ures : array.getUniqueRESs()) {
+          MS ms = converter.convertAnomericCarbonToUncertain(ures);
+          UniqueRES uresNew = new UniqueRES(ures.getUniqueRESID(), ms);
+          arrayNew.addUniqueRES(uresNew);
+        }
+
+        // back to WURCS
+        WURCSFactory factoryNew = new WURCSFactory(arrayNew);
+        return factoryNew.getWURCS();
+    }
+
     
     @Operation(summary = "Add collection", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addcollection")
@@ -1470,7 +1517,10 @@ public class DataController {
 			GlycanFileFormat format,
 			@Parameter(required=false, name="status", description="status filter")
 			@RequestParam(required=false, value="status")
-			Optional<RegistrationStatus> status) {
+			Optional<RegistrationStatus> status,
+			@Parameter(required=false, name="tag", description="tag filter")
+			@RequestParam(required=false, value="tag")
+			Optional<String> tag) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -1479,7 +1529,7 @@ public class DataController {
         }
         
         Page<Glycan> allGlycans = glycanRepository.findAllByUser(user, Pageable.unpaged());
-        return downloadGlycans(allGlycans.getContent(), format, status);
+        return downloadGlycans(allGlycans.getContent(), format, status, tag);
     }
     
     @Operation(summary = "Download glycans in a collection", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1492,6 +1542,9 @@ public class DataController {
 			@Parameter(required=false, name="status", description="status filter")
 			@RequestParam(required=false, value="status")
 			Optional<RegistrationStatus> status,
+			@Parameter(required=false, name="tag", description="tag filter")
+			@RequestParam(required=false, value="tag")
+			Optional<String> tag,
 			@Parameter(required=true, name="collectionid", description="collection whose glycans to be downloaded")
 			@RequestParam(required=true, value="collectionid")
 			Long collectionId
@@ -1511,10 +1564,12 @@ public class DataController {
         	}
         }
         
-        return downloadGlycans(glycans, format, status);
+        return downloadGlycans(glycans, format, status, tag);
     }
     
-    ResponseEntity<Resource> downloadGlycans (List<Glycan> glycans, GlycanFileFormat format, Optional<RegistrationStatus> status) {
+    ResponseEntity<Resource> downloadGlycans (List<Glycan> glycans, GlycanFileFormat format, 
+    		Optional<RegistrationStatus> status,
+    		Optional<String> tag) {
         StringBuffer fileContent = new StringBuffer();
         
         String filename = "glycanexport";
@@ -1543,6 +1598,12 @@ public class DataController {
 		for (Glycan glycan: glycans) {
         	if (status.isPresent()) {
         		if (status.get() != glycan.getStatus()) {
+        			continue;
+        		}
+        	}
+        	
+        	if (tag.isPresent()) {
+        		if (!glycan.hasTag(tag.get())) {
         			continue;
         		}
         	}
@@ -1635,14 +1696,14 @@ public class DataController {
 		        writer.write(content);
 		        writer.close();  
 	        } catch (IOException e) {
-	        	throw new BadRequestException ("Glycan downkload failed", e);
+	        	throw new BadRequestException ("Glycan download failed", e);
 	        }
 	        break;
 		case EXCEL: 
 			try {
     			TableController.writeToExcel(rows, cartoons, newFile, "Glycans");
 	        } catch (IOException e) {
-	        	throw new BadRequestException ("Glycan downkload failed", e);
+	        	throw new BadRequestException ("Glycan download failed", e);
 	        }
 			break;
 		}
