@@ -115,7 +115,7 @@ public class UtilityController {
         // find the file identifier associated with the given namespace
         Namespace entity = namespaceRepository.findByNameIgnoreCase(namespace);  
         PatriciaTrie<NamespaceEntry> trie = null;
-        List<NamespaceEntry> suggestions = new ArrayList<>();
+        List<String> suggestions = new ArrayList<>();
         if (entity.getFileIdentifier() != null) {
         	// find the exact match if exists and put it as the first proposal
             trie = NamespaceHandler.getTrieForNamespace(entity.getFileIdentifier());
@@ -127,22 +127,54 @@ public class UtilityController {
         } 
         return new ResponseEntity<SuccessResponse>(new SuccessResponse(suggestions, "Suggestion found"), HttpStatus.OK);
     }
+	
+	@Operation(summary = "Retrieve canonical form given a synonym")
+    @RequestMapping(value="/getcanonicalform", method = RequestMethod.GET, 
+            produces={"application/json", "application/xml"})
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Return the canonical form, if any"), 
+            @ApiResponse(responseCode="400", description="Invalid request, validation error"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> getCanonicalForm (
+            @Parameter(required=true, description="Name of the namespace to retrieve canonical form")
+            @RequestParam("namespace")
+            String namespace, 
+            @Parameter(required=true, description="selected synonym") 
+            @RequestParam("synonym")
+            String key) {
+        
+        namespace = namespace.trim();
+        // find the file identifier associated with the given namespace
+        Namespace entity = namespaceRepository.findByNameIgnoreCase(namespace);  
+        PatriciaTrie<NamespaceEntry> trie = null;
+        if (entity.getFileIdentifier() != null) {
+        	// find the exact match if exists
+            trie = NamespaceHandler.getTrieForNamespace(entity.getFileIdentifier());
+            if (trie != null) {
+            	Entry<String, NamespaceEntry> entry = trie.select(key.toLowerCase());
+            	return new ResponseEntity<SuccessResponse>(new SuccessResponse(entry.getValue(), "Canonical form found"), HttpStatus.OK);
+            } else {
+            	logger.warn ("namespace file cannot be located: " + entity.getNamespaceId());
+            }
+        } 
+        return new ResponseEntity<SuccessResponse>(new SuccessResponse(null, "Canonical form not found"), HttpStatus.OK);
+    }
     
-    public static List<NamespaceEntry> getSuggestions (PatriciaTrie<NamespaceEntry> trie, String key, Integer limit) {
+    public static List<String> getSuggestions (PatriciaTrie<NamespaceEntry> trie, String key, Integer limit) {
         Entry<String, NamespaceEntry> entry = trie.select(key.toLowerCase());
         SortedMap<String, NamespaceEntry> resultMap = trie.prefixMap(key.toLowerCase());
-        List<NamespaceEntry> result = new ArrayList<>();
+        List<String> result = new ArrayList<>();
         int i=0;
-        if (entry != null && !resultMap.containsValue(entry.getValue())) {
-            result.add(entry.getValue());
+        if (entry != null && !resultMap.containsKey(entry.getKey())) {
+            result.add(entry.getKey());
             i++;
         }
         for (Iterator<Entry<String, NamespaceEntry>> iterator = resultMap.entrySet().iterator(); iterator.hasNext();) {
             Entry<String, NamespaceEntry> match = iterator.next();
             if (limit != null && i >= limit)
                 break;
-            if (!result.contains(match.getValue())) {
-            	result.add(match.getValue());
+            if (!result.contains(match.getKey())) {
+            	result.add(match.getKey());
             	i++;
             }
         }
