@@ -173,16 +173,16 @@ public class TableController {
 		List<Collection> collectionList = new ArrayList<>();
 		for (Collection c: table.getCollections()) {
 			Optional<Collection> loaded = collectionRepository.findById(c.getCollectionId());
-			if (loaded.isPresent() && loaded.get().getCollections() != null) {
-				for (Collection child: loaded.get().getCollections()) {
-					Optional<Collection> cc = collectionRepository.findById(child.getCollectionId());
-					if (cc.isPresent())
-						collectionList.add(cc.get());
+			if (loaded.isPresent()) {
+				if (loaded.get().getCollections() != null && !loaded.get().getCollections().isEmpty()) {
+					for (Collection child: loaded.get().getCollections()) {
+						Optional<Collection> cc = collectionRepository.findById(child.getCollectionId());
+						if (cc.isPresent())
+							collectionList.add(cc.get());
+					}
+				} else {
+					collectionList.add(loaded.get());
 				}
-			} else {
-				Optional<Collection> cc = collectionRepository.findById(c.getCollectionId());
-				if (cc.isPresent())
-					collectionList.add(cc.get());
 			}
 		}
 		List<String[]> rows = new ArrayList<>();

@@ -27,6 +27,7 @@ insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid)
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (14, 'Organismal/cellular Phenotype', 'HPO (human) https://hpo.jax.org/app/', 'https://www.glygen.org/datatype/14', FALSE, 12) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (15, 'Molecular Phenotype', 'Gene name', 'https://www.glygen.org/datatype/15', FALSE, 1) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (16, 'Contributor', 'If you are curating the paper use curatedBy, if you are using a software/tool/code to add information to the dataset use createdWith. For final dataset to be integrated GW will use createdBy. If the initial dataset is shared to you by a researcher use contributedBy or authoredBy whichever is applicable as per this. There is no need to add corresponding author or other author name list if curating the paper by yourself.', 'https://www.glygen.org/datatype/16', FALSE, 13) ON CONFLICT DO NOTHING;
+insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (17, 'Comment', 'Additional comments', 'https://www.glygen.org/datatype/17', FALSE, 1) ON CONFLICT DO NOTHING;
 insert into datatype_category (datatypeid, categoryid) values (2, 1) ON CONFLICT DO NOTHING;
 insert into datatype_category (datatypeid, categoryid) values (3, 1) ON CONFLICT DO NOTHING;
 insert into datatype_category (datatypeid, categoryid) values (4, 1) on conflict do nothing;
@@ -42,7 +43,7 @@ insert into datatype_category (datatypeid, categoryid) values (13, 1) on conflic
 insert into datatype_category (datatypeid, categoryid) values (14, 1) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid) values (15, 1) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid) values (16, 1) on conflict do nothing;
-
+insert into datatype_category (datatypeid, categoryid) values (17, 1) on conflict do nothing;
 insert into tablemakertemplate (templateid, name, description) values (1, 'Glygen', 'Template for submitting glycans to Glygen') on conflict do nothing;
 insert into table_column (columnid, name, glycancolumn, column_order) values (1, 'GlyTouCan ID', 'GLYTOUCANID',  1) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (2, 'Evidence', 2, 'VALUE', 2) ON CONFLICT DO NOTHING;
@@ -60,6 +61,7 @@ insert into table_column (columnid, name, datatypeid, valuetype, column_order) v
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (14, 'Organismal/cellular Phenotype', 14, 'ID', 14) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (15, 'Molecular Phenotype', 15, 'VALUE', 15) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (16, 'Contributor', 16, 'VALUE', 16) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (17, 'Comment', 17, 'VALUE', 17) ON CONFLICT DO NOTHING;
 insert into tablemakertemplate_table_column (columnid, templateid) values (1, 1) ON CONFLICT DO NOTHING;
 insert into tablemakertemplate_table_column (columnid, templateid) values (2, 1) ON CONFLICT DO NOTHING;
 insert into tablemakertemplate_table_column (columnid, templateid) values (3, 1) ON CONFLICT DO NOTHING;
@@ -76,3 +78,4 @@ insert into tablemakertemplate_table_column (columnid, templateid) values (13, 1
 insert into tablemakertemplate_table_column (columnid, templateid) values (14, 1) on conflict do nothing;
 insert into tablemakertemplate_table_column (columnid, templateid) values (15, 1) on conflict do nothing;
 insert into tablemakertemplate_table_column (columnid, templateid) values (16, 1) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (17, 1) on conflict do nothing;
