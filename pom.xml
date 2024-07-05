@@ -98,7 +98,7 @@
 		<dependency>
 		  <groupId>grits</groupId>
 		  <artifactId>glycanarray</artifactId>
-		  <version>1.50</version>
+		  <version>1.51</version>
 		</dependency>
 		<!-- GLIC -->
 		<!-- https://gitlab.com/api/v4/projects/17725126/packages/maven -->

@@ -166,7 +166,7 @@ public class TableController {
 	@Operation(summary = "Generate table and download", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/downloadtable")
 	public ResponseEntity<Resource> downloadTable (@Valid @RequestBody TableView table) {
-		String filename = "tablemakerexport";
+		String filename = table.getFilename() != null ? table.getFilename() : "tablemakerexport";
 		String ext = (table.getFileFormat() == FileFormat.EXCEL ? ".xlsx" : ".csv");
 		File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ext);
 		
