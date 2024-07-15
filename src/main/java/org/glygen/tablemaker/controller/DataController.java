@@ -261,33 +261,50 @@ public class DataController {
         }
         
         // apply filters
+        List<Specification<Glycan>> globalSpecificationList = new ArrayList<>();
         List<Specification<Glycan>> specificationList = new ArrayList<>();
+        
+        if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+        	globalSpecificationList.add(new GlycanSpecifications(new Filter ("glytoucanID", globalFilter)));
+        	globalSpecificationList.add(new GlycanSpecifications(new Filter ("mass", globalFilter)));
+        	globalSpecificationList.add(GlycanSpecifications.hasGlycanTag(globalFilter));
+        }
+        
         if (filterList != null) {
 	        for (Filter f: filterList) {
 	        	if (!f.getId().equalsIgnoreCase("tags")) {
-	        		GlycanSpecifications spec = new GlycanSpecifications(f);
-	        		specificationList.add(spec);
+	        		GlycanSpecifications s = new GlycanSpecifications(f);
+	        		specificationList.add(s);
 	        	} else {
 	        		specificationList.add(GlycanSpecifications.hasGlycanTag(f.getValue()));
 	        	}
 	        }
         }
         
-        if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
-        	specificationList.add(new GlycanSpecifications(new Filter ("glytoucanID", globalFilter)));
-        	specificationList.add(new GlycanSpecifications(new Filter ("mass", globalFilter)));
+        Specification<Glycan> globalSpec = null;
+        if (!globalSpecificationList.isEmpty()) {
+        	globalSpec = globalSpecificationList.get(0);
+        	for (int i=1; i < globalSpecificationList.size(); i++) {
+        		globalSpec = Specification.where(globalSpec).or(globalSpecificationList.get(i)); 
+        	}
         }
         
         Specification<Glycan> spec = null;
-        if (!specificationList.isEmpty()) {
-        	spec = specificationList.get(0);
-        	for (int i=1; i < specificationList.size(); i++) {
-        		spec = Specification.where(spec).or(specificationList.get(i)); 
-        	}
-        	if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
-        		spec = Specification.where(spec).or(GlycanSpecifications.hasGlycanTag(globalFilter));   // add glycan tag to searchable list
-        	}
-        	spec = Specification.where(spec).and(GlycanSpecifications.hasUserWithId(user.getUserId()));
+        if (globalSpec != null && specificationList.isEmpty()) { // no more filters, add the user filter
+        	spec = Specification.where(globalSpec).and(GlycanSpecifications.hasUserWithId(user.getUserId()));
+        } else {
+	        if (!specificationList.isEmpty()) {
+	        	spec = specificationList.get(0);
+	        	for (int i=1; i < specificationList.size(); i++) {
+	        		spec = Specification.where(spec).and(specificationList.get(i)); 
+	        	}
+	        	
+	        	spec = Specification.where(spec).and(GlycanSpecifications.hasUserWithId(user.getUserId()));
+	        	
+	        	if (globalSpec != null) {
+	        		spec = Specification.where(spec).and(globalSpec);
+	        	}
+	        }
         }
         
         Page<Glycan> glycansInPage = null;
