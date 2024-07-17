@@ -1,9 +1,11 @@
 package org.glygen.tablemaker.service;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.UUID;
 
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
+import org.glygen.tablemaker.persistence.FeedbackEntity;
 import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.VerificationTokenRepository;
@@ -151,5 +153,31 @@ public class MailService implements EmailManager {
             sendMessage(email, subject, message);
          }
 	}
+	
+	@Override
+    public void sendFeedback(FeedbackEntity feedback, String... emails) {
+        if (emails == null) {
+            throw new IllegalArgumentException("email list cannot be null");
+        }
+        String subject = "GlyTableMaker " + feedback.getSubject();
+        String message = "Feedback received for page: " + feedback.getPage() + "\nwith the message: " + feedback.getMessage();
+        message += "\nFrom: " + feedback.getFirstName() + 
+                " " + (feedback.getLastName() == null || feedback.getLastName().equals("not given") ? "" : feedback.getLastName()) + "\nEmail: " + feedback.getEmail();
+        for (String email: emails) {
+           sendMessage(email, subject, message);
+        }
+        
+    }
+
+    @Override
+    public void sendFeedbackNotice(FeedbackEntity feedback) {
+        String subject = "Feedback received";
+        String message = "Your feedback for GlyTableMaker has been recorded. Thank you!";
+        message += "\n\nFeedback received for page: " + feedback.getPage() + "\nwith the message: " + feedback.getMessage();
+        message += "\nFrom: " + feedback.getFirstName() + 
+                " " + (feedback.getLastName() == null || feedback.getLastName().equals("not given") ? "" : feedback.getLastName()) + "\nEmail: " + feedback.getEmail();
+       
+        sendMessage(feedback.getEmail(), subject, message);
+    }
 
 }

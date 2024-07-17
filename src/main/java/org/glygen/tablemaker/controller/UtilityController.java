@@ -2,28 +2,37 @@ package org.glygen.tablemaker.controller;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.Map.Entry;
 
+
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.glygen.tablemaker.config.NamespaceHandler;
+import org.glygen.tablemaker.persistence.FeedbackEntity;
+import org.glygen.tablemaker.persistence.dao.FeedbackRepository;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.Namespace;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
+import org.glygen.tablemaker.service.EmailManager;
 import org.glygen.tablemaker.view.NamespaceEntry;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.slf4j.Logger;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,6 +43,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -48,9 +59,13 @@ public class UtilityController {
 	static Logger logger = org.slf4j.LoggerFactory.getLogger(UtilityController.class);
 	
 	private final NamespaceRepository namespaceRepository;
+	private final FeedbackRepository feedbackRepository;
+	private final EmailManager emailManager;
 	
-	public UtilityController(NamespaceRepository namespaceRepository) {
+	public UtilityController(NamespaceRepository namespaceRepository, FeedbackRepository feedbackRepository, EmailManager emailManager) {
 		this.namespaceRepository = namespaceRepository;
+		this.feedbackRepository = feedbackRepository;
+		this.emailManager = emailManager;
 	}
 	
 	@Operation(summary = "Get all namespaces")
@@ -181,7 +196,7 @@ public class UtilityController {
         return result;
     }
     
-    @Operation(summary = "Check metadata validity", security = { @SecurityRequirement(name = "bearer-key") })
+    @Operation(summary = "Check metadata validity")
     @PostMapping("/ismetadatavalid")
 	public ResponseEntity<SuccessResponse> isMetadataValueValid (@Valid @RequestBody Metadata meta) {
 		// check if the metadata value is valid based on its namespace
@@ -286,5 +301,40 @@ public class UtilityController {
 		}
 		
 	}
+	
+	@Operation(summary = "Send the feedback about a page to the developers/administrators")
+    @RequestMapping(value="/sendfeedback", method = RequestMethod.POST)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="feedback stored and forwarded successfully", content = {
+            @Content(schema = @Schema(implementation = String.class))}), 
+            @ApiResponse(responseCode="400", description="Invalid request, validation error for arguments"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> saveFeedback (
+            @Parameter(required=true, description="feedback form") 
+            @RequestBody @Valid FeedbackEntity feedback) {
+        
+        if (feedback == null) {
+            throw new IllegalArgumentException("Feedback form is invalid");
+        }
+        
+        feedbackRepository.save(feedback);
+        emailManager.sendFeedbackNotice(feedback);
+        List<String> emails = new ArrayList<String>();
+        try {
+            Resource classificationNamespace = new ClassPathResource("adminemails.txt");
+            final InputStream inputStream = classificationNamespace.getInputStream();
+            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                emails.add(line.trim());
+            }
+        } catch (Exception e) {
+            logger.error("Cannot load admin emails", e);
+            throw new IllegalArgumentException("Feedback not sent! Cannot load admin emails");
+        }
+        emailManager.sendFeedback(feedback, emails.toArray(new String[0]));
+        
+        return new ResponseEntity<>(new SuccessResponse(feedback, "Feedback is sent"), HttpStatus.OK);
+    }
 
 }
