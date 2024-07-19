@@ -4,29 +4,45 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.xml.bind.annotation.XmlRootElement;
 
 @Entity
-@Table(name="column-visibility")
+@Table(name="column_visibility")
 @XmlRootElement (name="columnVisibility")
 @JsonSerialize
 public class ColumnVisibillitySetting {
 	
-	String tableName;
+	Long id;
+	TableMakerTable tableName;
 	String columnName;
 	Boolean visible;
 	UserEntity user;
 	
+	@Id
+	@GeneratedValue
+	public Long getId() {
+		return id;
+	}
+	
+	public void setId(Long id) {
+		this.id = id;
+	}
+	
 	@Column
-	public String getTableName() {
+    @Enumerated(EnumType.STRING)
+	public TableMakerTable getTableName() {
 		return tableName;
 	}
-	public void setTableName(String tableName) {
+	public void setTableName(TableMakerTable tableName) {
 		this.tableName = tableName;
 	}
 	

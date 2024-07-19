@@ -4,9 +4,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
 import java.security.spec.InvalidKeySpecException;
-import java.text.MessageFormat;
 import java.util.Arrays;
-import java.util.List;
 import java.util.regex.Pattern;
 
 import org.glygen.tablemaker.exception.BadRequestException;
@@ -29,7 +27,6 @@ import org.glygen.tablemaker.view.User;
 import org.glygen.tablemaker.view.validation.PasswordValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
