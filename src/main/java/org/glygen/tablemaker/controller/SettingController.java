@@ -1,6 +1,9 @@
 package org.glygen.tablemaker.controller;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.glygen.tablemaker.persistence.ColumnVisibillitySetting;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 
 @RestController
@@ -59,7 +63,7 @@ public class SettingController {
     			new SuccessResponse (settings, "settings retrieved"), HttpStatus.OK);
 	}
 	
-	@Operation(summary = "Get column settings for the user", security = { @SecurityRequirement(name = "bearer-key") })
+	@Operation(summary = "Get column settings for the user for the given table", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcolumnsettings")
     public ResponseEntity<SuccessResponse> getColumnSettings(
     		@Parameter(required=true, description="table name for the column settings") 
@@ -75,6 +79,35 @@ public class SettingController {
         List<ColumnVisibillitySetting> settings = columnRepository.findByTableNameAndUser(tableName, user);
         return new ResponseEntity<SuccessResponse>(
     			new SuccessResponse (settings, "column settings retrieved"), HttpStatus.OK);
+	}
+	
+	@Operation(summary = "Get all column settings for the user", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getallcolumnsettings")
+    public ResponseEntity<SuccessResponse> getAllColumnSettings() {
+		// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        Map<String, List<ColumnVisibillitySetting>> columnSettings = new HashMap<>();
+        for (TableMakerTable table: TableMakerTable.values()) {
+        	columnSettings.put(table.name(), new ArrayList<>());
+        }
+        
+        List<ColumnVisibillitySetting> settings = columnRepository.findAllByUser(user);
+        for (ColumnVisibillitySetting setting: settings) {
+        	if (columnSettings.get(setting.getTableName().name()) != null) {
+        		columnSettings.get(setting.getTableName().name()).add(setting);
+        		setting.setUser(null); // no need to pass the details
+        	} else {
+        		throw new EntityNotFoundException("Setting table name " + setting.getTableName().name() + " does not exist!");
+        	}
+        }
+        
+        return new ResponseEntity<SuccessResponse>(
+    			new SuccessResponse (columnSettings, "column settings retrieved"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "update setting", security = { @SecurityRequirement(name = "bearer-key") })
