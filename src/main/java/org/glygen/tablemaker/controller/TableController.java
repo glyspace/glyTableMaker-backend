@@ -1,5 +1,7 @@
 package org.glygen.tablemaker.controller;
 
+import java.awt.geom.AffineTransform;
+import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -350,7 +352,7 @@ public class TableController {
 			try {
 				// create the file
 				if (table.getFileFormat() == FileFormat.EXCEL) {
-					writeToExcel (rows, cartoons, newFile, "TableMaker");
+					writeToExcel (rows, cartoons, newFile, "TableMaker", table.getImageScale());
 				} else {
 					writeToCSV(rows, newFile);
 				}
@@ -391,7 +393,7 @@ public class TableController {
 	    }
 	}
 
-	public static void writeToExcel(List<String[]> rows, Map<String, byte[]> cartoons, File newFile, String sheetName) throws IOException {
+	public static void writeToExcel(List<String[]> rows, Map<String, byte[]> cartoons, File newFile, String sheetName, Double scale) throws IOException {
 		FileOutputStream excelWriter = new FileOutputStream(newFile);
 		ExcelWriterHelper helper = new ExcelWriterHelper();
 		Workbook workbook = new XSSFWorkbook();
@@ -432,6 +434,7 @@ public class TableController {
         					InputStream is = new ByteArrayInputStream(cartoon);
         			        try {
 								BufferedImage newBi = ImageIO.read(is);
+								if (scale != 1.0) newBi = scale (newBi, scale);
 	        				    helper.writeCellImage(workbook, sheet, i, j-1, newBi, m_lPictures);
 							} catch (Exception e) {
 								logger.warn ("Could not write cartoon for row " + i + " glycan " + glycanId, e);
@@ -454,5 +457,20 @@ public class TableController {
         workbook.write(excelWriter);
         excelWriter.close();
         workbook.close();
+	}
+	
+	private static BufferedImage scale(BufferedImage before, double scale) {
+	    int w = before.getWidth();
+	    int h = before.getHeight();
+	    // Create a new image of the proper size
+	    int w2 = (int) (w * scale);
+	    int h2 = (int) (h * scale);
+	    BufferedImage after = new BufferedImage(w2, h2, BufferedImage.TYPE_INT_ARGB);
+	    AffineTransform scaleInstance = AffineTransform.getScaleInstance(scale, scale);
+	    AffineTransformOp scaleOp 
+	        = new AffineTransformOp(scaleInstance, AffineTransformOp.TYPE_BILINEAR);
+
+	    scaleOp.filter(before, after);
+	    return after;
 	}
 }

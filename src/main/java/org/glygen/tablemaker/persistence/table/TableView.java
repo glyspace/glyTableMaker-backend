@@ -10,6 +10,7 @@ public class TableView {
 	List<TableColumn> columns;
 	FileFormat fileFormat;
 	String filename;
+	Double imageScale = 1.0;
 	
 	public List<Collection> getCollections() {
 		return collections;
@@ -34,6 +35,12 @@ public class TableView {
 	}
 	public void setFilename(String filename) {
 		this.filename = filename;
+	}
+	public Double getImageScale() {
+		return imageScale;
+	}
+	public void setImageScale(Double imageScale) {
+		this.imageScale = imageScale;
 	}
 	
 

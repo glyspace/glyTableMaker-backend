@@ -1761,7 +1761,7 @@ public class DataController {
 	        break;
 		case EXCEL: 
 			try {
-    			TableController.writeToExcel(rows, cartoons, newFile, "Glycans");
+    			TableController.writeToExcel(rows, cartoons, newFile, "Glycans", 1.0);
 	        } catch (IOException e) {
 	        	throw new BadRequestException ("Glycan download failed", e);
 	        }
