@@ -65,7 +65,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVWriter;
 
-import io.jsonwebtoken.lang.Arrays;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -280,7 +279,6 @@ public class TableController {
 						boolean found = false;
 						for (Metadata metadata: c.getMetadata()) {
 							if (metadata.getType().getDatatypeId().equals(col.getDatatype().getDatatypeId())) {
-								found = true;
 								if (col.getType() != null) {
 									switch (col.getType()) {
 									case ID:
@@ -291,7 +289,11 @@ public class TableController {
 											if (metadata.getValueId() == null && col.getDefaultValue() != null) {
 												row[i] = col.getDefaultValue();
 											} else {
-												row[i] = metadata.getValueId();
+												if (!found) {   // first one
+													row[i] = metadata.getValueId();
+												} else {
+													row[i] += "|" + metadata.getValueId();
+												}
 											}
 										}
 										break;
@@ -303,7 +305,11 @@ public class TableController {
 											if (metadata.getValueUri() == null && col.getDefaultValue() != null) {
 												row[i] = col.getDefaultValue();
 											} else {
-												row[i] = metadata.getValueUri();
+												if (!found) {   // first one
+													row[i] = metadata.getValueUri();
+												} else {
+													row[i] += "|" + metadata.getValueUri();
+												}
 											}
 										}
 										break;
@@ -312,7 +318,11 @@ public class TableController {
 										if (metadata.getValue() == null && col.getDefaultValue() != null) {
 											row[i] = col.getDefaultValue();
 										} else {
-											row[i] = metadata.getValue();
+											if (!found) {   // first one
+												row[i] = metadata.getValue();
+											} else {
+												row[i] += "|" + metadata.getValue();
+											}
 										}
 										break;
 									}
@@ -320,10 +330,14 @@ public class TableController {
 									if (metadata.getValue() == null && col.getDefaultValue() != null) {
 										row[i] = col.getDefaultValue();
 									} else {
-										row[i] = metadata.getValue();
+										if (!found) {   // first one
+											row[i] = metadata.getValue();
+										} else {
+											row[i] += "|" + metadata.getValue();
+										}
 									}
 								}
-								break;
+								found = true;
 							}
 						}
 						if (!found) {

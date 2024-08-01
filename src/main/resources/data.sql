@@ -19,10 +19,10 @@ insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid)
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (6, 'Cell line ID', 'From Cellosaurus', 'https://www.glygen.org/datatype/6', FALSE, 7) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (7, 'Disease', 'From Human disease ontology', 'https://www.glygen.org/datatype/7', FALSE, 8) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (8, 'Glycan dictionary term ID', '', 'https://www.glygen.org/datatype/8', FALSE, 1) ON CONFLICT DO NOTHING;
-insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (9, 'has_abundance', 'Are there Numbers associated with the amount present in a sample', 'https://www.glygen.org/datatype/9', FALSE, 9) ON CONFLICT DO NOTHING;
+insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (9, 'has_abundance', 'Are there numbers associated with the amount present in a sample', 'https://www.glygen.org/datatype/9', FALSE, 9) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (10, 'has_expression', 'yes or no', 'https://www.glygen.org/datatype/10', FALSE, 9) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (11, 'Functional annotation/Keyword', '', 'https://www.glygen.org/datatype/11', TRUE, 10) ON CONFLICT DO NOTHING;
-insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (12, 'Experimental technique', '', 'https://www.glygen.org/datatype/12', FALSE, 11) ON CONFLICT DO NOTHING;
+insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (12, 'Experimental technique', '', 'https://www.glygen.org/datatype/12', TRUE, 11) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (13, 'Variant (Fly, yeast, mouse)', 'Gene name and position (if known) as text', 'https://www.glygen.org/datatype/13', FALSE, 1) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (14, 'Organismal/cellular Phenotype', 'HPO (human) https://hpo.jax.org/app/', 'https://www.glygen.org/datatype/14', FALSE, 12) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (15, 'Molecular Phenotype', 'Gene name', 'https://www.glygen.org/datatype/15', FALSE, 1) ON CONFLICT DO NOTHING;
@@ -44,7 +44,7 @@ insert into datatype_category (datatypeid, categoryid) values (14, 1) on conflic
 insert into datatype_category (datatypeid, categoryid) values (15, 1) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid) values (16, 1) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid) values (17, 1) on conflict do nothing;
-insert into tablemakertemplate (templateid, name, description) values (1, 'Glygen', 'Template for submitting glycans to Glygen') on conflict do nothing;
+insert into tablemakertemplate (templateid, name, description) values (1, 'GlyGen', 'Template for submitting glycans to GlyGen') on conflict do nothing;
 insert into table_column (columnid, name, glycancolumn, column_order) values (1, 'GlyTouCan ID', 'GLYTOUCANID',  1) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (2, 'Evidence', 2, 'VALUE', 2) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (3, 'Species', 3, 'ID', 3) ON CONFLICT DO NOTHING;

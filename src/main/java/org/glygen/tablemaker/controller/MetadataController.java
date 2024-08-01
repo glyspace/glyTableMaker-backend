@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.apache.commons.collections4.trie.PatriciaTrie;
+import org.glygen.tablemaker.config.NamespaceHandler;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
@@ -14,6 +16,7 @@ import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.service.MetadataManager;
+import org.glygen.tablemaker.view.NamespaceEntry;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,10 +61,35 @@ public class MetadataController {
 	@Operation(summary = "Get datatype categories", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcategories")
     public ResponseEntity<SuccessResponse> getCategories() {
-    	
+		// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
 		List<DatatypeCategory> categories = datatypeCategoryRepository.findAll();
+		List<DatatypeCategory> userCategories = new ArrayList<>();
+		// only return the default one and the user's own
+		for (DatatypeCategory c: categories) {
+			if (c.getUser() == null || c.getUser().getUserId() == user.getUserId()) {
+				userCategories.add(c);
+				for (Datatype d: c.getDataTypes()) {
+					if (d.getNamespace().getFileIdentifier() != null && !d.getNamespace().getHasId() && !d.getNamespace().getHasUri()) {
+						// populate allowed values
+						d.setAllowedValues(new ArrayList<>());
+						PatriciaTrie<NamespaceEntry> trie = NamespaceHandler.getTrieForNamespace(d.getNamespace().getFileIdentifier());
+						if (trie != null) {
+							java.util.Collection<NamespaceEntry> allValues = trie.values();
+							for (NamespaceEntry entry: allValues) {
+								d.getAllowedValues().add(entry.getLabel());
+							}
+						}
+					}
+				}
+			} 
+		}
     	return new ResponseEntity<SuccessResponse>(
-    			new SuccessResponse (categories, "datatype categories retrieved"), HttpStatus.OK);
+    			new SuccessResponse (userCategories, "datatype categories retrieved"), HttpStatus.OK);
     	
     }
 	

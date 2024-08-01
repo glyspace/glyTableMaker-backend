@@ -1,5 +1,7 @@
 package org.glygen.tablemaker.persistence.glycan;
 
+import java.util.List;
+
 import org.glygen.tablemaker.persistence.UserEntity;
 
 import jakarta.persistence.Column;
@@ -12,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Transient;
 
 @Entity
 public class Datatype {
@@ -22,6 +25,7 @@ public class Datatype {
     Namespace namespace;
     UserEntity user;
     Boolean multiple = false;
+    List<String> allowedValues;
     
     /**
      * @return the id
@@ -113,6 +117,14 @@ public class Datatype {
 	}
 	public void setMultiple(Boolean multiple) {
 		this.multiple = multiple;
+	}
+	
+	@Transient
+	public List<String> getAllowedValues() {
+		return allowedValues;
+	}
+	public void setAllowedValues(List<String> allowedValues) {
+		this.allowedValues = allowedValues;
 	}
 
 }
