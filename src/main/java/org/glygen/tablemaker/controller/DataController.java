@@ -728,9 +728,9 @@ public class DataController {
     
     @Operation(summary = "Delete the given file upload", security = { @SecurityRequirement(name = "bearer-key") })
     @RequestMapping(value="/deletefileupload/{uploadId}", method = RequestMethod.DELETE)
-    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Collection deleted successfully"), 
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="file upload deleted successfully"), 
             @ApiResponse(responseCode="401", description="Unauthorized"),
-            @ApiResponse(responseCode="403", description="Not enough privileges to delete collections"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to delete file uploads"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
     public ResponseEntity<SuccessResponse> deleteBatchUpload (
@@ -747,8 +747,10 @@ public class DataController {
         if (found.isEmpty()) {
         	throw new IllegalArgumentException("Could not find upload entry with the given id (" + uploadId + ") for this user");
         }
-        uploadRepository.deleteById(uploadId);
-        return new ResponseEntity<>(new SuccessResponse(uploadId, "Collection deleted successfully"), HttpStatus.OK);
+        
+        BatchUploadEntity toDelete = found.get(0);
+        glycanManager.deleteBatchUpload(toDelete);
+        return new ResponseEntity<>(new SuccessResponse(uploadId, "File upload deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Send error report email", 

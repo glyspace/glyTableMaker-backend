@@ -7,10 +7,13 @@ import java.util.List;
 import java.util.Set;
 
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
+import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
+import org.glygen.tablemaker.persistence.dao.GlycanInFileRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanTagRepository;
+import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
@@ -25,11 +28,15 @@ public class GlycanManagerImpl implements GlycanManager {
 	final private GlycanRepository glycanRepository;
 	final private GlycanTagRepository glycanTagRepository;
 	final private BatchUploadRepository uploadRepository;
+	final private GlycanInFileRepository glycanInFileRepository;
+	final private UploadErrorRepository uploadErrorRepository;
     
-    public GlycanManagerImpl(GlycanTagRepository glycanTagRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository) {
+    public GlycanManagerImpl(GlycanTagRepository glycanTagRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, GlycanInFileRepository glycanInFileRepository, UploadErrorRepository uploadErrorRepository) {
 		this.glycanRepository = glycanRepository;
 		this.glycanTagRepository = glycanTagRepository;
 		this.uploadRepository = uploadRepository;
+		this.glycanInFileRepository = glycanInFileRepository;
+		this.uploadErrorRepository = uploadErrorRepository;
 	}
     
 	@Override
@@ -97,5 +104,18 @@ public class GlycanManagerImpl implements GlycanManager {
 		glycan.setTags(newTagList);
 		glycanRepository.save(glycan);
 		
+	}
+	
+	@Override
+	public void deleteBatchUpload (BatchUploadEntity upload) {
+		for (GlycanInFile g: upload.getGlycans()) {
+			glycanInFileRepository.delete(g);
+			g.setUploadFile(null);
+		}
+		for (UploadErrorEntity e: upload.getErrors()) {
+			uploadErrorRepository.delete(e);
+			e.setUpload(null);
+		}
+		uploadRepository.delete(upload);
 	}
 }

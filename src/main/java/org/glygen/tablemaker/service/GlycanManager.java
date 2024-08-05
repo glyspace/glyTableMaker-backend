@@ -13,4 +13,5 @@ public interface GlycanManager {
 	List<GlycanTag> getTags(UserEntity user);
 	Glycan addUploadToGlycan(Glycan glycan, BatchUploadEntity upload, Boolean isNew, UserEntity user);
 	void setGlycanTags (Glycan glycan, List<String> tags, UserEntity user);
+	void deleteBatchUpload(BatchUploadEntity upload);
 }

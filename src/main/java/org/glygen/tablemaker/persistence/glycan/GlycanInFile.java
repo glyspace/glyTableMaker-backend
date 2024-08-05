@@ -53,7 +53,7 @@ public class GlycanInFile {
      * @return the batchuploadentity
      */
     @JsonIgnore
-    @ManyToOne(targetEntity = BatchUploadEntity.class)
+    @ManyToOne
     @JoinColumn(name = "glycan_file_upload_id")
 	public BatchUploadEntity getUploadFile() {
 		return uploadFile;

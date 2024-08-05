@@ -116,7 +116,7 @@ public class BatchUploadEntity {
 		this.format = format;
 	}
 
-	@OneToMany(mappedBy = "uploadFile")
+	@OneToMany(mappedBy = "uploadFile", cascade = CascadeType.ALL, orphanRemoval = true)
 	public Collection<GlycanInFile> getGlycans() {
 		return glycans;
 	}
