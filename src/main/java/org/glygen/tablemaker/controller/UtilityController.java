@@ -164,8 +164,10 @@ public class UtilityController {
 				trie = NamespaceHandler.getTrieForNamespace(entity.getFileIdentifier());
 				if (trie != null) {
 					Entry<String, NamespaceEntry> entry = trie.select(meta.getValue().toLowerCase());
-					meta.setValue(entry.getValue().getLabel());
-					meta.setValueUri(entry.getValue().getUri());
+					if (entry.getKey().toLowerCase().equals(meta.getValue().toLowerCase())) {
+						meta.setValue(entry.getValue().getLabel());
+						meta.setValueUri(entry.getValue().getUri());
+					}
 				}
             } else {
             	logger.warn ("namespace file cannot be located: " + entity.getNamespaceId());
@@ -269,10 +271,10 @@ public class UtilityController {
 			} else if (namespace.getFileIdentifier() != null) {
 				PatriciaTrie<NamespaceEntry> trie = NamespaceHandler.getTrieForNamespace(namespace.getFileIdentifier());
 				Entry<String, NamespaceEntry> entry = trie.select(meta.getValue().toLowerCase());
-				if (entry == null) {
+				if (entry == null || !entry.getKey().toLowerCase().equals(meta.getValue().toLowerCase())) {
 					valid = false;
 					detailMessage = "Value must be selected from suggestions";
-				}
+				} 
 			} else {
 				// error
 				throw new IllegalArgumentException ("Namespace is not valid for the given metadata");
