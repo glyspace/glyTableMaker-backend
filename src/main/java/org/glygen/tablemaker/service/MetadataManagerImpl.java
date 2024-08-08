@@ -9,6 +9,8 @@ import org.glygen.tablemaker.persistence.dao.DatatypeRepository;
 import org.glygen.tablemaker.persistence.dao.MetadataRepository;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
+import org.glygen.tablemaker.persistence.glycan.DatatypeCategoryPK;
+import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.springframework.stereotype.Service;
@@ -30,15 +32,30 @@ public class MetadataManagerImpl implements MetadataManager {
 	}
 
 	@Override
-	public Datatype addDatatypeToCategory(Datatype d, DatatypeCategory cat) {
+	public Datatype addDatatypeToCategory(Datatype d, DatatypeCategory cat, Boolean mandatory) {
 		if (cat.getDataTypes() == null) {
 			cat.setDataTypes(new ArrayList<>());
 		}
 		Datatype saved = datatypeRepository.save(d);
     	saved.setUri(d.getUri()+saved.getDatatypeId());
     	datatypeRepository.save(saved);
-    	if (!cat.getDataTypes().contains(saved)) {
-    		cat.getDataTypes().add(saved);
+    	boolean exists = false;
+    	for (DatatypeInCategory dc: cat.getDataTypes()) {
+    		if (dc.getDatatype().equals(saved)) {
+    			exists = true;
+    			break;
+    		}
+    	}
+    	if (!exists) {
+    		DatatypeInCategory dc = new DatatypeInCategory();
+    		dc.setDatatype(saved);
+    		dc.setCategory(cat);
+    		dc.setMandatory(mandatory);
+    		DatatypeCategoryPK id = new DatatypeCategoryPK();
+    		id.setCategory(cat);
+    		id.setDatatype(d);
+    		dc.setId(id);
+    		cat.getDataTypes().add(dc);
     		datatypeCategoryRepository.save(cat);
     	}
 		return saved;
@@ -47,10 +64,7 @@ public class MetadataManagerImpl implements MetadataManager {
 	@Override
 	public void deleteDatatypeCategory(DatatypeCategory cat) {
 		if (cat != null) {
-			// delete datatypes
-	        for (Datatype d: cat.getDataTypes()) {
-	        	datatypeRepository.delete(d);
-	        }
+			cat.getDataTypes().clear();
 	        datatypeCategoryRepository.deleteById(cat.getCategoryId());
 		}
 	}
@@ -63,9 +77,15 @@ public class MetadataManagerImpl implements MetadataManager {
 	@Override
 	public void deleteDatatype(Datatype dat) {
 		// find the category for the datatype
-		List<DatatypeCategory> categories = datatypeCategoryRepository.findByDataTypes_datatypeId(dat.getDatatypeId());
+		List<DatatypeCategory> categories = datatypeCategoryRepository.findByDataTypes_datatype_datatypeId(dat.getDatatypeId());
 		for (DatatypeCategory cat: categories) {
-			cat.getDataTypes().remove(dat);
+			List<DatatypeInCategory> toRemove = new ArrayList<>();
+			for (DatatypeInCategory dc: cat.getDataTypes()) {
+	    		if (dc.getDatatype().equals(dat)) {
+	    			toRemove.add(dc);
+	    		}
+			}
+			cat.getDataTypes().removeAll(toRemove);
 			datatypeCategoryRepository.save(cat);
 		}
 		// find metadata using this datatype and delete them as well

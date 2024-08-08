@@ -10,12 +10,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(name="Category")
@@ -24,7 +22,7 @@ public class DatatypeCategory {
     Long categoryId;
     String name;
     String description;
-    java.util.Collection<Datatype> dataTypes;
+    java.util.Collection<DatatypeInCategory> dataTypes;
     UserEntity user;
     
     /**
@@ -72,19 +70,14 @@ public class DatatypeCategory {
     /**
      * @return the dataTypes
      */
-    @ManyToMany(fetch=FetchType.EAGER, cascade=CascadeType.MERGE)
-    @JoinTable(name = "datatype_category", joinColumns = { 
-            @JoinColumn(name = "categoryid", nullable = false) }, 
-            inverseJoinColumns = { @JoinColumn(name = "datatypeid", 
-                    nullable = false) }, uniqueConstraints={
-            @UniqueConstraint(columnNames = {"datatypeid", "categoryid"})})
-    public java.util.Collection<Datatype> getDataTypes() {
+    @OneToMany(mappedBy = "category", cascade=CascadeType.ALL, orphanRemoval = true)
+    public java.util.Collection<DatatypeInCategory> getDataTypes() {
         return dataTypes;
     }
     /**
      * @param dataTypes the dataTypes to set
      */
-    public void setDataTypes(java.util.Collection<Datatype> dataTypes) {
+    public void setDataTypes(java.util.Collection<DatatypeInCategory> dataTypes) {
         this.dataTypes = dataTypes;
     }
     

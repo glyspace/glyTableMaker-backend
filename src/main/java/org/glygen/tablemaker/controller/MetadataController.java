@@ -14,8 +14,11 @@ import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
+import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.service.MetadataManager;
+import org.glygen.tablemaker.view.DatatypeCategoryView;
+import org.glygen.tablemaker.view.DatatypeView;
 import org.glygen.tablemaker.view.NamespaceEntry;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.springframework.http.HttpStatus;
@@ -68,12 +71,14 @@ public class MetadataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
 		List<DatatypeCategory> categories = datatypeCategoryRepository.findAll();
-		List<DatatypeCategory> userCategories = new ArrayList<>();
+		List<DatatypeCategoryView> userCategories = new ArrayList<>();
 		// only return the default one and the user's own
 		for (DatatypeCategory c: categories) {
 			if (c.getUser() == null || c.getUser().getUserId() == user.getUserId()) {
-				userCategories.add(c);
-				for (Datatype d: c.getDataTypes()) {
+				DatatypeCategoryView cv = new DatatypeCategoryView(c);
+				userCategories.add(cv);
+				for (DatatypeInCategory dc: c.getDataTypes()) {
+					Datatype d = dc.getDatatype();
 					if (d.getNamespace().getFileIdentifier() != null && !d.getNamespace().getHasId() && !d.getNamespace().getHasUri()) {
 						// populate allowed values
 						d.setAllowedValues(new ArrayList<>());
@@ -85,6 +90,9 @@ public class MetadataController {
 							}
 						}
 					}
+					DatatypeView dv = new DatatypeView(d);
+					dv.setMandatory(dc.getMandatory());
+					cv.getDataTypes().add(dv);
 				}
 			} 
 		}
@@ -99,6 +107,9 @@ public class MetadataController {
     		@Parameter(required=true, description="the created datatype is assigned to the given category")
     		@RequestParam("categoryid")
     		Long categoryId, 
+    		@Parameter(required=false, description="is the created datatype mandatory for the given category")
+    		@RequestParam(name="mandatory", required=false)
+    		Boolean mandatory, 
     		@Valid @RequestBody Datatype d) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -120,7 +131,7 @@ public class MetadataController {
     		Optional<DatatypeCategory> category = datatypeCategoryRepository.findById(categoryId);
     		DatatypeCategory cat = category.get();
     		d.setDatatypeId(null); // needs to be a new datatype
-    		Datatype saved = metadataManager.addDatatypeToCategory (d, cat);
+    		Datatype saved = metadataManager.addDatatypeToCategory (d, cat, (mandatory == null ? false: mandatory));   
     		return new ResponseEntity<>(new SuccessResponse(saved, "datatype added to given category"), HttpStatus.OK);
     	} else {
 	    	Datatype saved = datatypeRepository.save(d);
@@ -190,7 +201,7 @@ public class MetadataController {
     		@Parameter(required=false, description="the created datatype is assigned to the given category")
     		@RequestParam(required=false, name="categoryid")
     		Long categoryId, 
-    		@Valid @RequestBody Datatype d) {
+    		@Valid @RequestBody DatatypeView d) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -218,15 +229,21 @@ public class MetadataController {
         
         if (categoryId != null) {
         	// find existing datatype
-        	List<DatatypeCategory> catList = datatypeCategoryRepository.findByDataTypes_datatypeId(existing.getDatatypeId());
+        	List<DatatypeCategory> catList = datatypeCategoryRepository.findByDataTypes_datatype_datatypeId(existing.getDatatypeId());
         	DatatypeCategory existingCat = catList.get(0);
         	if (existingCat.getCategoryId() != categoryId) {
         		// changing the category
-        		existingCat.getDataTypes().remove(existing);
+        		List<DatatypeInCategory> toRemove = new ArrayList<>();
+    			for (DatatypeInCategory dc: existingCat.getDataTypes()) {
+    	    		if (dc.getDatatype().equals(existing)) {
+    	    			toRemove.add(dc);
+    	    		}
+    			}
+    			existingCat.getDataTypes().removeAll(toRemove);
         	}
     		Optional<DatatypeCategory> category = datatypeCategoryRepository.findById(categoryId);
     		DatatypeCategory cat = category.get();
-    		Datatype saved = metadataManager.addDatatypeToCategory (existing, cat);
+    		Datatype saved = metadataManager.addDatatypeToCategory (existing, cat, d.getMandatory());  
     		datatypeCategoryRepository.save(existingCat);
     		return new ResponseEntity<>(new SuccessResponse(saved, "datatype updated to given category"), HttpStatus.OK);
     	} else {
