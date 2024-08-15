@@ -22,6 +22,8 @@ public class Datatype {
     String uri;
     String name;
     String description;
+    String example;
+    String wikiUrl;
     Namespace namespace;
     UserEntity user;
     Boolean multiple = false;
@@ -125,6 +127,22 @@ public class Datatype {
 	}
 	public void setAllowedValues(List<String> allowedValues) {
 		this.allowedValues = allowedValues;
+	}
+	
+	@Column (length=4000)
+	public String getExample() {
+		return example;
+	}
+	public void setExample(String example) {
+		this.example = example;
+	}
+	
+	@Column (length=4000)
+	public String getWikiUrl() {
+		return wikiUrl;
+	}
+	public void setWikiUrl(String wikiUrl) {
+		this.wikiUrl = wikiUrl;
 	}
 
 }

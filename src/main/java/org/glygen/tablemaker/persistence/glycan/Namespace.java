@@ -14,6 +14,7 @@ public class Namespace {
 	
 	Long namespaceId;
 	String name;
+	String description;
 	String dictionary;
 	Boolean hasUri = false;
 	Boolean hasId = false;
@@ -70,6 +71,11 @@ public class Namespace {
 		this.fileIdentifier = fileIdentifier;
 	}
 	
-	
-
+	@Column(length=4000)
+	public String getDescription() {
+		return description;
+	}
+	public void setDescription(String description) {
+		this.description = description;
+	}
 }

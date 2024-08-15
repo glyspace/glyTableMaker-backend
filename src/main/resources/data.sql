@@ -1,6 +1,6 @@
-insert into Namespace (namespaceid, name, dictionary) values (1, 'String', null) ON CONFLICT DO NOTHING; 
-insert into Namespace (namespaceid, name, dictionary) values (2, 'Integer', null) ON CONFLICT DO NOTHING; 
-insert into Namespace (namespaceid, name, dictionary) values (3, 'Double', null) ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary, description) values (1, 'String', null, 'Free text') ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary, description) values (2, 'Integer', null, 'Whole numbers only') ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary, description) values (3, 'Double', null, 'Floating-point numbers, which are numbers with a decimal point that can be expressed as a fraction') ON CONFLICT DO NOTHING; 
 insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentifier) values (4, 'NCBI Taxonomy', 'https://www.ncbi.nlm.nih.gov/taxonomy', FALSE, TRUE, 'species.txt.gz') ON CONFLICT DO NOTHING; 
 insert into Namespace (namespaceid, name, dictionary) values (5, 'Paper', null) ON CONFLICT DO NOTHING; 
 insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentifier) values (6, 'UBERON', 'http://purl.obolibrary.org/obo/uberon.owl', TRUE, TRUE, 'uberon-base.txt') ON CONFLICT DO NOTHING; 
