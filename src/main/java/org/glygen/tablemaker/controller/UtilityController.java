@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -183,17 +184,7 @@ public class UtilityController {
 		
 	}
 	
-	
-/*	@Operation(summary = "Retrieve canonical forms for given metadata")
-    @RequestMapping(value="/getcanonicalform", method = RequestMethod.POST, 
-            produces={"application/json", "application/xml"})
-    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Return the canonical form, if any"), 
-            @ApiResponse(responseCode="400", description="Invalid request, validation error"),
-            @ApiResponse(responseCode="415", description="Media type is not supported"),
-            @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> getCanonicalForm (
-    		@RequestBody List<Metadata> metadata) {
-		
+    public static void getCanonicalForm (NamespaceRepository namespaceRepository, Collection<Metadata> metadata) {
 		for (Metadata meta: metadata) {
 			String namespace = meta.getType().getNamespace().getName();
    
@@ -204,18 +195,30 @@ public class UtilityController {
 				// find the exact match if exists
 				trie = NamespaceHandler.getTrieForNamespace(entity.getFileIdentifier());
 				if (trie != null) {
-					Entry<String, List<NamespaceEntry>> entry = trie.select(meta.getValue().toLowerCase());
-					if (entry.getKey().toLowerCase().equals(meta.getValue().toLowerCase())) {
-						meta.setValue(entry.getValue().getLabel());
-						meta.setValueUri(entry.getValue().getUri());
+					Entry<String, List<NamespaceEntry>> entries = trie.select(meta.getValue().toLowerCase());
+					if (entries.getKey().toLowerCase().equals(meta.getValue().toLowerCase())) {
+						for (NamespaceEntry entry: entries.getValue()) {
+							if (entry.getLabel().toLowerCase().equals(meta.getValue().toLowerCase())) {
+								meta.setValue(entry.getLabel());
+								meta.setValueUri(entry.getUri());
+								if (meta.getValueUri() != null) {
+			    					// last part of the uri is the id, either ../../<id> or ../../id=<id>
+			    					if (meta.getValueUri().contains("id=")) {
+			    						meta.setValueId (meta.getValueUri().substring(meta.getValueUri().indexOf("id=")+3));
+			    					} else {
+			    						meta.setValueId (meta.getValueUri().substring(meta.getValueUri().lastIndexOf("/")+1));
+			    					}
+			    				}
+							}
+						}
 					}
 				}
             } else {
             	logger.warn ("namespace file cannot be located: " + entity.getNamespaceId());
             }
 		}
-        return new ResponseEntity<SuccessResponse>(new SuccessResponse(metadata, "Canonical forms are replaced"), HttpStatus.OK);
-    }*/
+        
+    }
 	
     public static List<String> getSuggestions (PatriciaTrie<List<NamespaceEntry>> trie, String key, Integer limit) {
         Entry<String, List<NamespaceEntry>> entry = trie.select(key.toLowerCase());
@@ -299,7 +302,7 @@ public class UtilityController {
 				String value = meta.getValue();
 				String[] multiple = value.split("\\|");
 				for (String c: multiple) {
-					String regex1 = "(curatedBy|createdBy|authoredBy|contributedBy):.*\\(.*@.*,\\s*.*\\)";
+					String regex1 = "(curatedBy|createdBy|authoredBy|contributedBy):.*\\(.*@.*,?\\s*.*\\)";
 					String regex2 = "createdWith:.*\\(.*\\)";
 					if (!c.matches(regex1) && !c.matches(regex2)) {
 						valid = false;

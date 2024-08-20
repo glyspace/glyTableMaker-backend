@@ -70,6 +70,7 @@ import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
+import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
 import org.glygen.tablemaker.persistence.dao.TableReportRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
@@ -172,6 +173,7 @@ public class DataController {
     private final EmailManager emailManager;
     final private CollectionManager collectionManager;
     final private TableReportRepository reportRepository;
+    final private NamespaceRepository namespaceRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -182,7 +184,7 @@ public class DataController {
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository,
     		BatchUploadRepository uploadRepository, AsyncService uploadService, 
     		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, 
-    		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, TableReportRepository reportRepository) {
+    		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, TableReportRepository reportRepository, NamespaceRepository namespaceRepository) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
@@ -193,6 +195,7 @@ public class DataController {
 		this.emailManager = emailManager;
 		this.collectionManager = collectionManager;
 		this.reportRepository = reportRepository;
+		this.namespaceRepository = namespaceRepository;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -607,52 +610,35 @@ public class DataController {
             throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
         }
         
-        CollectionView cv = new CollectionView();
-        cv.setCollectionId(existing.getCollectionId());
-    	cv.setName(existing.getName());
-    	cv.setDescription(existing.getDescription());
-    	if (existing.getMetadata() != null) cv.setMetadata(new ArrayList<>(existing.getMetadata()));
-    	if (existing.getTags() != null) cv.setTags(new ArrayList<>(existing.getTags()));
-    	cv.setGlycans(new ArrayList<Glycan>());
-    	for (GlycanInCollection gic: existing.getGlycans()) {
-    		Glycan g = gic.getGlycan();
-    		g.setGlycanCollections(null);
-    		try {
-                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-            } catch (DataNotFoundException e) {
-                // ignore
-                logger.warn ("no image found for glycan " + g.getGlycanId());
-            }
-    		cv.getGlycans().add(g);
-    	}
+        CollectionView cv = createCollectionView (existing);
         
         return new ResponseEntity<>(new SuccessResponse(cv, "collection retrieved"), HttpStatus.OK);
     }
     
-    @Operation(summary = "Get collection of collections by the given id", security = { @SecurityRequirement(name = "bearer-key") })
-    @GetMapping("/getcoc/{collectionId}")
-    public ResponseEntity<SuccessResponse> getCoCById(
-    		@Parameter(required=true, description="id of the collection to be retrieved") 
-    		@PathVariable("collectionId") Long collectionId) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
-        Collection existing = collectionRepository.findByCollectionIdAndUser(collectionId, user);
-        if (existing == null) {
-            throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
-        }
-        
-        CollectionView cv = new CollectionView();
-        cv.setCollectionId(existing.getCollectionId());
-    	cv.setName(existing.getName());
-    	cv.setDescription(existing.getDescription());
-    	if (existing.getTags() != null) cv.setTags(new ArrayList<>(existing.getTags()));
-    	cv.setChildren(new ArrayList<>());
-    	if (existing.getCollections() != null) {
-	    	for (Collection c: existing.getCollections()) {
+    CollectionView createCollectionView (Collection collection) {
+    	CollectionView cv = new CollectionView();
+        cv.setCollectionId(collection.getCollectionId());
+    	cv.setName(collection.getName());
+    	cv.setDescription(collection.getDescription());
+    	if (collection.getMetadata() != null) cv.setMetadata(new ArrayList<>(collection.getMetadata()));
+    	if (collection.getTags() != null) cv.setTags(new ArrayList<>(collection.getTags()));
+    	if (collection.getGlycans() != null && !collection.getGlycans().isEmpty()) {
+    		cv.setGlycans(new ArrayList<Glycan>());
+	    	for (GlycanInCollection gic: collection.getGlycans()) {
+	    		Glycan g = gic.getGlycan();
+	    		g.setGlycanCollections(null);
+	    		try {
+	                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+	            } catch (DataNotFoundException e) {
+	                // ignore
+	                logger.warn ("no image found for glycan " + g.getGlycanId());
+	            }
+	    		cv.getGlycans().add(g);
+	    	}
+    	}
+    	if (collection.getCollections() != null && !collection.getCollections().isEmpty()) {
+    		cv.setChildren(new ArrayList<>());
+	    	for (Collection c: collection.getCollections()) {
 	    		CollectionView child = new CollectionView();
 	    		child.setCollectionId(c.getCollectionId());
 	    		child.setName(c.getName());
@@ -674,10 +660,32 @@ public class DataController {
 	        	cv.getChildren().add(child);
 	    	}
     	}
+    	
+    	return cv;
+    }
+    
+    @Operation(summary = "Get collection of collections by the given id", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getcoc/{collectionId}")
+    public ResponseEntity<SuccessResponse> getCoCById(
+    		@Parameter(required=true, description="id of the collection to be retrieved") 
+    		@PathVariable("collectionId") Long collectionId) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        Collection existing = collectionRepository.findByCollectionIdAndUser(collectionId, user);
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
+        }
+        
+        CollectionView cv = createCollectionView(existing);
         
         return new ResponseEntity<>(new SuccessResponse(cv, "collection retrieved"), HttpStatus.OK);
     }
     
+   
     @Operation(summary = "Get batch uploads", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/checkbatchupload")
     @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Check performed successfully", content = {
@@ -1375,9 +1383,11 @@ public class DataController {
 	    			existing.getMetadata().add(newMetadata);
     			}
     		}
+    		UtilityController.getCanonicalForm (namespaceRepository, existing.getMetadata());
     	}
     	Collection saved = collectionManager.saveCollectionWithMetadata(existing);
-    	return new ResponseEntity<>(new SuccessResponse(saved, "collection updated"), HttpStatus.OK);
+    	CollectionView cv = createCollectionView(saved);
+    	return new ResponseEntity<>(new SuccessResponse(cv, "collection updated"), HttpStatus.OK);
     }
     
     @Operation(summary = "update collection of collections", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1447,8 +1457,9 @@ public class DataController {
     		}
     	}
     	
-    	collectionRepository.save(existing);
-    	return new ResponseEntity<>(new SuccessResponse(c, "collection of collections updated"), HttpStatus.OK);
+    	Collection saved = collectionRepository.save(existing);
+    	CollectionView cv = createCollectionView(saved);
+    	return new ResponseEntity<>(new SuccessResponse(cv, "collection of collections updated"), HttpStatus.OK);
     }
     
     @Operation(summary = "Add glycans from file", security = { @SecurityRequirement(name = "bearer-key") })
