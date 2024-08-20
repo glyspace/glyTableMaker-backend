@@ -82,11 +82,12 @@ public class MetadataController {
 					if (d.getNamespace().getFileIdentifier() != null && !d.getNamespace().getHasId() && !d.getNamespace().getHasUri()) {
 						// populate allowed values
 						d.setAllowedValues(new ArrayList<>());
-						PatriciaTrie<NamespaceEntry> trie = NamespaceHandler.getTrieForNamespace(d.getNamespace().getFileIdentifier());
+						PatriciaTrie<List<NamespaceEntry>> trie = NamespaceHandler.getTrieForNamespace(d.getNamespace().getFileIdentifier());
 						if (trie != null) {
-							java.util.Collection<NamespaceEntry> allValues = trie.values();
-							for (NamespaceEntry entry: allValues) {
-								d.getAllowedValues().add(entry.getLabel());
+							java.util.Collection<List<NamespaceEntry>> allValues = trie.values();
+							for (List<NamespaceEntry> entry: allValues) {
+								if (entry.size() > 0)
+									d.getAllowedValues().add(entry.get(0).getLabel());
 							}
 						}
 					}

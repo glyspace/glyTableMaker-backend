@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +30,7 @@ public class NamespaceHandler {
     private static String resourceFolderName = "namespaces";
     
     //protected static Map<String, String> namespaceFileMapping = new HashMap<>();
-    protected static Map <String, PatriciaTrie<NamespaceEntry>> namespaces = new HashMap<>();
+    protected static Map <String, PatriciaTrie<List<NamespaceEntry>>> namespaces = new HashMap<>();
     
     public static void loadNamespaces(){
         // check the folder and find all namespace files, 
@@ -46,7 +47,7 @@ public class NamespaceHandler {
 	            if(namespaceFile.exists())
 	            {
 	                logger.info("Creating trie from namespace file : " + namespaceFile.getName());
-	                PatriciaTrie<NamespaceEntry> trie = parseNamespaceFile(namespaceFile.getAbsolutePath());
+	                PatriciaTrie<List<NamespaceEntry>> trie = parseNamespaceFile(namespaceFile.getAbsolutePath());
 	                namespaces.put (filename, trie);
 	            }
 	        }
@@ -67,8 +68,8 @@ public class NamespaceHandler {
      * @param filename containing the synonyms
      * @return a PatriciaTrie for searching
      */
-    public static PatriciaTrie<NamespaceEntry> parseNamespaceFile (String filename) {
-        PatriciaTrie<NamespaceEntry> trie = new PatriciaTrie<NamespaceEntry>();
+    public static PatriciaTrie<List<NamespaceEntry>> parseNamespaceFile (String filename) {
+        PatriciaTrie<List<NamespaceEntry>> trie = new PatriciaTrie<List<NamespaceEntry>>();
         
         long startTime = System.currentTimeMillis();
         InputStream inputStream;
@@ -93,7 +94,13 @@ public class NamespaceHandler {
                 entry.setLabel(name);
                 entry.setUri(uri);
                 
-                trie.put (synonym.toLowerCase(), entry); 
+                List<NamespaceEntry> entries = trie.get(synonym.toLowerCase());
+                if (entries == null) {
+                	entries = new ArrayList<>();
+                }
+                entries.add(entry);
+                
+                trie.put (synonym.toLowerCase(), entries); 
             }
             logger.info("Closing inputstream for namespace file");
             inputStream.close();
@@ -117,17 +124,19 @@ public class NamespaceHandler {
      * @param items list of strings
      * @return patriciaTrie to be used in typeahead implementation
      */
-    public static PatriciaTrie<NamespaceEntry> createNamespaceFromList (List<String> items) {
-        PatriciaTrie<NamespaceEntry> trie = new PatriciaTrie<NamespaceEntry>();
+    public static PatriciaTrie<List<NamespaceEntry>> createNamespaceFromList (List<String> items) {
+        PatriciaTrie<List<NamespaceEntry>> trie = new PatriciaTrie<List<NamespaceEntry>>();
         for (String item: items) {
         	NamespaceEntry entry = new NamespaceEntry();
         	entry.setLabel(item);
-            trie.put(item.toLowerCase(), entry);
+        	List<NamespaceEntry> entries = new ArrayList<>();
+        	entries.add(entry);
+            trie.put(item.toLowerCase(), entries);
         }
         return trie;
     }
     
-    public static PatriciaTrie<NamespaceEntry> getTrieForNamespace(String namespace) {
+    public static PatriciaTrie<List<NamespaceEntry>> getTrieForNamespace(String namespace) {
         return namespaces.get(namespace);
     }
 }

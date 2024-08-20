@@ -129,7 +129,7 @@ public class UtilityController {
         namespace = namespace.trim();
         // find the file identifier associated with the given namespace
         Namespace entity = namespaceRepository.findByNameIgnoreCase(namespace);  
-        PatriciaTrie<NamespaceEntry> trie = null;
+        PatriciaTrie<List<NamespaceEntry>> trie = null;
         List<String> suggestions = new ArrayList<>();
         if (entity.getFileIdentifier() != null) {
         	// find the exact match if exists and put it as the first proposal
@@ -150,6 +150,47 @@ public class UtilityController {
             @ApiResponse(responseCode="400", description="Invalid request, validation error"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> getCanonicalForm ( 
+    		@Parameter(required=true, description="Name of the namespace to retrieve matches ")
+    		@RequestParam("namespace")
+    		String namespace, 
+    		@Parameter(required=true, description="value to match") 
+            @RequestParam
+            String value) {
+		
+		// find the file identifier associated with the given namespace
+		Namespace entity = namespaceRepository.findByNameIgnoreCase(namespace);  
+		List<NamespaceEntry> matches = new ArrayList<>();
+		PatriciaTrie<List<NamespaceEntry>> trie = null;
+		if (entity.getFileIdentifier() != null) {
+			// find the exact match if exists
+			trie = NamespaceHandler.getTrieForNamespace(entity.getFileIdentifier());
+			if (trie != null) {
+				Entry<String, List<NamespaceEntry>> entry = trie.select(value.toLowerCase());
+				if (entry.getKey().toLowerCase().equals(value.toLowerCase())) {
+					matches.addAll(entry.getValue());
+				}
+			}
+		} else {
+			/*NamespaceEntry entry = new NamespaceEntry();
+			entry.setLabel(value);
+        	matches.add(entry);*/
+			logger.warn ("namespace file cannot be located: " + entity.getNamespaceId());
+			
+        }
+		
+		return new ResponseEntity<SuccessResponse>(new SuccessResponse(matches, "Canonical forms are returned, if any"), HttpStatus.OK);
+		
+	}
+	
+	
+/*	@Operation(summary = "Retrieve canonical forms for given metadata")
+    @RequestMapping(value="/getcanonicalform", method = RequestMethod.POST, 
+            produces={"application/json", "application/xml"})
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Return the canonical form, if any"), 
+            @ApiResponse(responseCode="400", description="Invalid request, validation error"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
     public ResponseEntity<SuccessResponse> getCanonicalForm (
     		@RequestBody List<Metadata> metadata) {
 		
@@ -158,12 +199,12 @@ public class UtilityController {
    
 			// find the file identifier associated with the given namespace
 			Namespace entity = namespaceRepository.findByNameIgnoreCase(namespace);  
-			PatriciaTrie<NamespaceEntry> trie = null;
+			PatriciaTrie<List<NamespaceEntry>> trie = null;
 			if (entity.getFileIdentifier() != null) {
 				// find the exact match if exists
 				trie = NamespaceHandler.getTrieForNamespace(entity.getFileIdentifier());
 				if (trie != null) {
-					Entry<String, NamespaceEntry> entry = trie.select(meta.getValue().toLowerCase());
+					Entry<String, List<NamespaceEntry>> entry = trie.select(meta.getValue().toLowerCase());
 					if (entry.getKey().toLowerCase().equals(meta.getValue().toLowerCase())) {
 						meta.setValue(entry.getValue().getLabel());
 						meta.setValueUri(entry.getValue().getUri());
@@ -174,19 +215,19 @@ public class UtilityController {
             }
 		}
         return new ResponseEntity<SuccessResponse>(new SuccessResponse(metadata, "Canonical forms are replaced"), HttpStatus.OK);
-    }
+    }*/
 	
-    public static List<String> getSuggestions (PatriciaTrie<NamespaceEntry> trie, String key, Integer limit) {
-        Entry<String, NamespaceEntry> entry = trie.select(key.toLowerCase());
-        SortedMap<String, NamespaceEntry> resultMap = trie.prefixMap(key.toLowerCase());
+    public static List<String> getSuggestions (PatriciaTrie<List<NamespaceEntry>> trie, String key, Integer limit) {
+        Entry<String, List<NamespaceEntry>> entry = trie.select(key.toLowerCase());
+        SortedMap<String, List<NamespaceEntry>> resultMap = trie.prefixMap(key.toLowerCase());
         List<String> result = new ArrayList<>();
         int i=0;
         if (entry != null && !resultMap.containsKey(entry.getKey())) {
             result.add(entry.getKey());
             i++;
         }
-        for (Iterator<Entry<String, NamespaceEntry>> iterator = resultMap.entrySet().iterator(); iterator.hasNext();) {
-            Entry<String, NamespaceEntry> match = iterator.next();
+        for (Iterator<Entry<String, List<NamespaceEntry>>> iterator = resultMap.entrySet().iterator(); iterator.hasNext();) {
+            Entry<String, List<NamespaceEntry>> match = iterator.next();
             if (limit != null && i >= limit)
                 break;
             if (!result.contains(match.getKey())) {
@@ -269,8 +310,8 @@ public class UtilityController {
 				}
 				
 			} else if (namespace.getFileIdentifier() != null) {
-				PatriciaTrie<NamespaceEntry> trie = NamespaceHandler.getTrieForNamespace(namespace.getFileIdentifier());
-				Entry<String, NamespaceEntry> entry = trie.select(meta.getValue().toLowerCase());
+				PatriciaTrie<List<NamespaceEntry>> trie = NamespaceHandler.getTrieForNamespace(namespace.getFileIdentifier());
+				Entry<String, List<NamespaceEntry>> entry = trie.select(meta.getValue().toLowerCase());
 				if (entry == null || !entry.getKey().toLowerCase().equals(meta.getValue().toLowerCase())) {
 					valid = false;
 					detailMessage = "Value must be selected from suggestions";
