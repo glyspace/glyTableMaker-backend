@@ -184,6 +184,21 @@ public class UtilityController {
 		
 	}
 	
+	@Operation(summary = "Retrieve canonical forms for given metadata")
+    @RequestMapping(value="/getallcanonicalforms", method = RequestMethod.POST, 
+            produces={"application/json", "application/xml"})
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Replace metadata values with their canonical forms, if any"), 
+            @ApiResponse(responseCode="400", description="Invalid request, validation error"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> getAllCanonicalForms ( 
+    		@RequestBody List<Metadata> metadata) {
+		getCanonicalForm(namespaceRepository, metadata);
+		return new ResponseEntity<SuccessResponse>(new SuccessResponse(metadata, "Canonical forms are replaced"), HttpStatus.OK);
+	}
+		
+	
+	
     public static void getCanonicalForm (NamespaceRepository namespaceRepository, Collection<Metadata> metadata) {
 		for (Metadata meta: metadata) {
 			String namespace = meta.getType().getNamespace().getName();
