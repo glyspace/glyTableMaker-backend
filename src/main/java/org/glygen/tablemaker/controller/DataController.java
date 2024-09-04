@@ -68,12 +68,16 @@ import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
+import org.glygen.tablemaker.persistence.dao.DatasetRepository;
+import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
 import org.glygen.tablemaker.persistence.dao.TableReportRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
+import org.glygen.tablemaker.persistence.dataset.Dataset;
+import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
@@ -84,11 +88,8 @@ import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
-import org.glygen.tablemaker.persistence.table.FileFormat;
-import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableReport;
 import org.glygen.tablemaker.persistence.table.TableReportDetail;
-import org.glygen.tablemaker.persistence.table.TableView;
 import org.glygen.tablemaker.service.AsyncService;
 import org.glygen.tablemaker.service.CollectionManager;
 import org.glygen.tablemaker.service.EmailManager;
@@ -97,6 +98,7 @@ import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.SequenceUtils;
 import org.glygen.tablemaker.view.CollectionView;
+import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.FileWrapper;
 import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.GlycanView;
@@ -174,6 +176,7 @@ public class DataController {
     final private CollectionManager collectionManager;
     final private TableReportRepository reportRepository;
     final private NamespaceRepository namespaceRepository;
+    final private DatasetRepository datasetRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -184,7 +187,7 @@ public class DataController {
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository,
     		BatchUploadRepository uploadRepository, AsyncService uploadService, 
     		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, 
-    		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, TableReportRepository reportRepository, NamespaceRepository namespaceRepository) {
+    		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, TableReportRepository reportRepository, NamespaceRepository namespaceRepository, DatasetRepository datasetRepository) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
@@ -196,6 +199,7 @@ public class DataController {
 		this.collectionManager = collectionManager;
 		this.reportRepository = reportRepository;
 		this.namespaceRepository = namespaceRepository;
+		this.datasetRepository = datasetRepository;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -591,6 +595,126 @@ public class DataController {
         response.put("totalPages", collectionsInPage.getTotalPages());
         
         return new ResponseEntity<>(new SuccessResponse(response, "collections of collections retrieved"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Get user's public datasets", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getdatasets")
+    public ResponseEntity<SuccessResponse> getDatasets(
+            @RequestParam("start")
+            Integer start, 
+            @RequestParam("size")
+            Integer size,
+            @RequestParam("filters")
+            String filters,
+            @RequestParam("globalFilter")
+            String globalFilter,
+            @RequestParam("sorting")
+            String sorting) {
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+      
+        // parse filters and sorting
+        ObjectMapper mapper = new ObjectMapper();
+        List<Filter> filterList = null;
+        if (filters != null && !filters.equals("[]")) {
+            try {
+                filterList = mapper.readValue(filters, 
+                    new TypeReference<ArrayList<Filter>>() {});
+            } catch (JsonProcessingException e) {
+                throw new InternalError("filter parameter is invalid " + filters, e);
+            }
+        }
+        List<Sorting> sortingList = null;
+        List<Order> sortOrders = new ArrayList<>();
+        if (sorting != null && !sorting.equals("[]")) {
+            try {
+                sortingList = mapper.readValue(sorting, 
+                    new TypeReference<ArrayList<Sorting>>() {});
+                for (Sorting s: sortingList) {
+                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                }
+            } catch (JsonProcessingException e) {
+                throw new InternalError("sorting parameter is invalid " + sorting, e);
+            }
+        }
+        
+        // apply filters
+        List<DatasetSpecification> specificationList = new ArrayList<>();
+        if (filterList != null) {
+	        for (Filter f: filterList) {
+	        	DatasetSpecification spec = new DatasetSpecification(f);
+	        	specificationList.add(spec);
+	        }
+        }
+        
+        if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+        	specificationList.add(new DatasetSpecification(new Filter ("name", globalFilter)));
+        	specificationList.add(new DatasetSpecification(new Filter ("datasetIdentifier", globalFilter)));
+        }
+        
+        Specification<Dataset> spec = null;
+        if (!specificationList.isEmpty()) {
+        	spec = specificationList.get(0);
+        	for (int i=1; i < specificationList.size(); i++) {
+        		spec = Specification.where(spec).or(specificationList.get(i)); 
+        	}
+        	
+        	spec = Specification.where(spec).and(DatasetSpecification.hasUserWithId(user.getUserId()));
+        }
+        
+        Page<Dataset> datasetsInPage = null;
+        if (spec != null) {
+        	try {
+        		datasetsInPage = datasetRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
+        	} catch (Exception e) {
+        		logger.error(e.getMessage(), e);
+        		throw e;
+        	}
+        } else {
+        	datasetsInPage = datasetRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
+        }
+        
+        List<DatasetView> datasets = new ArrayList<>();
+        for (Dataset d: datasetsInPage.getContent()) {
+        	DatasetView dv = new DatasetView();
+        	dv.setId(d.getDatasetId());
+        	dv.setDatasetIdentifier(d.getDatasetIdentifier());
+        	dv.setName(d.getName());
+        	dv.setDescription(d.getDescription());
+        	dv.setRetracted(d.getRetracted());
+        	dv.setDateCreated(d.getDateCreated());
+        	dv.setUser(d.getUser());
+        	if (d.getAssociatedDatasources() != null) dv.setAssociatedDatasources(new ArrayList<>(d.getAssociatedDatasources()));
+        	if (d.getGrants() != null) dv.setGrants(new ArrayList<>(d.getGrants()));
+        	if (d.getAssociatedPapers() != null) dv.setAssociatedPapers(new ArrayList<>(d.getAssociatedPapers()));
+        	if (d.getIntegratedIn() != null) dv.setIntegratedIn(new ArrayList<>(d.getIntegratedIn()));
+        	if (d.getPublications() != null) dv.setPublications(new ArrayList<>(d.getPublications()));
+        	
+        	for (DatasetVersion version : d.getVersions()) {
+        		if (version.getHead()) {
+        			dv.setVersion(version.getVersion());
+        			dv.setVersionDate(version.getVersionDate());
+        			dv.setVersionComment(version.getComment());
+        			if (version.getData() != null) dv.setData(new ArrayList<>(version.getData()));
+        			if (version.getErrors() != null) dv.setErrors(new ArrayList<>(version.getErrors()));
+        			break;
+        		}
+        	}
+        	
+        	datasets.add(dv);
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("objects", datasets);
+        response.put("currentPage", datasetsInPage.getNumber());
+        response.put("totalItems", datasetsInPage.getTotalElements());
+        response.put("totalPages", datasetsInPage.getTotalPages());
+        
+        return new ResponseEntity<>(new SuccessResponse(response, "datasets retrieved"), HttpStatus.OK);
     }
     
     
