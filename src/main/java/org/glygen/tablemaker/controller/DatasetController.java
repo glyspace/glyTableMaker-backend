@@ -12,6 +12,8 @@ import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetError;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
+import org.glygen.tablemaker.view.CollectionView;
+import org.glygen.tablemaker.view.DatasetInputView;
 import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.Sorting;
@@ -28,6 +30,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,6 +42,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/dataset")
@@ -172,6 +177,20 @@ public class DatasetController {
         return new ResponseEntity<>(new SuccessResponse(response, "datasets retrieved"), HttpStatus.OK);
     }
 	
+	@Operation(summary = "Publish dataset", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/publishdataset")
+    public ResponseEntity<SuccessResponse> publishDataset(@Valid @RequestBody DatasetInputView d) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        //TODO save the dataset
+        
+        return new ResponseEntity<>(new SuccessResponse(d, "dataset has been published"), HttpStatus.OK);
+	}
 	@Operation(summary = "Get errors according to GlyGen template for the given collection", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/checkcollectionforerrors")
     public ResponseEntity<SuccessResponse> getDatasets(
