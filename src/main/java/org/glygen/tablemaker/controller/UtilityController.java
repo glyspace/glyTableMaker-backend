@@ -10,22 +10,26 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-import java.util.SortedMap;
 import java.util.Map.Entry;
-
+import java.util.SortedMap;
 
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.glygen.tablemaker.config.NamespaceHandler;
 import org.glygen.tablemaker.persistence.FeedbackEntity;
 import org.glygen.tablemaker.persistence.dao.FeedbackRepository;
+import org.glygen.tablemaker.persistence.dao.LicenseRepository;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
+import org.glygen.tablemaker.persistence.dataset.License;
+import org.glygen.tablemaker.persistence.dataset.Publication;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.Namespace;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.service.EmailManager;
+import org.glygen.tablemaker.util.pubmed.DOIUtil;
+import org.glygen.tablemaker.util.pubmed.DTOPublication;
+import org.glygen.tablemaker.util.pubmed.PubmedUtil;
 import org.glygen.tablemaker.view.NamespaceEntry;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.slf4j.Logger;
@@ -33,7 +37,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,7 +51,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
 @RestController
@@ -62,11 +64,13 @@ public class UtilityController {
 	private final NamespaceRepository namespaceRepository;
 	private final FeedbackRepository feedbackRepository;
 	private final EmailManager emailManager;
+	private final LicenseRepository licenseRepository;
 	
-	public UtilityController(NamespaceRepository namespaceRepository, FeedbackRepository feedbackRepository, EmailManager emailManager) {
+	public UtilityController(NamespaceRepository namespaceRepository, FeedbackRepository feedbackRepository, EmailManager emailManager, LicenseRepository licenseRepository) {
 		this.namespaceRepository = namespaceRepository;
 		this.feedbackRepository = feedbackRepository;
 		this.emailManager = emailManager;
+		this.licenseRepository = licenseRepository;
 	}
 	
 	@Operation(summary = "Get all namespaces")
@@ -397,5 +401,71 @@ public class UtilityController {
         
         return new ResponseEntity<>(new SuccessResponse(feedback, "Feedback is sent"), HttpStatus.OK);
     }
-
+	
+	@Operation(summary = "Retrieve publication details from Pubmed with the given pubmed id")
+    @RequestMapping(value="/getpublication", method = RequestMethod.GET)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Publication retrieved successfully"), 
+            @ApiResponse(responseCode="404", description="Publication with given id does not exist"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> getPublicationDetails (
+            @Parameter(required=true, description="pubmed id or doi number for the publication", example="111 or doi:10.14454/FXWS-0523") 
+            @RequestParam("identifier") String identifier) {
+        if (identifier == null) {
+            throw new IllegalArgumentException("Invalid Input: Not a valid publication information");
+        }
+        if (identifier.toLowerCase().startsWith("doi:")) {
+        	// retrieve by Doi number
+        	String doiid = identifier.toLowerCase().substring(identifier.toLowerCase().indexOf("doi:")+4);
+        	try {
+        		DTOPublication pub = new DOIUtil().getPublication(doiid);
+        		if (pub == null) {
+        			pub = new DTOPublication();
+        			pub.setDoiId(doiid);    // no other details can be retrieved
+        		}
+        		return new ResponseEntity<>(new SuccessResponse(getPublicationFrom(pub), "Publication retrieved"), HttpStatus.OK);
+            } catch (Exception e) {    
+                throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
+            }
+        } else {
+        	try {
+        		Integer pubmedid = Integer.parseInt(identifier);
+        		PubmedUtil util = new PubmedUtil();
+                try {
+                    DTOPublication pub = util.createFromPubmedId(pubmedid);
+                    return new ResponseEntity<>(new SuccessResponse(getPublicationFrom(pub), "Publication retrieved"), HttpStatus.OK);
+                } catch (Exception e) {    
+                    throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
+                }
+        	} catch (NumberFormatException e) {
+        		throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
+        	}
+        }
+        
+    }
+	
+	public static Publication getPublicationFrom (DTOPublication pub) {
+        Publication publication = new Publication ();
+        publication.setAuthors(pub.getFormattedAuthor());
+        publication.setDoiId(pub.getDoiId());
+        publication.setEndPage(pub.getEndPage());
+        publication.setJournal(pub.getJournal());
+        publication.setNumber(pub.getNumber());
+        publication.setPubmedId(pub.getPubmedId());
+        publication.setStartPage(pub.getStartPage());
+        publication.setTitle(pub.getTitle());
+        publication.setVolume(pub.getVolume());
+        publication.setYear(pub.getYear());
+        
+        return publication;
+    }
+	
+	@Operation(summary="Retrieving license options")
+    @RequestMapping(value="/licenses", method=RequestMethod.GET, 
+            produces={"application/json"})
+    @ApiResponses(value= {@ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> getLicenses(){
+        List<License> allLicenses = licenseRepository.findAll();
+		return new ResponseEntity<>(new SuccessResponse(allLicenses, "Licenses retrieved"), HttpStatus.OK);   
+    }
 }
