@@ -4,14 +4,26 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
+import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
+import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetError;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
+import org.glygen.tablemaker.persistence.glycan.Collection;
+import org.glygen.tablemaker.persistence.glycan.Datatype;
+import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
+import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
+import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
+import org.glygen.tablemaker.persistence.glycan.Metadata;
+import org.glygen.tablemaker.persistence.table.TableColumn;
+import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.view.CollectionView;
 import org.glygen.tablemaker.view.DatasetInputView;
 import org.glygen.tablemaker.view.DatasetView;
@@ -19,6 +31,7 @@ import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -51,10 +64,19 @@ public class DatasetController {
 	
 	final private DatasetRepository datasetRepository;
 	final private UserRepository userRepository;
+	final private TemplateRepository templateRepository;
+	final private CollectionRepository collectionRepository;
+	private final DatatypeCategoryRepository datatypeCategoryRepository;
 	
-	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository) {
+	@Value("${spring.file.imagedirectory}")
+    String imageLocation;
+	
+	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository) {
 		this.datasetRepository = datasetRepository;
 		this.userRepository = userRepository;
+		this.templateRepository = templateRepository;
+		this.collectionRepository = collectionRepository;
+		this.datatypeCategoryRepository = datatypeCategoryRepository;
 	}
 	
 	@Operation(summary = "Get user's public datasets", security = { @SecurityRequirement(name = "bearer-key") })
@@ -177,6 +199,38 @@ public class DatasetController {
         return new ResponseEntity<>(new SuccessResponse(response, "datasets retrieved"), HttpStatus.OK);
     }
 	
+	@SuppressWarnings("unchecked")
+	@Operation(summary = "Get collections for dataset", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getcollections")
+    public ResponseEntity<SuccessResponse> getCollections(
+            @RequestParam("start")
+            Integer start, 
+            @RequestParam("size")
+            Integer size,
+            @RequestParam("filters")
+            String filters,
+            @RequestParam("globalFilter")
+            String globalFilter,
+            @RequestParam("sorting")
+            String sorting) {
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+      
+        Map<String, Object> response = DataController.getCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, sorting);
+        List<CollectionView> collections = (List<CollectionView>) response.get("objects");
+        
+        //populate errors/warnings
+        for (CollectionView col: collections) {
+        	getErrorsForCollection(col);
+        }
+        
+        return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
+    }
+	
 	@Operation(summary = "Publish dataset", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/publishdataset")
     public ResponseEntity<SuccessResponse> publishDataset(@Valid @RequestBody DatasetInputView d) {
@@ -189,17 +243,82 @@ public class DatasetController {
         
         //TODO save the dataset
         
+        
         return new ResponseEntity<>(new SuccessResponse(d, "dataset has been published"), HttpStatus.OK);
 	}
-	@Operation(summary = "Get errors according to GlyGen template for the given collection", security = { @SecurityRequirement(name = "bearer-key") })
-    @GetMapping("/checkcollectionforerrors")
-    public ResponseEntity<SuccessResponse> getDatasets(
-            @RequestParam("collectionid")
-            Long collectionId) {
+	
+    public void getErrorsForCollection(CollectionView cv) {
 		List<DatasetError> errorList = new ArrayList<>();
-		//TODO check the collection's metadata and populate the errors and warnings
+		List<DatasetError> warningList = new ArrayList<>();
 		
-		return new ResponseEntity<>(new SuccessResponse(errorList, "errors/warnings retrieved"), HttpStatus.OK);
+		Optional<TableMakerTemplate> glygenTemplate = templateRepository.findById(1L);
+		if (!glygenTemplate.isPresent()) {
+			throw new RuntimeException ("GlyGen template is not found!");
+		}
+		
+		Optional<DatatypeCategory> glygenCatHandle = datatypeCategoryRepository.findById(1L);
+		if (!glygenCatHandle.isPresent()) {
+			throw new RuntimeException ("GlyGen datatype category is not found!");
+		}
+		
+		Optional<Collection> collectionHandle = collectionRepository.findById(cv.getCollectionId());
+		if (!collectionHandle.isPresent()) {
+			throw new IllegalArgumentException("Given collection " + cv.getCollectionId() + " cannot be found!");
+		}
+		
+		Collection collection = collectionHandle.get();
+		TableMakerTemplate template = glygenTemplate.get();
+		DatatypeCategory glygenCategory = glygenCatHandle.get();
+		for (TableColumn col: template.getColumns()) {
+			if (col.getGlycanColumn() != null) {
+				switch (col.getGlycanColumn()) {
+				case GLYTOUCANID:  // check to make sure all glycans have this value
+					for (GlycanInCollection g: collection.getGlycans()) {
+						if (g.getGlycan().getGlytoucanID() == null) {
+							// error
+							errorList.add(new DatasetError("Glycan " + g.getGlycan().getGlycanId() + " in collection " + col.getName() + " does not have a value for GlytoucanID.", 1));
+						}
+					}
+					break;
+				case CARTOON:
+					break;
+				case MASS:
+					break;
+				default:
+					break;
+				}
+			} else {
+				boolean found = false;
+				for (Metadata meta: collection.getMetadata()) {
+					if (meta.getType().getDatatypeId() == col.getDatatype().getDatatypeId()) {
+						if ((meta.getValue() != null && !meta.getValue().isEmpty())
+								|| (meta.getValueId() != null && !meta.getValueId().isEmpty()) 
+								|| (meta.getValueUri() != null && !meta.getValueUri().isEmpty())) {
+							found = true;
+						}
+					}
+				}
+				if (!found) {
+					// check if mandatory
+					int errorLevel = isMandatory(col.getDatatype(), glygenCategory) ? 1: 0;
+					DatasetError err = new DatasetError(collection.getName() + " does not have metadata for \"" + col.getName() + "\" column.", errorLevel);
+					if (errorLevel == 0) {
+						warningList.add(err);
+					}
+					else errorList.add (err);
+				}
+			}	
+		}
+		cv.setErrors(errorList);
+		cv.setWarnings(warningList);
+	}
+
+	private boolean isMandatory(Datatype datatype, DatatypeCategory glygenCategory) {
+		for (DatatypeInCategory dc : glygenCategory.getDataTypes()) {
+			if (dc.getDatatype().getDatatypeId() == datatype.getDatatypeId())
+				return dc.getMandatory() == null ? false : dc.getMandatory();
+		}
+		return false;
 	}
 
 }

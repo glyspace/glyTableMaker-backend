@@ -2,6 +2,7 @@ package org.glygen.tablemaker.view;
 
 import java.util.List;
 
+import org.glygen.tablemaker.persistence.dataset.DatasetError;
 import org.glygen.tablemaker.persistence.glycan.CollectionTag;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
@@ -15,6 +16,9 @@ public class CollectionView {
 	List<Glycan> glycans;
 	List<CollectionView> children;
 	List<CollectionTag> tags;
+	
+	List<DatasetError> errors;
+	List<DatasetError> warnings;
 	
 	public String getName() {
 		return name;
@@ -57,5 +61,17 @@ public class CollectionView {
 	}
 	public void setTags(List<CollectionTag> tags) {
 		this.tags = tags;
+	}
+	public List<DatasetError> getErrors() {
+		return errors;
+	}
+	public void setErrors(List<DatasetError> errors) {
+		this.errors = errors;
+	}
+	public List<DatasetError> getWarnings() {
+		return warnings;
+	}
+	public void setWarnings(List<DatasetError> warnings) {
+		this.warnings = warnings;
 	}
 }

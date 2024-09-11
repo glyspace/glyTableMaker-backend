@@ -20,6 +20,15 @@ public class DatasetError {
 	Integer errorLevel = 1; // 0: warning, 1: error
 	DatasetVersion dataset;
 	
+	public DatasetError() {
+		// TODO Auto-generated constructor stub
+	}
+	
+	public DatasetError (String message, int errorLevel) {
+		this.message = message;
+		this.errorLevel = errorLevel;
+	}
+	
 	@Id
 	@GeneratedValue
 	public Long getDatasetErrorId() {

@@ -374,6 +374,13 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
       
+        Map<String, Object> response = getCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, sorting);
+        return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
+    }
+    
+    public static Map<String, Object> getCollections (
+    		UserEntity user, CollectionRepository collectionRepository, String imageLocation,
+    		Integer start, Integer size, String filters, String globalFilter, String sorting) {
         // parse filters and sorting
         ObjectMapper mapper = new ObjectMapper();
         List<Filter> filterList = null;
@@ -465,8 +472,10 @@ public class DataController {
         response.put("totalItems", collectionsInPage.getTotalElements());
         response.put("totalPages", collectionsInPage.getTotalPages());
         
-        return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
+        return response;
     }
+    
+    
     
     @Operation(summary = "Get collections of collections", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcocs")
