@@ -169,33 +169,7 @@ public class DatasetController {
         
         List<DatasetView> datasets = new ArrayList<>();
         for (Dataset d: datasetsInPage.getContent()) {
-        	DatasetView dv = new DatasetView();
-        	dv.setId(d.getDatasetId());
-        	dv.setDatasetIdentifier(d.getDatasetIdentifier());
-        	dv.setName(d.getName());
-        	dv.setDescription(d.getDescription());
-        	dv.setRetracted(d.getRetracted());
-        	dv.setDateCreated(d.getDateCreated());
-        	dv.setUser(d.getUser());
-        	if (d.getAssociatedDatasources() != null) dv.setAssociatedDatasources(new ArrayList<>(d.getAssociatedDatasources()));
-        	if (d.getGrants() != null) dv.setGrants(new ArrayList<>(d.getGrants()));
-        	if (d.getAssociatedPapers() != null) dv.setAssociatedPapers(new ArrayList<>(d.getAssociatedPapers()));
-        	if (d.getIntegratedIn() != null) dv.setIntegratedIn(new ArrayList<>(d.getIntegratedIn()));
-        	if (d.getPublications() != null) dv.setPublications(new ArrayList<>(d.getPublications()));
-        	
-        	for (DatasetVersion version : d.getVersions()) {
-        		if (version.getHead()) {
-        			dv.setLicense(version.getLicense());
-        			dv.setNoGlycans(version.getData() != null ? version.getData().size() : 0);
-        			dv.setVersion(version.getVersion());
-        			dv.setVersionDate(version.getVersionDate());
-        			dv.setVersionComment(version.getComment());
-        			if (version.getData() != null) dv.setData(new ArrayList<>(version.getData()));
-        			if (version.getErrors() != null) dv.setErrors(new ArrayList<>(version.getErrors()));
-        			break;
-        		}
-        	}
-        	
+        	DatasetView dv = createDatasetView (d, null);
         	datasets.add(dv);
         }
         
@@ -367,41 +341,37 @@ public class DatasetController {
         return new ResponseEntity<>(new SuccessResponse(dv, "dataset retrieved"), HttpStatus.OK);
     }
 	
-    private DatasetView createDatasetView(Dataset existing, String version) {
+    private DatasetView createDatasetView(Dataset d, String versionString) {
     	boolean head = false;
-    	if (version == null || version.isEmpty()) 
+    	if (versionString == null || versionString.isEmpty()) 
     		head = true;
     	
-		DatasetView dv = new DatasetView();
-		dv.setName(existing.getName());
-		dv.setDatasetIdentifier(existing.getDatasetIdentifier());
-		dv.setDescription(existing.getDescription());
-		dv.setId(existing.getDatasetId());
-		dv.setAssociatedDatasources(new ArrayList<>(existing.getAssociatedDatasources()));
-		dv.setAssociatedPapers(new ArrayList<>(existing.getAssociatedPapers()));
-		dv.setPublications(new ArrayList<>(existing.getPublications()));
-		dv.setGrants(new ArrayList<>(existing.getGrants()));
-		dv.setIntegratedIn(new ArrayList<>(existing.getIntegratedIn()));
-		dv.setDateCreated(existing.getDateCreated());
-		dv.setRetracted(existing.getRetracted());
-		
-		for (DatasetVersion ver: existing.getVersions()) {
-			if (head && ver.getHead()) {
-				dv.setLicense(ver.getLicense());
-				dv.setVersion("");
-				dv.setErrors(new ArrayList<>(ver.getErrors()));
-				dv.setNoGlycans(ver.getData().size());
-				break;
-			} else if (!head && ver.getVersion().equals (version)) {
-				dv.setLicense(ver.getLicense());
-				dv.setVersion(ver.getVersion());
-				dv.setVersionComment(ver.getComment());
-				dv.setVersionDate(ver.getVersionDate());
-				dv.setErrors(new ArrayList<>(ver.getErrors()));
-				dv.setNoGlycans(ver.getData().size());
-				break;
-			}
-		}
+    	DatasetView dv = new DatasetView();
+    	dv.setId(d.getDatasetId());
+    	dv.setDatasetIdentifier(d.getDatasetIdentifier());
+    	dv.setName(d.getName());
+    	dv.setDescription(d.getDescription());
+    	dv.setRetracted(d.getRetracted());
+    	dv.setDateCreated(d.getDateCreated());
+    	dv.setUser(d.getUser());
+    	if (d.getAssociatedDatasources() != null) dv.setAssociatedDatasources(new ArrayList<>(d.getAssociatedDatasources()));
+    	if (d.getGrants() != null) dv.setGrants(new ArrayList<>(d.getGrants()));
+    	if (d.getAssociatedPapers() != null) dv.setAssociatedPapers(new ArrayList<>(d.getAssociatedPapers()));
+    	if (d.getIntegratedIn() != null) dv.setIntegratedIn(new ArrayList<>(d.getIntegratedIn()));
+    	if (d.getPublications() != null) dv.setPublications(new ArrayList<>(d.getPublications()));
+    	
+    	for (DatasetVersion version : d.getVersions()) {
+    		if ((head && version.getHead()) || (!head && version.getVersion().equalsIgnoreCase(versionString))) {
+    			dv.setLicense(version.getLicense());
+    			dv.setNoGlycans(version.getData() != null ? version.getData().size() : 0);
+    			dv.setVersion(version.getVersion());
+    			dv.setVersionDate(version.getVersionDate());
+    			dv.setVersionComment(version.getComment());
+    			if (version.getData() != null) dv.setData(new ArrayList<>(version.getData()));
+    			if (version.getErrors() != null) dv.setErrors(new ArrayList<>(version.getErrors()));
+    			break;
+    		} 
+    	}
 		
 		return dv;
 	}
