@@ -12,5 +12,7 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	
 	public Page<Dataset> findAllByUser(UserEntity user, Pageable pageable);
 	public Page<Dataset> findAll(Specification<Dataset> spec, Pageable pageable);
+	public long countByDatasetIdentifier (String identifier);
+	public Dataset findByDatasetIdentifierAndUserAndVersions_version (String identifier, UserEntity user, String version);
 
 }

@@ -3,7 +3,6 @@ package org.glygen.tablemaker.service;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
 import org.glygen.tablemaker.persistence.dao.DatatypeRepository;
 import org.glygen.tablemaker.persistence.dao.MetadataRepository;
@@ -11,7 +10,6 @@ import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategoryPK;
 import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
-import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.springframework.stereotype.Service;
 

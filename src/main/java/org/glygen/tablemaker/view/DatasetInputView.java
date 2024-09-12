@@ -8,6 +8,9 @@ import org.glygen.tablemaker.persistence.dataset.Grant;
 import org.glygen.tablemaker.persistence.dataset.License;
 import org.glygen.tablemaker.persistence.dataset.Publication;
 
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+
 public class DatasetInputView {
 
 	String name;
@@ -18,7 +21,9 @@ public class DatasetInputView {
 	List<DatabaseResource> associatedDatasources;
 	List<Publication> associatedPapers;
 	List<CollectionView> collections;
+	List<Publication> publications;
 	
+	@NotEmpty
 	public String getName() {
 		return name;
 	}
@@ -31,6 +36,8 @@ public class DatasetInputView {
 	public void setDescription(String description) {
 		this.description = description;
 	}
+	
+	@NotNull
 	public License getLicense() {
 		return license;
 	}
@@ -61,10 +68,18 @@ public class DatasetInputView {
 	public void setAssociatedPapers(List<Publication> associatedPapers) {
 		this.associatedPapers = associatedPapers;
 	}
+	
+	@NotEmpty
 	public List<CollectionView> getCollections() {
 		return collections;
 	}
 	public void setCollections(List<CollectionView> collections) {
 		this.collections = collections;
+	}
+	public List<Publication> getPublications() {
+		return publications;
+	}
+	public void setPublications(List<Publication> publications) {
+		this.publications = publications;
 	}
 }

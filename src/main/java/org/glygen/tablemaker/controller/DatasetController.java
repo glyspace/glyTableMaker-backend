@@ -1,6 +1,7 @@
 package org.glygen.tablemaker.controller;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,7 @@ import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetError;
+import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
@@ -24,6 +26,7 @@ import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
+import org.glygen.tablemaker.service.DatasetManager;
 import org.glygen.tablemaker.view.CollectionView;
 import org.glygen.tablemaker.view.DatasetInputView;
 import org.glygen.tablemaker.view.DatasetView;
@@ -43,6 +46,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,6 +58,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
@@ -67,16 +72,18 @@ public class DatasetController {
 	final private TemplateRepository templateRepository;
 	final private CollectionRepository collectionRepository;
 	private final DatatypeCategoryRepository datatypeCategoryRepository;
+	private final DatasetManager datasetManager;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
 	
-	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository) {
+	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager) {
 		this.datasetRepository = datasetRepository;
 		this.userRepository = userRepository;
 		this.templateRepository = templateRepository;
 		this.collectionRepository = collectionRepository;
 		this.datatypeCategoryRepository = datatypeCategoryRepository;
+		this.datasetManager = datasetManager;
 	}
 	
 	@Operation(summary = "Get user's public datasets", security = { @SecurityRequirement(name = "bearer-key") })
@@ -178,6 +185,8 @@ public class DatasetController {
         	
         	for (DatasetVersion version : d.getVersions()) {
         		if (version.getHead()) {
+        			dv.setLicense(version.getLicense());
+        			dv.setNoGlycans(version.getData() != null ? version.getData().size() : 0);
         			dv.setVersion(version.getVersion());
         			dv.setVersionDate(version.getVersionDate());
         			dv.setVersionComment(version.getComment());
@@ -241,13 +250,163 @@ public class DatasetController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
         
-        //TODO save the dataset
+        // save the dataset
         
+        // check for errors in the collections
+        StringBuffer errorMessage = new StringBuffer();
+        List<DatasetError> errors = new ArrayList<>();
+        for (CollectionView cv: d.getCollections()) {
+        	getErrorsForCollection (cv);
+        	if (!cv.getErrors().isEmpty()) {
+        		errorMessage.append ("Collection" + cv.getName() + " has errors!\n");       		
+        	}
+        	errors.addAll(cv.getWarnings());
+        }
+        if (!errorMessage.isEmpty()) {
+        	throw new IllegalArgumentException (errorMessage.toString().trim());
+        }
         
-        return new ResponseEntity<>(new SuccessResponse(d, "dataset has been published"), HttpStatus.OK);
+        TableMakerTemplate glygenTemplate = templateRepository.findById(1L).get();
+        
+        Dataset newDataset = new Dataset();
+        newDataset.setName(d.getName());
+        newDataset.setDescription(d.getDescription());
+        newDataset.setAssociatedDatasources(d.getAssociatedDatasources());
+        newDataset.setAssociatedPapers(d.getAssociatedPapers());
+        newDataset.setGrants(d.getGrants());
+        newDataset.setUser(user);
+        newDataset.setVersions(new ArrayList<>());
+        newDataset.setPublications(d.getPublications());
+        
+        DatasetVersion version = new DatasetVersion();
+        version.setHead(true);
+        version.setVersion("");
+        version.setVersionDate(new Date());
+        version.setLicense(d.getLicense());
+        version.setErrors(errors);
+        
+        for (DatasetError err: errors) {
+        	err.setDataset(version);
+        }
+        
+        newDataset.getVersions().add(version);
+        
+        List<DatasetMetadata> metadata = new ArrayList<>();
+        version.setData(metadata);
+        version.setDataset(newDataset);
+        
+        // generate the data
+        for (CollectionView cv: d.getCollections()) {
+        	Optional<Collection> collectionHandle = collectionRepository.findById(cv.getCollectionId());
+        	Collection collection = collectionHandle.get();
+        	for (GlycanInCollection g: collection.getGlycans()) {
+        		DatasetMetadata dm = new DatasetMetadata();
+        		dm.setDataset(version);
+        		for (TableColumn col: glygenTemplate.getColumns()) {
+        			if (col.getGlycanColumn() != null) {
+        				switch (col.getGlycanColumn()) {
+        				case GLYTOUCANID:  // check to make sure all glycans have this value
+        					dm.setGlycanColumn(col.getGlycanColumn());
+        					dm.setValue(g.getGlycan().getGlytoucanID());
+        					break;
+        				case CARTOON:
+        					break;
+        				case MASS:
+        					break;
+        				default:
+        					break;
+        				}
+        			} else {
+        				dm.setDatatype(col.getDatatype());
+        				for (Metadata m: collection.getMetadata()) {
+        					if (m.getType().getDatatypeId() == col.getDatatype().getDatatypeId()) {
+        						dm.setValue(m.getValue());
+        						dm.setValueId(m.getValueId());
+        						dm.setValueUri(m.getValueUri());
+        						break;
+        					}
+        				}
+        			}	
+        		}
+        		metadata.add(dm);
+			}
+        }
+        
+        Dataset saved = datasetManager.saveDataset (newDataset);
+        
+        return new ResponseEntity<>(new SuccessResponse(saved, "dataset has been published"), HttpStatus.OK);
 	}
 	
-    public void getErrorsForCollection(CollectionView cv) {
+	@Operation(summary = "Get dataset by the given id", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getdataset/{datasetIdentifier}")
+    public ResponseEntity<SuccessResponse> getDataset(
+    		@Parameter(required=true, description="id of the dataseet to be retrieved") 
+    		@PathVariable("datasetIdentifier") String datasetIdentifier) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        String identifier = datasetIdentifier;
+        String version = "";
+        // check if the identifier contains a version
+        String[] split = datasetIdentifier.split("-");
+        if (split.length > 1) {
+        	identifier = split[0];
+        	version = split[1];
+        }
+        Dataset existing = datasetRepository.findByDatasetIdentifierAndUserAndVersions_version(identifier, user, version);
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier + " for the user");
+        }
+        
+        DatasetView dv = createDatasetView (existing, version);
+        
+        return new ResponseEntity<>(new SuccessResponse(dv, "dataset retrieved"), HttpStatus.OK);
+    }
+	
+    private DatasetView createDatasetView(Dataset existing, String version) {
+    	boolean head = false;
+    	if (version == null || version.isEmpty()) 
+    		head = true;
+    	
+		DatasetView dv = new DatasetView();
+		dv.setName(existing.getName());
+		dv.setDatasetIdentifier(existing.getDatasetIdentifier());
+		dv.setDescription(existing.getDescription());
+		dv.setId(existing.getDatasetId());
+		dv.setAssociatedDatasources(new ArrayList<>(existing.getAssociatedDatasources()));
+		dv.setAssociatedPapers(new ArrayList<>(existing.getAssociatedPapers()));
+		dv.setPublications(new ArrayList<>(existing.getPublications()));
+		dv.setGrants(new ArrayList<>(existing.getGrants()));
+		dv.setIntegratedIn(new ArrayList<>(existing.getIntegratedIn()));
+		dv.setDateCreated(existing.getDateCreated());
+		dv.setRetracted(existing.getRetracted());
+		
+		for (DatasetVersion ver: existing.getVersions()) {
+			if (head && ver.getHead()) {
+				dv.setLicense(ver.getLicense());
+				dv.setVersion("");
+				dv.setErrors(new ArrayList<>(ver.getErrors()));
+				dv.setNoGlycans(ver.getData().size());
+				break;
+			} else if (!head && ver.getVersion().equals (version)) {
+				dv.setLicense(ver.getLicense());
+				dv.setVersion(ver.getVersion());
+				dv.setVersionComment(ver.getComment());
+				dv.setVersionDate(ver.getVersionDate());
+				dv.setErrors(new ArrayList<>(ver.getErrors()));
+				dv.setNoGlycans(ver.getData().size());
+				break;
+			}
+		}
+		
+		return dv;
+	}
+
+	public void getErrorsForCollection(CollectionView cv) {
 		List<DatasetError> errorList = new ArrayList<>();
 		List<DatasetError> warningList = new ArrayList<>();
 		
