@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotNull;
 
 public class DatasetInputView {
 
+	Long id;
 	String name;
 	String description;
 	License license;
@@ -22,6 +23,16 @@ public class DatasetInputView {
 	List<Publication> associatedPapers;
 	List<CollectionView> collections;
 	List<Publication> publications;
+	
+	String changeComment;
+	
+	public Long getId() {
+		return id;
+	}
+	
+	public void setId(Long id) {
+		this.id = id;
+	}
 	
 	@NotEmpty
 	public String getName() {
@@ -81,5 +92,13 @@ public class DatasetInputView {
 	}
 	public void setPublications(List<Publication> publications) {
 		this.publications = publications;
+	}
+
+	public String getChangeComment() {
+		return changeComment;
+	}
+
+	public void setChangeComment(String changeComment) {
+		this.changeComment = changeComment;
 	}
 }

@@ -28,7 +28,7 @@ public class DatasetError {
 		this.message = message;
 		this.errorLevel = errorLevel;
 	}
-	
+
 	@Id
 	@GeneratedValue
 	public Long getDatasetErrorId() {

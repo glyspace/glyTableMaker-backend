@@ -35,7 +35,6 @@ public class Dataset {
 	
 	UserEntity user;
 	
-	Collection<Publication> publications;
 	Collection<Grant> grants;
 	Collection<DatabaseResourceDataset> integratedIn;
 	Collection<DatabaseResource> associatedDatasources;
@@ -70,19 +69,6 @@ public class Dataset {
 	}
 	public void setDescription(String description) {
 		this.description = description;
-	}
-	
-	@ManyToMany
-	@JoinTable(
-		    name="dataset_publications",
-		    joinColumns=@JoinColumn(name="datasetId"),
-		    inverseJoinColumns=@JoinColumn(name="id")
-		)
-	public Collection<Publication> getPublications() {
-		return publications;
-	}
-	public void setPublications(Collection<Publication> publication) {
-		this.publications = publication;
 	}
 	
 	@ManyToMany(fetch=FetchType.EAGER)

@@ -13,6 +13,8 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Temporal;
@@ -31,6 +33,8 @@ public class DatasetVersion {
 	
 	Collection<DatasetMetadata> data;
 	Collection<DatasetError> errors;
+	Collection<Publication> publications;
+	
 	Dataset dataset;
 	
 	@Id
@@ -101,6 +105,19 @@ public class DatasetVersion {
 	}
 	public void setErrors(Collection<DatasetError> errors) {
 		this.errors = errors;
+	}
+	
+	@ManyToMany
+	@JoinTable(
+		    name="dataset_publications",
+		    joinColumns=@JoinColumn(name="datasetId"),
+		    inverseJoinColumns=@JoinColumn(name="id")
+		)
+	public Collection<Publication> getPublications() {
+		return publications;
+	}
+	public void setPublications(Collection<Publication> publication) {
+		this.publications = publication;
 	}
 
 	@Column

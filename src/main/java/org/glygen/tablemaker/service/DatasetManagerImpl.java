@@ -9,6 +9,7 @@ import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResourceDataset;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
+import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Grant;
 import org.glygen.tablemaker.persistence.dataset.Publication;
 import org.springframework.stereotype.Service;
@@ -38,40 +39,52 @@ public class DatasetManagerImpl implements DatasetManager {
 		String identifier = generateUniqueIdentifier ();
 		d.setDatasetIdentifier(identifier);
 		
-		if (d.getPublications() != null) {
-			for (Publication p: d.getPublications()) {
-				Publication saved = publicationRepository.save(p);
-				p.setId(saved.getId());
+		for (DatasetVersion version: d.getVersions()) {
+			if (version.getPublications() != null) {
+				for (Publication p: version.getPublications()) {
+					if (p.getId() == null) {
+						Publication saved = publicationRepository.save(p);
+						p.setId(saved.getId());
+					}
+				}
 			}
 		}
 		
 		if (d.getAssociatedPapers() != null) {
 			for (Publication p: d.getAssociatedPapers()) {
-				Publication saved = publicationRepository.save(p);
-				p.setId(saved.getId());
+				if (p.getId() == null) {
+					Publication saved = publicationRepository.save(p);
+					p.setId(saved.getId());
+				}
 			}
 		}
 		
 		if (d.getGrants() != null) {
 			for (Grant g: d.getGrants()) {
-				Grant saved = grantRepository.save(g);
-				g.setId(saved.getId());
+				if (g.getId() == null) {
+					Grant saved = grantRepository.save(g);
+					g.setId(saved.getId());
+				}
 			}
 		}
 		
 		if (d.getAssociatedDatasources() != null) {
 			for (DatabaseResource dr: d.getAssociatedDatasources()) {
-				DatabaseResource saved = dataResourceRepository.save(dr);
-				dr.setId(saved.getId());
+				if (dr.getId() == null) {
+					DatabaseResource saved = dataResourceRepository.save(dr);
+					dr.setId(saved.getId());
+				}
 				
 			}
 		}
 		
 		if (d.getIntegratedIn() != null) {
 			for (DatabaseResourceDataset drd : d.getIntegratedIn()) {
-				drd.setDataset(d);
-				DatabaseResource saved = dataResourceRepository.save (drd.getResource());
-				drd.getResource().setId(saved.getId());
+				if (drd.getResource().getId() == null) {
+					drd.setDataset(d);
+					DatabaseResource saved = dataResourceRepository.save (drd.getResource());
+					drd.getResource().setId(saved.getId());
+				}
 			}
 		}
 		

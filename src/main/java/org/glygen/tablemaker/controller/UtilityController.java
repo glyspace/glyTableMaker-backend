@@ -414,7 +414,17 @@ public class UtilityController {
         if (identifier == null) {
             throw new IllegalArgumentException("Invalid Input: Not a valid publication information");
         }
-        if (identifier.toLowerCase().startsWith("doi:")) {
+        
+        try {
+        	return new ResponseEntity<>(new SuccessResponse(getPublication(identifier), "Publication retrieved"), HttpStatus.OK);
+        } catch (Exception e) {    
+            throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Publication identifier is invalid");
+        }
+    }
+	
+	public static Publication getPublication (String identifier) throws Exception {
+		
+		if (identifier.toLowerCase().startsWith("doi:")) {
         	// retrieve by Doi number
         	String doiid = identifier.toLowerCase().substring(identifier.toLowerCase().indexOf("doi:")+4);
         	try {
@@ -423,7 +433,7 @@ public class UtilityController {
         			pub = new DTOPublication();
         			pub.setDoiId(doiid);    // no other details can be retrieved
         		}
-        		return new ResponseEntity<>(new SuccessResponse(getPublicationFrom(pub), "Publication retrieved"), HttpStatus.OK);
+        		return getPublicationFrom(pub);
             } catch (Exception e) {    
                 throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
             }
@@ -433,7 +443,11 @@ public class UtilityController {
         		PubmedUtil util = new PubmedUtil();
                 try {
                     DTOPublication pub = util.createFromPubmedId(pubmedid);
-                    return new ResponseEntity<>(new SuccessResponse(getPublicationFrom(pub), "Publication retrieved"), HttpStatus.OK);
+                    if (pub == null) {
+                    	pub = new DTOPublication();
+                    	pub.setPubmedId(pubmedid);
+                    }
+                    getPublicationFrom(pub);
                 } catch (Exception e) {    
                     throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
                 }
@@ -441,8 +455,8 @@ public class UtilityController {
         		throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
         	}
         }
-        
-    }
+		return null;
+	}
 	
 	public static Publication getPublicationFrom (DTOPublication pub) {
         Publication publication = new Publication ();

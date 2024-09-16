@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
@@ -14,14 +15,18 @@ import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
+import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetError;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
+import org.glygen.tablemaker.persistence.dataset.Grant;
+import org.glygen.tablemaker.persistence.dataset.Publication;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
+import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.table.TableColumn;
@@ -240,8 +245,6 @@ public class DatasetController {
         	throw new IllegalArgumentException (errorMessage.toString().trim());
         }
         
-        TableMakerTemplate glygenTemplate = templateRepository.findById(1L).get();
-        
         Dataset newDataset = new Dataset();
         newDataset.setName(d.getName());
         newDataset.setDescription(d.getDescription());
@@ -250,7 +253,6 @@ public class DatasetController {
         newDataset.setGrants(d.getGrants());
         newDataset.setUser(user);
         newDataset.setVersions(new ArrayList<>());
-        newDataset.setPublications(d.getPublications());
         
         DatasetVersion version = new DatasetVersion();
         version.setHead(true);
@@ -258,6 +260,7 @@ public class DatasetController {
         version.setVersionDate(new Date());
         version.setLicense(d.getLicense());
         version.setErrors(errors);
+        version.setPublications(d.getPublications());
         
         for (DatasetError err: errors) {
         	err.setDataset(version);
@@ -265,12 +268,19 @@ public class DatasetController {
         
         newDataset.getVersions().add(version);
         
-        List<DatasetMetadata> metadata = new ArrayList<>();
-        version.setData(metadata);
+        version.setData(generateData(version, d.getCollections()));
         version.setDataset(newDataset);
         
-        // generate the data
-        for (CollectionView cv: d.getCollections()) {
+        Dataset saved = datasetManager.saveDataset (newDataset);
+        
+        return new ResponseEntity<>(new SuccessResponse(saved, "dataset has been published"), HttpStatus.OK);
+	}
+	
+	List<DatasetMetadata> generateData (DatasetVersion version, List<CollectionView> collections) {
+		List<DatasetMetadata> metadata = new ArrayList<>();
+		TableMakerTemplate glygenTemplate = templateRepository.findById(1L).get();
+		// generate the data
+        for (CollectionView cv: collections) {
         	Optional<Collection> collectionHandle = collectionRepository.findById(cv.getCollectionId());
         	Collection collection = collectionHandle.get();
         	for (GlycanInCollection g: collection.getGlycans()) {
@@ -305,10 +315,242 @@ public class DatasetController {
         		metadata.add(dm);
 			}
         }
-        
-        Dataset saved = datasetManager.saveDataset (newDataset);
-        
-        return new ResponseEntity<>(new SuccessResponse(saved, "dataset has been published"), HttpStatus.OK);
+        return metadata;
+	}
+	
+	@Operation(summary = "update dataset", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/updatedataset")
+    public ResponseEntity<SuccessResponse> updateCollection(@Valid @RequestBody DatasetInputView d) {
+    	if (d.getId() == null) {
+    		throw new IllegalArgumentException("Dataset id should be provided for update");
+    	}
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+    	Dataset existing = datasetRepository.findByDatasetIdAndUser(d.getId(), user);
+    	if (existing == null) {
+    		throw new IllegalArgumentException("Dataset (" + d.getId() + ") to be updated cannot be found");
+    	}
+    	// check if name is a duplicate
+    	if (!existing.getName().equalsIgnoreCase(d.getName())) {   // changing the name
+	    	List<Dataset> duplicate = datasetRepository.findAllByNameAndUser (d.getName(), user);
+	    	if (!duplicate.isEmpty()) {
+	    		throw new DuplicateException("Dataset with name: " + d.getName() + " already exists! Pick a different name");
+	    	}
+    	}
+    	existing.setName(d.getName());
+    	existing.setDescription(d.getDescription());
+    	
+    	// update grants/associated databases/associated papers
+		if (existing.getAssociatedDatasources() == null) {
+			existing.setAssociatedDatasources(new ArrayList<>());
+		}
+		
+		if (d.getAssociatedDatasources() == null || d.getAssociatedDatasources().isEmpty()) {
+			existing.getAssociatedDatasources().clear();
+		} else {
+			// remove resources as necessary
+    		List<DatabaseResource> toBeRemoved = new ArrayList<>();
+	    	for (DatabaseResource dr: existing.getAssociatedDatasources()) {
+	    		boolean found = false;
+	    		for (DatabaseResource d2: d.getAssociatedDatasources()) {
+	    			if (d2.getId().equals(dr.getId())) {
+	    				// keep it
+	    				found = true;
+	    			}
+	    		}
+	    		if (!found) {
+	    			toBeRemoved.add(dr);
+	    		}
+	    	}
+	    	existing.getAssociatedDatasources().removeAll(toBeRemoved);
+		}
+		
+		if (d.getAssociatedDatasources() != null && !d.getAssociatedDatasources().isEmpty()) {
+    		// check if this metadata already exists in the collection
+    		for (DatabaseResource m: d.getAssociatedDatasources()) {
+    			boolean exists = false;
+    			for (DatabaseResource m2: existing.getAssociatedDatasources()) {
+        			if (m2.getId() != null && m2.getId().equals(m.getId())) {
+        				exists = true;
+        				break;
+        			}
+        		}
+    			if (!exists) {
+    				existing.getAssociatedDatasources().add(m);
+    			}
+    		}
+		}
+		
+		if (existing.getAssociatedPapers() == null) {
+			existing.setAssociatedPapers(new ArrayList<>());
+		}
+		
+		if (d.getAssociatedPapers() == null || d.getAssociatedPapers().isEmpty()) {
+			existing.getAssociatedPapers().clear();
+		} else {
+			// remove papers as necessary
+    		List<Publication> toBeRemoved = new ArrayList<>();
+	    	for (Publication dr: existing.getAssociatedPapers()) {
+	    		boolean found = false;
+	    		for (Publication d2: d.getAssociatedPapers()) {
+	    			if (d2.getId().equals(dr.getId())) {
+	    				// keep it
+	    				found = true;
+	    			}
+	    		}
+	    		if (!found) {
+	    			toBeRemoved.add(dr);
+	    		}
+	    	}
+	    	existing.getAssociatedPapers().removeAll(toBeRemoved);
+		}
+		
+		if (d.getAssociatedPapers() != null && !d.getAssociatedPapers().isEmpty()) {
+    		// check if this metadata already exists in the collection
+    		for (Publication m: d.getAssociatedPapers()) {
+    			boolean exists = false;
+    			for (Publication m2: existing.getAssociatedPapers()) {
+        			if (m2.getId() != null && m2.getId().equals(m.getId())) {
+        				exists = true;
+        				break;
+        			}
+        		}
+    			if (!exists) {
+    				existing.getAssociatedPapers().add(m);
+    			}
+    		}
+		}
+		
+		if (existing.getGrants() == null) {
+			existing.setGrants(new ArrayList<>());
+		}
+		
+		if (d.getGrants() == null || d.getGrants().isEmpty()) {
+			existing.getGrants().clear();
+		} else {
+			// remove grants as necessary
+    		List<Grant> toBeRemoved = new ArrayList<>();
+	    	for (Grant dr: existing.getGrants()) {
+	    		boolean found = false;
+	    		for (Grant d2: d.getGrants()) {
+	    			if (d2.getId().equals(dr.getId())) {
+	    				// keep it
+	    				found = true;
+	    			}
+	    		}
+	    		if (!found) {
+	    			toBeRemoved.add(dr);
+	    		}
+	    	}
+	    	existing.getGrants().removeAll(toBeRemoved);
+		}
+		
+		if (d.getGrants() != null && !d.getGrants().isEmpty()) {
+    		// check if this metadata already exists in the collection
+    		for (Grant m: d.getGrants()) {
+    			boolean exists = false;
+    			for (Grant m2: existing.getGrants()) {
+        			if (m2.getId() != null && m2.getId().equals(m.getId())) {
+        				exists = true;
+        				break;
+        			}
+        		}
+    			if (!exists) {
+    				existing.getGrants().add(m);
+    			}
+    		}
+		}
+    	
+    	if (d.getLicense() != null || d.getCollections() != null) {   // changing the license and/or data, need to create a new version
+    		// create a new version
+    		int versionNo = existing.getVersions().size();  // there must be a head version already
+    		DatasetVersion head = null;
+    		for (DatasetVersion v: existing.getVersions()) {
+    			if (v.getHead()) {
+    				head = v;
+    				break;
+    			}
+    		}
+    		DatasetVersion version = new DatasetVersion();
+    		version.setHead(true);
+    		version.setDataset(existing);
+    		head.setComment(d.getChangeComment());
+    		head.setVersionDate(new Date());
+    		head.setVersion(versionNo +"");
+    		if (d.getLicense() != null) {
+    			version.setLicense(d.getLicense());
+    		} else {
+    			version.setLicense(head.getLicense());
+    		}
+    		
+    		if (d.getCollections() == null) {
+    			version.setData(new ArrayList<>());
+    			// data is the same, copy data, errors and publications to the new version
+    			for (DatasetMetadata m: head.getData()) {
+    				DatasetMetadata copy = new DatasetMetadata(m);
+    				copy.setDataset(version);
+    				version.getData().add(copy);
+    			}
+    			version.setErrors(new ArrayList<>());    	
+    			for (DatasetError m: head.getErrors()) {
+    				DatasetError copy = new DatasetError(m.getMessage(), m.getErrorLevel());
+    				copy.setDataset(version);
+    				version.getErrors().add(copy);
+    			}		
+    			version.setPublications(new ArrayList<>());
+    			for (Publication p: head.getPublications()) {
+    				version.getPublications().add(p);
+    			}
+    		} else {
+    			// create new metadata from the selected collections
+    			
+    			// check for errors in the collections
+    	        StringBuffer errorMessage = new StringBuffer();
+    	        List<DatasetError> errors = new ArrayList<>();
+    	        for (CollectionView cv: d.getCollections()) {
+    	        	getErrorsForCollection (cv);
+    	        	if (!cv.getErrors().isEmpty()) {
+    	        		errorMessage.append ("Collection" + cv.getName() + " has errors!\n");       		
+    	        	}
+    	        	errors.addAll(cv.getWarnings());
+    	        }
+    	        if (!errorMessage.isEmpty()) {
+    	        	throw new IllegalArgumentException (errorMessage.toString().trim());
+    	        }
+    	        
+    	        version.setData(generateData(version, d.getCollections()));
+    	        version.setErrors(errors);
+    	        
+    	        for (DatasetError err: errors) {
+    	        	err.setDataset(version);
+    	        }
+    	        
+    	        version.setPublications(new ArrayList<>());
+    	        for (DatasetMetadata m: version.getData()) {
+    	        	// find the publications
+    	        	if (m.getDatatype() != null && m.getDatatype().getName().equals("Evidence")) {
+    	        		try {
+							Publication pub = UtilityController.getPublication(m.getValue());
+							if (pub != null) {
+								version.getPublications().add(pub);
+							}
+						} catch (Exception e) {
+							logger.error("Failed to retrieve the publication", e);
+						}
+    	        	}
+    	        }
+    		}
+    		existing.getVersions().add(version);
+    	}
+    	
+		Dataset saved = datasetManager.saveDataset(existing);
+    	
+    	DatasetView dv = createDatasetView(saved, null);
+    	return new ResponseEntity<>(new SuccessResponse(dv, "dataset updated"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Get dataset by the given id", security = { @SecurityRequirement(name = "bearer-key") })
@@ -358,7 +600,7 @@ public class DatasetController {
     	if (d.getGrants() != null) dv.setGrants(new ArrayList<>(d.getGrants()));
     	if (d.getAssociatedPapers() != null) dv.setAssociatedPapers(new ArrayList<>(d.getAssociatedPapers()));
     	if (d.getIntegratedIn() != null) dv.setIntegratedIn(new ArrayList<>(d.getIntegratedIn()));
-    	if (d.getPublications() != null) dv.setPublications(new ArrayList<>(d.getPublications()));
+    	
     	
     	for (DatasetVersion version : d.getVersions()) {
     		if ((head && version.getHead()) || (!head && version.getVersion().equalsIgnoreCase(versionString))) {
@@ -369,6 +611,7 @@ public class DatasetController {
     			dv.setVersionComment(version.getComment());
     			if (version.getData() != null) dv.setData(new ArrayList<>(version.getData()));
     			if (version.getErrors() != null) dv.setErrors(new ArrayList<>(version.getErrors()));
+    			if (version.getPublications() != null) dv.setPublications(new ArrayList<>(version.getPublications()));
     			break;
     		} 
     	}

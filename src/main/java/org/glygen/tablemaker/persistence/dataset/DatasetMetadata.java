@@ -28,8 +28,20 @@ public class DatasetMetadata {
  	String valueId;
  	
  	DatasetVersion dataset;
+ 	
+ 	public DatasetMetadata() {
+		// TODO Auto-generated constructor stub
+	}
 
- 	@Id
+ 	public DatasetMetadata(DatasetMetadata m) {
+		this.datatype = m.datatype;
+		this.glycanColumn = m.glycanColumn;
+		this.value = m.value;
+		this.valueId = m.valueId;
+		this.valueUri = m.valueUri;
+	}
+
+	@Id
     @GeneratedValue
 	public Long getId() {
 		return id;
