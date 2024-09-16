@@ -48,7 +48,6 @@ public class DatasetInputView {
 		this.description = description;
 	}
 	
-	@NotNull
 	public License getLicense() {
 		return license;
 	}
@@ -80,7 +79,6 @@ public class DatasetInputView {
 		this.associatedPapers = associatedPapers;
 	}
 	
-	@NotEmpty
 	public List<CollectionView> getCollections() {
 		return collections;
 	}

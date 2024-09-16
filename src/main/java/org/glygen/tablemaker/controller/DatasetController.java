@@ -50,6 +50,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.ObjectError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -221,12 +224,23 @@ public class DatasetController {
 	
 	@Operation(summary = "Publish dataset", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/publishdataset")
-    public ResponseEntity<SuccessResponse> publishDataset(@Valid @RequestBody DatasetInputView d) {
+    public ResponseEntity<SuccessResponse> publishDataset(@Valid @RequestBody DatasetInputView d) throws MethodArgumentNotValidException {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
         if (auth != null) { 
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        if (d.getLicense() == null || d.getCollections() == null || d.getCollections().isEmpty()) {
+        	// validation error
+        	BeanPropertyBindingResult result = new BeanPropertyBindingResult(d, "dataset input");
+        	if (d.getLicense() == null)
+        		result.addError(new ObjectError("license", "cannot be null"));
+        	if (d.getCollections() == null || d.getCollections().isEmpty()) {
+        		result.addError(new ObjectError("collections", "cannot be left empty"));
+        	}
+        	throw new MethodArgumentNotValidException(null, result);
         }
         
         // save the dataset
@@ -253,6 +267,7 @@ public class DatasetController {
         newDataset.setGrants(d.getGrants());
         newDataset.setUser(user);
         newDataset.setVersions(new ArrayList<>());
+        newDataset.setDateCreated(new Date());
         
         DatasetVersion version = new DatasetVersion();
         version.setHead(true);
@@ -320,7 +335,7 @@ public class DatasetController {
 	
 	@Operation(summary = "update dataset", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatedataset")
-    public ResponseEntity<SuccessResponse> updateCollection(@Valid @RequestBody DatasetInputView d) {
+    public ResponseEntity<SuccessResponse> updateDataset(@Valid @RequestBody DatasetInputView d) {
     	if (d.getId() == null) {
     		throw new IllegalArgumentException("Dataset id should be provided for update");
     	}
@@ -478,9 +493,11 @@ public class DatasetController {
     		DatasetVersion version = new DatasetVersion();
     		version.setHead(true);
     		version.setDataset(existing);
+    		version.setVersion("");
     		head.setComment(d.getChangeComment());
     		head.setVersionDate(new Date());
     		head.setVersion(versionNo +"");
+    		head.setHead(false);
     		if (d.getLicense() != null) {
     			version.setLicense(d.getLicense());
     		} else {

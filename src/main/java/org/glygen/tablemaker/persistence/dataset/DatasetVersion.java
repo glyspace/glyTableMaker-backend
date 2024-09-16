@@ -109,8 +109,8 @@ public class DatasetVersion {
 	
 	@ManyToMany
 	@JoinTable(
-		    name="dataset_publications",
-		    joinColumns=@JoinColumn(name="datasetId"),
+		    name="datasetversion_publications",
+		    joinColumns=@JoinColumn(name="versionid"),
 		    inverseJoinColumns=@JoinColumn(name="id")
 		)
 	public Collection<Publication> getPublications() {
