@@ -6,8 +6,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
@@ -16,9 +18,13 @@ import java.util.SortedMap;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.glygen.tablemaker.config.NamespaceHandler;
 import org.glygen.tablemaker.persistence.FeedbackEntity;
+import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.FeedbackRepository;
+import org.glygen.tablemaker.persistence.dao.GlycanRepository;
+import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
 import org.glygen.tablemaker.persistence.dao.LicenseRepository;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
+import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.License;
 import org.glygen.tablemaker.persistence.dataset.Publication;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
@@ -31,6 +37,7 @@ import org.glygen.tablemaker.util.pubmed.DOIUtil;
 import org.glygen.tablemaker.util.pubmed.DTOPublication;
 import org.glygen.tablemaker.util.pubmed.PubmedUtil;
 import org.glygen.tablemaker.view.NamespaceEntry;
+import org.glygen.tablemaker.view.StatisticsView;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.slf4j.Logger;
 import org.springframework.core.io.ClassPathResource;
@@ -43,6 +50,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -65,12 +73,24 @@ public class UtilityController {
 	private final FeedbackRepository feedbackRepository;
 	private final EmailManager emailManager;
 	private final LicenseRepository licenseRepository;
+	private final GlycanRepository glycanRepository;
+	private final UserRepository userRepository;
+	private final DatasetRepository datasetRepository;
 	
-	public UtilityController(NamespaceRepository namespaceRepository, FeedbackRepository feedbackRepository, EmailManager emailManager, LicenseRepository licenseRepository) {
+	public UtilityController(NamespaceRepository namespaceRepository, 
+			FeedbackRepository feedbackRepository, 
+			EmailManager emailManager, 
+			LicenseRepository licenseRepository, 
+			UserRepository userRepository, 
+			GlycanRepository glycanRepository, 
+			DatasetRepository datasetRepository) {
 		this.namespaceRepository = namespaceRepository;
 		this.feedbackRepository = feedbackRepository;
 		this.emailManager = emailManager;
 		this.licenseRepository = licenseRepository;
+		this.glycanRepository = glycanRepository;
+		this.userRepository = userRepository;
+		this.datasetRepository = datasetRepository;
 	}
 	
 	@Operation(summary = "Get all namespaces")
@@ -480,5 +500,22 @@ public class UtilityController {
     public ResponseEntity<SuccessResponse> getLicenses(){
         List<License> allLicenses = licenseRepository.findAll();
 		return new ResponseEntity<>(new SuccessResponse(allLicenses, "Licenses retrieved"), HttpStatus.OK);   
+    }
+	
+	@RequestMapping(value="/getstatistics", method=RequestMethod.GET)
+    @Operation(summary="Retrieve the stats of the repository")
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Stats retrieved successfully", content = {
+            @Content(mediaType = "application/json", schema = @Schema(implementation = StatisticsView.class))}), 
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> getStatistics () {
+        StatisticsView stats = new StatisticsView();
+        stats.setUserCount(userRepository.count());
+        stats.setDatasetCount(datasetRepository.count());
+        stats.setGlycanCount(glycanRepository.count());
+        stats.setNewGlycanCount(
+        		glycanRepository.countByStatus(RegistrationStatus.NEWLY_REGISTERED) + 
+        		glycanRepository.countByStatus(RegistrationStatus.NEWLY_SUBMITTED_FOR_REGISTRATION));
+        return new ResponseEntity<>(new SuccessResponse(stats, "Statistics retrieved"), HttpStatus.OK); 
     }
 }
