@@ -6,13 +6,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.SortedMap;
 
 import org.apache.commons.collections4.trie.PatriciaTrie;
@@ -21,7 +21,6 @@ import org.glygen.tablemaker.persistence.FeedbackEntity;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.FeedbackRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
-import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
 import org.glygen.tablemaker.persistence.dao.LicenseRepository;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
@@ -50,7 +49,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -59,6 +57,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
 @RestController
@@ -455,7 +454,7 @@ public class UtilityController {
         		}
         		return getPublicationFrom(pub);
             } catch (Exception e) {    
-                throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
+                throw new IllegalArgumentException("Invalid Input: Not a valid publication information. DOI is invalid");
             }
         } else {
         	try {
@@ -464,8 +463,7 @@ public class UtilityController {
                 try {
                     DTOPublication pub = util.createFromPubmedId(pubmedid);
                     if (pub == null) {
-                    	pub = new DTOPublication();
-                    	pub.setPubmedId(pubmedid);
+                    	throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
                     }
                     return getPublicationFrom(pub);
                 } catch (Exception e) {    
@@ -517,5 +515,26 @@ public class UtilityController {
         		glycanRepository.countByStatus(RegistrationStatus.NEWLY_REGISTERED) + 
         		glycanRepository.countByStatus(RegistrationStatus.NEWLY_SUBMITTED_FOR_REGISTRATION));
         return new ResponseEntity<>(new SuccessResponse(stats, "Statistics retrieved"), HttpStatus.OK); 
+    }
+	
+	@Operation(summary="Retrieving all funding organizations from the repository", security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value="/listfundingorganizations", method=RequestMethod.GET)
+    @ApiResponses(value= {@ApiResponse(responseCode="200", description="list of existing funding organizations in the repository"),
+            @ApiResponse(responseCode="400", description="Invalid request, validation error"),
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to retrieve funding organizations"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> getFundingOrganizations(){
+        Set<String> orgs = new HashSet<String>();
+        orgs.add("NIH");
+        orgs.add("FDA");
+        orgs.add("DOI"); 
+        // TODO add from the datasets
+        //orgs.addAll(datasetRepository.getAllFundingOrganizations());
+        if (!orgs.contains("Other")) {
+            orgs.add("Other");
+        }
+        return new ResponseEntity<>(new SuccessResponse(orgs, "Funding organizations retrieved"), HttpStatus.OK);
     }
 }
