@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 
 public interface GlycanRepository extends JpaRepository<Glycan, Long>,  JpaSpecificationExecutor<Glycan>{
     
@@ -21,5 +22,9 @@ public interface GlycanRepository extends JpaRepository<Glycan, Long>,  JpaSpeci
     public Page<Glycan> findAllByUser(UserEntity user, Pageable pageable);
     public Page<Glycan> findAll(Specification<Glycan> spec, Pageable pageable);
     public List<Glycan> findByUserAndUploadFiles_Id (UserEntity user, Long uploadId);
-	public Long countByStatus(RegistrationStatus newlyRegistered);
+	
+    public Long countByStatus(RegistrationStatus newlyRegistered);
+    
+	@Query("SELECT DISTINCT g.glytoucanID FROM Glycan g")
+    List<String> findDistinctGlytoucanId();
 }

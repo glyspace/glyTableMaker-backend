@@ -512,7 +512,7 @@ public class UtilityController {
         StatisticsView stats = new StatisticsView();
         stats.setUserCount(userRepository.count());
         stats.setDatasetCount(datasetRepository.count());
-        stats.setGlycanCount(glycanRepository.count());
+        stats.setGlycanCount((long)glycanRepository.findDistinctGlytoucanId().size());
         stats.setNewGlycanCount(
         		glycanRepository.countByStatus(RegistrationStatus.NEWLY_REGISTERED) + 
         		glycanRepository.countByStatus(RegistrationStatus.NEWLY_SUBMITTED_FOR_REGISTRATION));
