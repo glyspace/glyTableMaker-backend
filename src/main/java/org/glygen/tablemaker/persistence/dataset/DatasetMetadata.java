@@ -26,6 +26,7 @@ public class DatasetMetadata {
 	String value;
     String valueUri;
  	String valueId;
+ 	String rowId;     // based on selected collection + glycan
  	
  	DatasetVersion dataset;
  	
@@ -39,6 +40,7 @@ public class DatasetMetadata {
 		this.value = m.value;
 		this.valueId = m.valueId;
 		this.valueUri = m.valueUri;
+		this.rowId = m.rowId;
 	}
 
 	@Id
@@ -62,7 +64,7 @@ public class DatasetMetadata {
 	}
 
 	@Enumerated(EnumType.STRING)
-	@Column(name="glycancolumn")
+	@Column(name="glycancolumn", length=50)
 	public GlycanColumns getGlycanColumn() {
 		return glycanColumn;
 	}
@@ -108,6 +110,15 @@ public class DatasetMetadata {
 
 	public void setDataset(DatasetVersion dataset) {
 		this.dataset = dataset;
+	}
+
+	@Column
+	public String getRowId() {
+		return rowId;
+	}
+
+	public void setRowId(String rowId) {
+		this.rowId = rowId;
 	}
  	
  	

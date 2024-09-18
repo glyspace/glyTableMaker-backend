@@ -9,7 +9,7 @@ import jakarta.persistence.Id;
 public class DatabaseResource {
 	Long id;
 	String name;   // name of the database/resource
-	String identifer;   // identifier in the database/resource
+	String identifier;   // identifier in the database/resource
 	String URL;    // URL of the database/resource
 	
 	@Id
@@ -38,10 +38,10 @@ public class DatabaseResource {
 	}
 	
 	@Column
-	public String getIdentifer() {
-		return identifer;
+	public String getIdentifier() {
+		return identifier;
 	}
-	public void setIdentifer(String identifer) {
-		this.identifer = identifer;
+	public void setIdentifier(String identifier) {
+		this.identifier = identifier;
 	}
 }

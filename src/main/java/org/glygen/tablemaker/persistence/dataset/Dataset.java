@@ -75,7 +75,7 @@ public class Dataset {
 	@JoinTable(
 	    name="dataset_grants",
 	    joinColumns=@JoinColumn(name="datasetId"),
-	    inverseJoinColumns=@JoinColumn(name="id")
+	    inverseJoinColumns=@JoinColumn(name="grantid")
 	)
 	public Collection<Grant> getGrants() {
 		return grants;
@@ -114,7 +114,7 @@ public class Dataset {
 	@JoinTable(
 	    name="dataset_databases",
 	    joinColumns=@JoinColumn(name="datasetId"),
-	    inverseJoinColumns=@JoinColumn(name="id")
+	    inverseJoinColumns=@JoinColumn(name="resourceid")
 	)
 	public Collection<DatabaseResource> getAssociatedDatasources() {
 		return associatedDatasources;
@@ -127,7 +127,7 @@ public class Dataset {
 	@JoinTable(
 	    name="dataset_associated_papers",
 	    joinColumns=@JoinColumn(name="datasetId"),
-	    inverseJoinColumns=@JoinColumn(name="id")
+	    inverseJoinColumns=@JoinColumn(name="paperid")
 	)
 	public Collection<Publication> getAssociatedPapers() {
 		return associatedPapers;

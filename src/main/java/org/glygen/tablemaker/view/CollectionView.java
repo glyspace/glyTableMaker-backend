@@ -2,7 +2,6 @@ package org.glygen.tablemaker.view;
 
 import java.util.List;
 
-import org.glygen.tablemaker.persistence.dataset.DatasetError;
 import org.glygen.tablemaker.persistence.glycan.CollectionTag;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;

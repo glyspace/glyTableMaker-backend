@@ -25,7 +25,7 @@ public class DatabaseResourceDataset {
 	
 	@JsonIgnore
     @ManyToOne(targetEntity = DatabaseResource.class)
-    @JoinColumn(name = "id")  
+    @JoinColumn(name = "resourceid")  
 	DatabaseResource resource;
 	
 	@Column(name="datepublished")

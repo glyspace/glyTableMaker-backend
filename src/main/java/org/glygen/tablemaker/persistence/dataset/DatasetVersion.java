@@ -32,7 +32,6 @@ public class DatasetVersion {
 	Boolean head;
 	
 	Collection<DatasetMetadata> data;
-	Collection<DatasetError> errors;
 	Collection<Publication> publications;
 	
 	Dataset dataset;
@@ -72,7 +71,7 @@ public class DatasetVersion {
 	}
 	
 	@ManyToOne(targetEntity = License.class, fetch = FetchType.EAGER)
-	@JoinColumn(nullable = false, name = "id", foreignKey = @ForeignKey(name = "FK_VERIFY_LICENSE"))
+	@JoinColumn(nullable = false, name = "licenseid", foreignKey = @ForeignKey(name = "FK_VERIFY_LICENSE"))
 	public License getLicense() {
 		return license;
 	}
@@ -99,19 +98,11 @@ public class DatasetVersion {
 		this.data = data;
 	}
 	
-	@OneToMany(mappedBy = "dataset", cascade=CascadeType.ALL, orphanRemoval = true)
-	public Collection<DatasetError> getErrors() {
-		return errors;
-	}
-	public void setErrors(Collection<DatasetError> errors) {
-		this.errors = errors;
-	}
-	
 	@ManyToMany
 	@JoinTable(
 		    name="datasetversion_publications",
 		    joinColumns=@JoinColumn(name="versionid"),
-		    inverseJoinColumns=@JoinColumn(name="id")
+		    inverseJoinColumns=@JoinColumn(name="publicationid")
 		)
 	public Collection<Publication> getPublications() {
 		return publications;

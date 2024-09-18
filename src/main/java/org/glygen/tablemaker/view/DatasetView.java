@@ -6,7 +6,6 @@ import java.util.List;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResourceDataset;
-import org.glygen.tablemaker.persistence.dataset.DatasetError;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.Grant;
 import org.glygen.tablemaker.persistence.dataset.License;

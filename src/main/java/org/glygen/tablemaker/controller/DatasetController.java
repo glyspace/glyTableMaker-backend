@@ -17,7 +17,6 @@ import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
-import org.glygen.tablemaker.persistence.dataset.DatasetError;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Grant;
@@ -26,13 +25,13 @@ import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
-import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.service.DatasetManager;
 import org.glygen.tablemaker.view.CollectionView;
+import org.glygen.tablemaker.view.DatasetError;
 import org.glygen.tablemaker.view.DatasetInputView;
 import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.Filter;
@@ -247,13 +246,11 @@ public class DatasetController {
         
         // check for errors in the collections
         StringBuffer errorMessage = new StringBuffer();
-        List<DatasetError> errors = new ArrayList<>();
         for (CollectionView cv: d.getCollections()) {
         	getErrorsForCollection (cv);
         	if (!cv.getErrors().isEmpty()) {
         		errorMessage.append ("Collection" + cv.getName() + " has errors!\n");       		
         	}
-        	errors.addAll(cv.getWarnings());
         }
         if (!errorMessage.isEmpty()) {
         	throw new IllegalArgumentException (errorMessage.toString().trim());
@@ -274,12 +271,7 @@ public class DatasetController {
         version.setVersion("");
         version.setVersionDate(new Date());
         version.setLicense(d.getLicense());
-        version.setErrors(errors);
         version.setPublications(d.getPublications());
-        
-        for (DatasetError err: errors) {
-        	err.setDataset(version);
-        }
         
         newDataset.getVersions().add(version);
         
@@ -301,6 +293,7 @@ public class DatasetController {
         	for (GlycanInCollection g: collection.getGlycans()) {
         		DatasetMetadata dm = new DatasetMetadata();
         		dm.setDataset(version);
+        		dm.setRowId(collection.getCollectionId() + "-" + g.getGlycan().getGlycanId());
         		for (TableColumn col: glygenTemplate.getColumns()) {
         			if (col.getGlycanColumn() != null) {
         				switch (col.getGlycanColumn()) {
@@ -511,13 +504,7 @@ public class DatasetController {
     				DatasetMetadata copy = new DatasetMetadata(m);
     				copy.setDataset(version);
     				version.getData().add(copy);
-    			}
-    			version.setErrors(new ArrayList<>());    	
-    			for (DatasetError m: head.getErrors()) {
-    				DatasetError copy = new DatasetError(m.getMessage(), m.getErrorLevel());
-    				copy.setDataset(version);
-    				version.getErrors().add(copy);
-    			}		
+    			}	
     			version.setPublications(new ArrayList<>());
     			for (Publication p: head.getPublications()) {
     				version.getPublications().add(p);
@@ -527,24 +514,17 @@ public class DatasetController {
     			
     			// check for errors in the collections
     	        StringBuffer errorMessage = new StringBuffer();
-    	        List<DatasetError> errors = new ArrayList<>();
     	        for (CollectionView cv: d.getCollections()) {
     	        	getErrorsForCollection (cv);
     	        	if (!cv.getErrors().isEmpty()) {
     	        		errorMessage.append ("Collection" + cv.getName() + " has errors!\n");       		
     	        	}
-    	        	errors.addAll(cv.getWarnings());
     	        }
     	        if (!errorMessage.isEmpty()) {
     	        	throw new IllegalArgumentException (errorMessage.toString().trim());
     	        }
     	        
     	        version.setData(generateData(version, d.getCollections()));
-    	        version.setErrors(errors);
-    	        
-    	        for (DatasetError err: errors) {
-    	        	err.setDataset(version);
-    	        }
     	        
     	        version.setPublications(new ArrayList<>());
     	        for (DatasetMetadata m: version.getData()) {
@@ -627,7 +607,6 @@ public class DatasetController {
     			dv.setVersionDate(version.getVersionDate());
     			dv.setVersionComment(version.getComment());
     			if (version.getData() != null) dv.setData(new ArrayList<>(version.getData()));
-    			if (version.getErrors() != null) dv.setErrors(new ArrayList<>(version.getErrors()));
     			if (version.getPublications() != null) dv.setPublications(new ArrayList<>(version.getPublications()));
     			break;
     		} 

@@ -63,11 +63,13 @@ import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
+import org.glygen.tablemaker.persistence.GlycanImageEntity;
 import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
+import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
@@ -171,6 +173,7 @@ public class DataController {
     final private CollectionManager collectionManager;
     final private TableReportRepository reportRepository;
     final private NamespaceRepository namespaceRepository;
+    final private GlycanImageRepository glycanImageRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -182,7 +185,8 @@ public class DataController {
     		BatchUploadRepository uploadRepository, AsyncService uploadService, 
     		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, 
     		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, 
-    		TableReportRepository reportRepository, NamespaceRepository namespaceRepository) {
+    		TableReportRepository reportRepository, NamespaceRepository namespaceRepository, 
+    		GlycanImageRepository glycanImageRepository) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
@@ -194,6 +198,7 @@ public class DataController {
 		this.collectionManager = collectionManager;
 		this.reportRepository = reportRepository;
 		this.namespaceRepository = namespaceRepository;
+		this.glycanImageRepository = glycanImageRepository;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -322,6 +327,15 @@ public class DataController {
         
         // retrieve cartoon images
         for (Glycan g: glycansInPage.getContent()) {
+        	Optional<GlycanImageEntity> imageHandle = glycanImageRepository.findByGlycanId(g.getGlycanId());
+        	if (!imageHandle.isPresent()) {
+        		// create entry
+        		GlycanImageEntity entity = new GlycanImageEntity();
+        		entity.setGlycanId(g.getGlycanId());
+        		entity.setGlytoucanId(g.getGlytoucanID());
+        		entity.setWurcs(g.getWurcs());
+        		glycanImageRepository.save(entity);
+        	}
             try {
                 g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
                 if (g.getGlytoucanID() == null && g.getGlytoucanHash() != null && g.getWurcs() != null) {
@@ -330,6 +344,16 @@ public class DataController {
                 		g.setGlytoucanID(GlytoucanUtil.getInstance().getAccessionNumber(g.getWurcs()));
                 		if (g.getGlytoucanID() == null) {
                 			GlytoucanUtil.getInstance().checkBatchStatus(g.getGlytoucanHash());
+                		} else {
+                			//update glycan's status to NEWLY_REGISTERED
+                			g.setStatus(RegistrationStatus.NEWLY_REGISTERED);
+                			// update glycan image table
+                			imageHandle = glycanImageRepository.findByGlycanId(g.getGlycanId());
+                			if (imageHandle.isPresent()) {
+                				GlycanImageEntity entity = imageHandle.get();
+                				entity.setGlytoucanId(g.getGlytoucanID());
+                				glycanImageRepository.save(entity);
+                			}
                 		}
                 	} catch (GlytoucanFailedException e) {
                 		g.setError("Error registering. No additional information received from GlyTouCan.");
@@ -1146,6 +1170,11 @@ public class DataController {
             } else {
                 logger.warn ("Glycan image cannot be generated for glycan " + added.getGlycanId());
             }
+            GlycanImageEntity imageEntity = new GlycanImageEntity();
+            imageEntity.setGlycanId(added.getGlycanId());
+            imageEntity.setGlytoucanId(added.getGlytoucanID());
+            imageEntity.setWurcs(added.getWurcs());
+            glycanImageRepository.save(imageEntity);
         } 
         return new ResponseEntity<>(new SuccessResponse(glycan, "glycan added"), HttpStatus.OK);
     }
