@@ -22,6 +22,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,7 +32,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.Parameter;
 
 @RestController
 @RequestMapping("/api/public")
@@ -44,7 +45,7 @@ public class PublicDataController {
 		this.datasetRepository = datasetRepository;
 	}
 	
-	@Operation(summary = "Get public datasets", security = { @SecurityRequirement(name = "bearer-key") })
+	@Operation(summary = "Get public datasets")
     @GetMapping("/getdatasets")
     public ResponseEntity<SuccessResponse> getDatasets(
             @RequestParam("start")
@@ -131,5 +132,27 @@ public class PublicDataController {
         return new ResponseEntity<>(new SuccessResponse(response, "datasets retrieved"), HttpStatus.OK);
 	}
 	
-
+	@Operation(summary = "Get dataset by the given id")
+    @GetMapping("/getdataset/{datasetIdentifier}")
+    public ResponseEntity<SuccessResponse> getDataset(
+    		@Parameter(required=true, description="id of the dataseet to be retrieved") 
+    		@PathVariable("datasetIdentifier") String datasetIdentifier) {
+    	
+        String identifier = datasetIdentifier;
+        String version = "";
+        // check if the identifier contains a version
+        String[] split = datasetIdentifier.split("-");
+        if (split.length > 1) {
+        	identifier = split[0];
+        	version = split[1];
+        }
+        Dataset existing = datasetRepository.findByDatasetIdentifierAndVersions_version(identifier, version);
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier);
+        }
+        
+        DatasetView dv = DatasetController.createDatasetView (existing, version);
+        
+        return new ResponseEntity<>(new SuccessResponse(dv, "dataset retrieved"), HttpStatus.OK);
+    }
 }
