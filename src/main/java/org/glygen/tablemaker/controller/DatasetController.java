@@ -580,7 +580,7 @@ public class DatasetController {
         return new ResponseEntity<>(new SuccessResponse(dv, "dataset retrieved"), HttpStatus.OK);
     }
 	
-    private DatasetView createDatasetView(Dataset d, String versionString) {
+    public static DatasetView createDatasetView(Dataset d, String versionString) {
     	boolean head = false;
     	if (versionString == null || versionString.isEmpty()) 
     		head = true;
