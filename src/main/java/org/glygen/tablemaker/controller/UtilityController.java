@@ -23,6 +23,7 @@ import org.glygen.tablemaker.persistence.dao.FeedbackRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.LicenseRepository;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
+import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.License;
 import org.glygen.tablemaker.persistence.dataset.Publication;
@@ -75,6 +76,7 @@ public class UtilityController {
 	private final GlycanRepository glycanRepository;
 	private final UserRepository userRepository;
 	private final DatasetRepository datasetRepository;
+	private final PublicationRepository publicationRepository;
 	
 	public UtilityController(NamespaceRepository namespaceRepository, 
 			FeedbackRepository feedbackRepository, 
@@ -82,7 +84,7 @@ public class UtilityController {
 			LicenseRepository licenseRepository, 
 			UserRepository userRepository, 
 			GlycanRepository glycanRepository, 
-			DatasetRepository datasetRepository) {
+			DatasetRepository datasetRepository, PublicationRepository publicationRepository) {
 		this.namespaceRepository = namespaceRepository;
 		this.feedbackRepository = feedbackRepository;
 		this.emailManager = emailManager;
@@ -90,6 +92,7 @@ public class UtilityController {
 		this.glycanRepository = glycanRepository;
 		this.userRepository = userRepository;
 		this.datasetRepository = datasetRepository;
+		this.publicationRepository = publicationRepository;
 	}
 	
 	@Operation(summary = "Get all namespaces")
@@ -434,19 +437,25 @@ public class UtilityController {
             throw new IllegalArgumentException("Invalid Input: Not a valid publication information");
         }
         
+        
+        
         try {
-        	return new ResponseEntity<>(new SuccessResponse(getPublication(identifier), "Publication retrieved"), HttpStatus.OK);
+        	return new ResponseEntity<>(new SuccessResponse(getPublication(identifier, publicationRepository), "Publication retrieved"), HttpStatus.OK);
         } catch (Exception e) {    
             throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Publication identifier is invalid");
         }
     }
 	
-	public static Publication getPublication (String identifier) throws Exception {
+	public static Publication getPublication (String identifier, PublicationRepository pubRepository) throws Exception {
 		
 		if (identifier.toLowerCase().startsWith("doi:")) {
         	// retrieve by Doi number
         	String doiid = identifier.toLowerCase().substring(identifier.toLowerCase().indexOf("doi:")+4);
         	try {
+        		List<Publication> existing = pubRepository.findByDoiId(doiid);
+        		if (existing != null && existing.size() > 0) {
+        			return existing.get(0);
+        		}
         		DTOPublication pub = new DOIUtil().getPublication(doiid);
         		if (pub == null) {
         			pub = new DTOPublication();
@@ -461,6 +470,10 @@ public class UtilityController {
         		Integer pubmedid = Integer.parseInt(identifier);
         		PubmedUtil util = new PubmedUtil();
                 try {
+                	List<Publication> existing = pubRepository.findByPubmedId(pubmedid);
+            		if (existing != null && existing.size() > 0) {
+            			return existing.get(0);
+            		}
                     DTOPublication pub = util.createFromPubmedId(pubmedid);
                     if (pub == null) {
                     	throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");

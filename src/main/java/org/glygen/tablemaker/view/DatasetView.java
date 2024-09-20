@@ -37,7 +37,7 @@ public class DatasetView {
 	List<DatabaseResourceDataset> integratedIn;
 	List<DatabaseResource> associatedDatasources;
 	List<Publication> associatedPapers;
-	List<DatasetMetadata> data;
+	List<GlygenMetadataRow> data;
 	List<DatasetVersion> versions;
 	
 	public Long getId() {
@@ -148,10 +148,10 @@ public class DatasetView {
 	public void setAssociatedPapers(List<Publication> associatedPapers) {
 		this.associatedPapers = associatedPapers;
 	}
-	public List<DatasetMetadata> getData() {
+	public List<GlygenMetadataRow> getData() {
 		return data;
 	}
-	public void setData(List<DatasetMetadata> data) {
+	public void setData(List<GlygenMetadataRow> data) {
 		this.data = data;
 	}
 	public List<DatasetVersion> getVersions() {

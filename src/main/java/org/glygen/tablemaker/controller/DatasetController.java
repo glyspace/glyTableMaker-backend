@@ -13,6 +13,7 @@ import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
+import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
@@ -35,6 +36,7 @@ import org.glygen.tablemaker.view.DatasetError;
 import org.glygen.tablemaker.view.DatasetInputView;
 import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.Filter;
+import org.glygen.tablemaker.view.GlygenMetadataRow;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.slf4j.Logger;
@@ -80,17 +82,19 @@ public class DatasetController {
 	final private CollectionRepository collectionRepository;
 	private final DatatypeCategoryRepository datatypeCategoryRepository;
 	private final DatasetManager datasetManager;
+	private final PublicationRepository publicationRepository;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
 	
-	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager) {
+	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository) {
 		this.datasetRepository = datasetRepository;
 		this.userRepository = userRepository;
 		this.templateRepository = templateRepository;
 		this.collectionRepository = collectionRepository;
 		this.datatypeCategoryRepository = datatypeCategoryRepository;
 		this.datasetManager = datasetManager;
+		this.publicationRepository = publicationRepository;
 	}
 	
 	@Operation(summary = "Get user's public datasets", security = { @SecurityRequirement(name = "bearer-key") })
@@ -291,10 +295,10 @@ public class DatasetController {
         	Optional<Collection> collectionHandle = collectionRepository.findById(cv.getCollectionId());
         	Collection collection = collectionHandle.get();
         	for (GlycanInCollection g: collection.getGlycans()) {
-        		DatasetMetadata dm = new DatasetMetadata();
-        		dm.setDataset(version);
-        		dm.setRowId(collection.getCollectionId() + "-" + g.getGlycan().getGlycanId());
         		for (TableColumn col: glygenTemplate.getColumns()) {
+        			DatasetMetadata dm = new DatasetMetadata();
+            		dm.setDataset(version);
+            		dm.setRowId(collection.getCollectionId() + "-" + g.getGlycan().getGlycanId());
         			if (col.getGlycanColumn() != null) {
         				switch (col.getGlycanColumn()) {
         				case GLYTOUCANID:  // check to make sure all glycans have this value
@@ -319,8 +323,8 @@ public class DatasetController {
         					}
         				}
         			}	
+        			metadata.add(dm);
         		}
-        		metadata.add(dm);
 			}
         }
         return metadata;
@@ -531,8 +535,8 @@ public class DatasetController {
     	        	// find the publications
     	        	if (m.getDatatype() != null && m.getDatatype().getName().equals("Evidence")) {
     	        		try {
-							Publication pub = UtilityController.getPublication(m.getValue());
-							if (pub != null) {
+							Publication pub = UtilityController.getPublication(m.getValue(), publicationRepository);
+							if (pub != null && !version.getPublications().contains(pub)) {
 								version.getPublications().add(pub);
 							}
 						} catch (Exception e) {
@@ -602,11 +606,26 @@ public class DatasetController {
     	for (DatasetVersion version : d.getVersions()) {
     		if ((head && version.getHead()) || (!head && version.getVersion().equalsIgnoreCase(versionString))) {
     			dv.setLicense(version.getLicense());
-    			dv.setNoGlycans(version.getData() != null ? version.getData().size() : 0);
     			dv.setVersion(version.getVersion());
     			dv.setVersionDate(version.getVersionDate());
     			dv.setVersionComment(version.getComment());
-    			if (version.getData() != null) dv.setData(new ArrayList<>(version.getData()));
+    			if (version.getData() != null) {
+    				dv.setData(new ArrayList<>());
+    				Map<String, List<DatasetMetadata>> rowMap = new HashMap<>();
+    				for (DatasetMetadata m: version.getData()) {
+    					if (rowMap.get(m.getRowId()) == null) {
+    						rowMap.put(m.getRowId(), new ArrayList<>());
+    					}
+    					rowMap.get(m.getRowId()).add(m);
+    				}
+    				for (String key: rowMap.keySet()) {
+    					GlygenMetadataRow row = new GlygenMetadataRow();
+    					row.setRowId(key);
+    					row.setColumns(rowMap.get(key));
+    					dv.getData().add(row);
+    				}
+    			}
+    			dv.setNoGlycans(dv.getData() != null ? dv.getData().size() : 0);
     			if (version.getPublications() != null) dv.setPublications(new ArrayList<>(version.getPublications()));
     			break;
     		} 
