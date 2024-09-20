@@ -6,5 +6,6 @@ public enum TableMakerTable {
 	GLYCANINCOLLECTION,
 	COC,
 	METADATA,
-	DATASET;
+	DATASET,
+	DATASETMETADATA;
 }
