@@ -611,7 +611,8 @@ public class DatasetController {
     			break;
     		} 
     	}
-		
+    	
+    	if (d.getVersions() != null) dv.setVersions(new ArrayList<>(d.getVersions()));
 		return dv;
 	}
 

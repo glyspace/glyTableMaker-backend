@@ -7,6 +7,7 @@ import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResourceDataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
+import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Grant;
 import org.glygen.tablemaker.persistence.dataset.License;
 import org.glygen.tablemaker.persistence.dataset.Publication;
@@ -37,7 +38,7 @@ public class DatasetView {
 	List<DatabaseResource> associatedDatasources;
 	List<Publication> associatedPapers;
 	List<DatasetMetadata> data;
-	List<DatasetError> errors;
+	List<DatasetVersion> versions;
 	
 	public Long getId() {
 		return id;
@@ -153,11 +154,11 @@ public class DatasetView {
 	public void setData(List<DatasetMetadata> data) {
 		this.data = data;
 	}
-	public List<DatasetError> getErrors() {
-		return errors;
+	public List<DatasetVersion> getVersions() {
+		return versions;
 	}
-	public void setErrors(List<DatasetError> errors) {
-		this.errors = errors;
+	public void setVersions(List<DatasetVersion> vers) {
+		this.versions = vers;
 	}
 	
 	
