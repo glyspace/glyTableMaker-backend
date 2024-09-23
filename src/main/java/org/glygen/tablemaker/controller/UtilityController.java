@@ -1,6 +1,8 @@
 package org.glygen.tablemaker.controller;
 
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -12,14 +14,20 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+
+import javax.imageio.ImageIO;
+
+import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
 
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.glygen.tablemaker.config.NamespaceHandler;
 import org.glygen.tablemaker.persistence.FeedbackEntity;
+import org.glygen.tablemaker.persistence.GlycanImageEntity;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.FeedbackRepository;
+import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.LicenseRepository;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
@@ -28,6 +36,7 @@ import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.License;
 import org.glygen.tablemaker.persistence.dataset.Publication;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
+import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.Namespace;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
@@ -40,6 +49,7 @@ import org.glygen.tablemaker.view.NamespaceEntry;
 import org.glygen.tablemaker.view.StatisticsView;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
@@ -59,6 +69,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 
 @RestController
@@ -77,6 +88,10 @@ public class UtilityController {
 	private final UserRepository userRepository;
 	private final DatasetRepository datasetRepository;
 	private final PublicationRepository publicationRepository;
+	private final GlycanImageRepository glycanImageRepository;
+	
+	@Value("${spring.file.imagedirectory}")
+    String imageLocation;
 	
 	public UtilityController(NamespaceRepository namespaceRepository, 
 			FeedbackRepository feedbackRepository, 
@@ -84,7 +99,7 @@ public class UtilityController {
 			LicenseRepository licenseRepository, 
 			UserRepository userRepository, 
 			GlycanRepository glycanRepository, 
-			DatasetRepository datasetRepository, PublicationRepository publicationRepository) {
+			DatasetRepository datasetRepository, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository) {
 		this.namespaceRepository = namespaceRepository;
 		this.feedbackRepository = feedbackRepository;
 		this.emailManager = emailManager;
@@ -93,6 +108,7 @@ public class UtilityController {
 		this.userRepository = userRepository;
 		this.datasetRepository = datasetRepository;
 		this.publicationRepository = publicationRepository;
+		this.glycanImageRepository = glycanImageRepository;
 	}
 	
 	@Operation(summary = "Get all namespaces")
@@ -550,4 +566,63 @@ public class UtilityController {
         }
         return new ResponseEntity<>(new SuccessResponse(orgs, "Funding organizations retrieved"), HttpStatus.OK);
     }
+	
+	@Operation(summary = "Retrieve cartoon image for the glycan with the given glytoucan id")
+    @RequestMapping(value="/getcartoon", method = RequestMethod.GET)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Image retrieved successfully"), 
+            @ApiResponse(responseCode="404", description="Image for the given glytoucan id  does not exist"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> getCartoon (
+            @Parameter(required=true, description="GlyTouCan Id for the glycan") 
+            @RequestParam("glytoucanId") String glytoucanId) {
+        if (glytoucanId == null) {
+            throw new IllegalArgumentException("Invalid Input: Not a valid glytoucan id");
+        }
+
+        return new ResponseEntity<>(new SuccessResponse(getCartoon (glytoucanId), "Cartoon retrieved"), HttpStatus.OK);
+    }
+	
+	public static byte[] getCartoon (String glytoucanId, GlycanImageRepository glycanImageRepository, String imageLocation) {
+		try {
+        	Optional<GlycanImageEntity> imageHandle = glycanImageRepository.findByGlytoucanId(glytoucanId.trim());
+        	if (imageHandle.isPresent()) {
+        		Long glycanId = imageHandle.get().getGlycanId();
+        		byte[] cartoon = DataController.getImageForGlycan(imageLocation, glycanId);
+        		if (cartoon == null) {
+        			// generate and save
+        			Glycan glycan = new Glycan();
+        			glycan.setWurcs(imageHandle.get().getWurcs());
+        			glycan.setGlytoucanID(imageHandle.get().getGlytoucanId());
+        			BufferedImage t_image = DataController.createImageForGlycan(glycan);
+        			if (t_image != null) {
+                        String filename = glycanId + ".png";
+                        //save the image into a file
+                        logger.debug("Adding image to " + imageLocation);
+                        File imageFile = new File(imageLocation + File.separator + filename);
+                        try {
+                            ImageIO.write(t_image, "png", imageFile);
+                        } catch (IOException e) {
+                            logger.error("could not write cartoon image to file", e);
+                        }
+                    } else {
+                        logger.warn ("Glycan image cannot be generated for glycan " + glycanId);
+                    }
+                    GlycanImageEntity imageEntity = new GlycanImageEntity();
+                    imageEntity.setGlycanId(glycanId);
+                    imageEntity.setGlytoucanId(glycan.getGlytoucanID());
+                    imageEntity.setWurcs(glycan.getWurcs());
+                    glycanImageRepository.save(imageEntity);
+        		}
+            	return cartoon;
+        		
+        	} else {
+        		throw new EntityNotFoundException("Invalid Input: Glycan with the given glytoucan id cannot be located");
+        	}
+        	
+        	
+        } catch (Exception e) {    
+            throw new IllegalArgumentException("Invalid Input: Not a valid glytoucan id");
+        }
+	}
 }

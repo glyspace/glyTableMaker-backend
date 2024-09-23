@@ -8,6 +8,7 @@ public class GlygenMetadataRow {
 	
 	String rowId;
 	List<DatasetMetadata> columns;
+	byte[] cartoon;
 	
 	public String getRowId() {
 		return rowId;
@@ -22,6 +23,11 @@ public class GlygenMetadataRow {
 		this.columns = columns;
 	}
 	
+	public byte[] getCartoon() {
+		return cartoon;
+	}
 	
-
+	public void setCartoon(byte[] cartoon) {
+		this.cartoon = cartoon;
+	}
 }

@@ -7,12 +7,14 @@ import java.util.Map;
 
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
+import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -40,9 +42,14 @@ public class PublicDataController {
 	static Logger logger = org.slf4j.LoggerFactory.getLogger(PublicDataController.class);
 	
 	final private DatasetRepository datasetRepository;
+	final private GlycanImageRepository glycanImageRepository;
 	
-	public PublicDataController(DatasetRepository datasetRepository) {
+	@Value("${spring.file.imagedirectory}")
+    String imageLocation;
+	
+	public PublicDataController(DatasetRepository datasetRepository, GlycanImageRepository glycanImageRepository) {
 		this.datasetRepository = datasetRepository;
+		this.glycanImageRepository = glycanImageRepository;
 	}
 	
 	@Operation(summary = "Get public datasets")
@@ -119,7 +126,7 @@ public class PublicDataController {
         
         List<DatasetView> datasets = new ArrayList<>();
         for (Dataset d: datasetsInPage.getContent()) {
-        	DatasetView dv = DatasetController.createDatasetView (d, null);
+        	DatasetView dv = DatasetController.createDatasetView (d, null, glycanImageRepository, imageLocation);
         	datasets.add(dv);
         }
         
@@ -151,7 +158,7 @@ public class PublicDataController {
             throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier);
         }
         
-        DatasetView dv = DatasetController.createDatasetView (existing, version);
+        DatasetView dv = DatasetController.createDatasetView (existing, version, glycanImageRepository, imageLocation);
         
         return new ResponseEntity<>(new SuccessResponse(dv, "dataset retrieved"), HttpStatus.OK);
     }

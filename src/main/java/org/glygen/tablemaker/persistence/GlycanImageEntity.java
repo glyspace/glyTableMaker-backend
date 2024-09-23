@@ -22,7 +22,7 @@ public class GlycanImageEntity {
 		this.glycanId = glycanId;
 	}
 	
-	@Column(length = 8)
+	@Column(length = 8, unique=true)
 	public String getGlytoucanId() {
 		return glytoucanId;
 	}

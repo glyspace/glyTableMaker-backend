@@ -13,6 +13,7 @@ import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
+import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
@@ -28,6 +29,7 @@ import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
+import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.service.DatasetManager;
@@ -83,11 +85,12 @@ public class DatasetController {
 	private final DatatypeCategoryRepository datatypeCategoryRepository;
 	private final DatasetManager datasetManager;
 	private final PublicationRepository publicationRepository;
+	private final GlycanImageRepository glycanImageRepository;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
 	
-	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository) {
+	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository) {
 		this.datasetRepository = datasetRepository;
 		this.userRepository = userRepository;
 		this.templateRepository = templateRepository;
@@ -95,6 +98,7 @@ public class DatasetController {
 		this.datatypeCategoryRepository = datatypeCategoryRepository;
 		this.datasetManager = datasetManager;
 		this.publicationRepository = publicationRepository;
+		this.glycanImageRepository = glycanImageRepository;
 	}
 	
 	@Operation(summary = "Get user's public datasets", security = { @SecurityRequirement(name = "bearer-key") })
@@ -180,7 +184,7 @@ public class DatasetController {
         
         List<DatasetView> datasets = new ArrayList<>();
         for (Dataset d: datasetsInPage.getContent()) {
-        	DatasetView dv = createDatasetView (d, null);
+        	DatasetView dv = createDatasetView (d, null, glycanImageRepository, imageLocation);
         	datasets.add(dv);
         }
         
@@ -550,7 +554,7 @@ public class DatasetController {
     	
 		Dataset saved = datasetManager.saveDataset(existing);
     	
-    	DatasetView dv = createDatasetView(saved, null);
+    	DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation);
     	return new ResponseEntity<>(new SuccessResponse(dv, "dataset updated"), HttpStatus.OK);
 	}
 	
@@ -579,12 +583,12 @@ public class DatasetController {
             throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier + " for the user");
         }
         
-        DatasetView dv = createDatasetView (existing, version);
+        DatasetView dv = createDatasetView (existing, version, glycanImageRepository, imageLocation);
         
         return new ResponseEntity<>(new SuccessResponse(dv, "dataset retrieved"), HttpStatus.OK);
     }
 	
-    public static DatasetView createDatasetView(Dataset d, String versionString) {
+    public static DatasetView createDatasetView(Dataset d, String versionString, GlycanImageRepository imageRepository, String imageLocation) {
     	boolean head = false;
     	if (versionString == null || versionString.isEmpty()) 
     		head = true;
@@ -622,6 +626,13 @@ public class DatasetController {
     					GlygenMetadataRow row = new GlygenMetadataRow();
     					row.setRowId(key);
     					row.setColumns(rowMap.get(key));
+    					for (DatasetMetadata col: row.getColumns()) {
+    						if (col.getGlycanColumn() != null && col.getGlycanColumn() == GlycanColumns.GLYTOUCANID) {
+    							byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), imageRepository, imageLocation);
+    							row.setCartoon(cartoon);
+    							break;
+    						}
+    					}
     					dv.getData().add(row);
     				}
     			}
