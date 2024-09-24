@@ -400,8 +400,7 @@ public class TableController {
 		}
 	}
 		
-
-	private void writeToCSV(List<String[]> rows, File newFile) throws IOException {
+	public static void writeToCSV(List<String[]> rows, File newFile) throws IOException {
 		try (CSVWriter writer = new CSVWriter(new FileWriter(newFile.getPath().toString()))) {
 	        writer.writeAll(rows);
 	    }
