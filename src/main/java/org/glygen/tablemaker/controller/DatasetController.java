@@ -628,8 +628,12 @@ public class DatasetController {
     					row.setColumns(rowMap.get(key));
     					for (DatasetMetadata col: row.getColumns()) {
     						if (col.getGlycanColumn() != null && col.getGlycanColumn() == GlycanColumns.GLYTOUCANID) {
-    							byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), imageRepository, imageLocation);
-    							row.setCartoon(cartoon);
+    							try {
+    								byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), imageRepository, imageLocation);
+    								row.setCartoon(cartoon);
+    							} catch (Exception e) {
+    								logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
+    							}
     							break;
     						}
     					}

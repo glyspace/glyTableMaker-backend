@@ -585,15 +585,16 @@ public class UtilityController {
 	
 	public static byte[] getCartoon (String glytoucanId, GlycanImageRepository glycanImageRepository, String imageLocation) {
 		try {
-        	Optional<GlycanImageEntity> imageHandle = glycanImageRepository.findByGlytoucanId(glytoucanId.trim());
-        	if (imageHandle.isPresent()) {
-        		Long glycanId = imageHandle.get().getGlycanId();
+        	List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(glytoucanId.trim());
+        	if (images != null && images.size() > 0) {
+        		GlycanImageEntity image = images.get(0);
+        		Long glycanId = images.get(0).getGlycanId();
         		byte[] cartoon = DataController.getImageForGlycan(imageLocation, glycanId);
         		if (cartoon == null) {
         			// generate and save
         			Glycan glycan = new Glycan();
-        			glycan.setWurcs(imageHandle.get().getWurcs());
-        			glycan.setGlytoucanID(imageHandle.get().getGlytoucanId());
+        			glycan.setWurcs(image.getWurcs());
+        			glycan.setGlytoucanID(image.getGlytoucanId());
         			BufferedImage t_image = DataController.createImageForGlycan(glycan);
         			if (t_image != null) {
                         String filename = glycanId + ".png";
@@ -622,6 +623,7 @@ public class UtilityController {
         	
         	
         } catch (Exception e) {    
+        	logger.error("Error getting cartoon for " + glytoucanId, e);
             throw new IllegalArgumentException("Invalid Input: Not a valid glytoucan id");
         }
 	}
