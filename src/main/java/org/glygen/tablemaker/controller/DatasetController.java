@@ -158,6 +158,7 @@ public class DatasetController {
         if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
         	specificationList.add(new DatasetSpecification(new Filter ("name", globalFilter)));
         	specificationList.add(new DatasetSpecification(new Filter ("datasetIdentifier", globalFilter)));
+        	specificationList.add(new DatasetSpecification(new Filter ("dateCreated", globalFilter)));
         }
         
         Specification<Dataset> spec = null;
@@ -165,6 +166,10 @@ public class DatasetController {
         	spec = specificationList.get(0);
         	for (int i=1; i < specificationList.size(); i++) {
         		spec = Specification.where(spec).or(specificationList.get(i)); 
+        	}
+        	
+        	if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+        		spec = Specification.where(spec).or (DatasetSpecification.hasUserWithUsername(globalFilter));
         	}
         	
         	spec = Specification.where(spec).and(DatasetSpecification.hasUserWithId(user.getUserId()));

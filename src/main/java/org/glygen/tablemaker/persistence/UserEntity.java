@@ -29,7 +29,7 @@ import jakarta.xml.bind.annotation.XmlTransient;
 @XmlRootElement (name="user")
 @JsonSerialize
 @JsonIgnoreProperties({"password"})
-public class UserEntity {
+public class UserEntity implements Comparable<UserEntity>{
 
 	private Long userId;
 	private String username;
@@ -241,4 +241,9 @@ public class UserEntity {
     public void setDepartment(String department) {
         this.department = department;
     }
+
+	@Override
+	public int compareTo(UserEntity o) {
+		return username.compareTo(o.username);
+	}
 }

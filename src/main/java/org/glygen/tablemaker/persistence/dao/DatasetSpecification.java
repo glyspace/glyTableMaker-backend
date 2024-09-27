@@ -33,5 +33,15 @@ public class DatasetSpecification implements Specification<Dataset> {
 	        return criteriaBuilder.equal(datasetUser.get("userId"), userid);
 	    };
 	}
+	
+	public static Specification<Dataset> hasUserWithUsername(String username) {
+	    return (root, query, criteriaBuilder) -> {
+	        Join<UserEntity, Dataset> datasetUser = root.join("user");
+	        return criteriaBuilder.or(
+	        		criteriaBuilder.like(criteriaBuilder.lower(datasetUser.get("username")), "%" + username.toLowerCase() + "%"),
+	        		criteriaBuilder.like(criteriaBuilder.lower(datasetUser.get("firstName")), "%" + username.toLowerCase() + "%"),
+	        		criteriaBuilder.like(criteriaBuilder.lower(datasetUser.get("lastName")), "%" + username.toLowerCase() + "%"));
+	    };
+	}
 
 }
