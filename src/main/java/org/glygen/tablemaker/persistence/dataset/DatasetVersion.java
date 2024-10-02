@@ -3,11 +3,15 @@ package org.glygen.tablemaker.persistence.dataset;
 import java.util.Collection;
 import java.util.Date;
 
+import org.glygen.tablemaker.persistence.glycan.CollectionType;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
@@ -30,8 +34,10 @@ public class DatasetVersion {
 	String comment;
 	License license;
 	Boolean head;
+	CollectionType type;
 	
 	Collection<DatasetMetadata> data;
+	Collection<DatasetGlycoproteinMetadata> glycoproteinData;
 	Collection<Publication> publications;
 	
 	Dataset dataset;
@@ -98,6 +104,15 @@ public class DatasetVersion {
 		this.data = data;
 	}
 	
+	@OneToMany(mappedBy = "dataset", cascade=CascadeType.ALL, orphanRemoval = true)
+	public Collection<DatasetGlycoproteinMetadata> getGlycoproteinData() {
+		return glycoproteinData;
+	}
+	
+	public void setGlycoproteinData(Collection<DatasetGlycoproteinMetadata> glycoproteinData) {
+		this.glycoproteinData = glycoproteinData;
+	}
+	
 	@ManyToMany
 	@JoinTable(
 		    name="datasetversion_publications",
@@ -118,5 +133,15 @@ public class DatasetVersion {
 	
 	public void setHead(Boolean head) {
 		this.head = head;
+	}
+	
+	public void setType(CollectionType type) {
+		this.type = type;
+	}
+	
+	@Enumerated(EnumType.STRING)
+	@Column(name="type", length=50)
+	public CollectionType getType() {
+		return type;
 	}
 }

@@ -5,6 +5,7 @@ import java.util.Date;
 
 import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinInFile;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -21,7 +22,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name="glycan_file_upload")
+@Table(name="file_upload")
 public class BatchUploadEntity {
 	Long id;
 	UploadStatus status;
@@ -33,10 +34,11 @@ public class BatchUploadEntity {
 	Integer existingCount=0;
 	Collection<UploadErrorEntity> errors;
 	Collection<GlycanInFile> glycans;
+	Collection<GlycoproteinInFile> glycoproteins;
 	
 	@Id
 	@GeneratedValue
-	@Column(name="glycan_file_upload_id")
+	@Column(name="file_upload_id")
 	public Long getId() {
 		return id;
 	}
@@ -123,6 +125,15 @@ public class BatchUploadEntity {
 
 	public void setGlycans(Collection<GlycanInFile> glycans) {
 		this.glycans = glycans;
+	}
+	
+	@OneToMany(mappedBy = "uploadFile", cascade = CascadeType.ALL, orphanRemoval = true)
+	public Collection<GlycoproteinInFile> getGlycoproteins() {
+		return glycoproteins;
+	}
+	
+	public void setGlycoproteins(Collection<GlycoproteinInFile> glycoproteins) {
+		this.glycoproteins = glycoproteins;
 	}
 
 	@Column

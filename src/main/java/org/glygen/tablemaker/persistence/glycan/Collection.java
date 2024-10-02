@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -25,10 +26,12 @@ public class Collection {
     String name;
     String description;
     UserEntity user;
+    CollectionType type;
     java.util.Collection<Metadata> metadata;
     java.util.Collection<Collection> parents;
     java.util.Collection<Collection> collections;  
     java.util.Collection<GlycanInCollection> glycans;
+    java.util.Collection<GlycoproteinInCollection> glycoproteins;
     java.util.Collection<CollectionTag> tags;
     
     /**
@@ -114,6 +117,15 @@ public class Collection {
     public void setGlycans(java.util.Collection<GlycanInCollection> glycans) {
         this.glycans = glycans;
     }
+    
+    @OneToMany(mappedBy = "collection", cascade=CascadeType.ALL, orphanRemoval = true)
+    public java.util.Collection<GlycoproteinInCollection> getGlycoproteins() {
+		return glycoproteins;
+	}
+    
+    public void setGlycoproteins(java.util.Collection<GlycoproteinInCollection> glycoproteins) {
+		this.glycoproteins = glycoproteins;
+	}
     
     @ManyToMany
     public java.util.Collection<Collection> getParents() {

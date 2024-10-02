@@ -12,7 +12,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name="glycan_file_errors")
+@Table(name="file_errors")
 public class UploadErrorEntity {
 	Long id;
 	String position; // row id etc.
@@ -66,7 +66,7 @@ public class UploadErrorEntity {
 
 	@JsonIgnore
 	@ManyToOne(targetEntity = BatchUploadEntity.class, fetch = FetchType.EAGER)
-    @JoinColumn(nullable = false, name = "glycan_file_upload_id")
+    @JoinColumn(nullable = false, name = "file_upload_id")
 	public BatchUploadEntity getUpload() {
 		return upload;
 	}
