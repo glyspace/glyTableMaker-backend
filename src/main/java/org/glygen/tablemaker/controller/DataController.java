@@ -69,6 +69,8 @@ import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
+import org.glygen.tablemaker.persistence.dao.DatasetRepository;
+import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
@@ -174,6 +176,7 @@ public class DataController {
     final private TableReportRepository reportRepository;
     final private NamespaceRepository namespaceRepository;
     final private GlycanImageRepository glycanImageRepository;
+    final private DatasetRepository datasetRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -186,7 +189,7 @@ public class DataController {
     		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, 
     		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, 
     		TableReportRepository reportRepository, NamespaceRepository namespaceRepository, 
-    		GlycanImageRepository glycanImageRepository) {
+    		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
@@ -199,6 +202,7 @@ public class DataController {
 		this.reportRepository = reportRepository;
 		this.namespaceRepository = namespaceRepository;
 		this.glycanImageRepository = glycanImageRepository;
+		this.datasetRepository = datasetRepository;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -212,6 +216,7 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
         stats.setGlycanCount(glycanRepository.count(GlycanSpecifications.hasUserWithId(user.getUserId())));
+        stats.setDatasetCount(datasetRepository.count(DatasetSpecification.hasUserWithId(user.getUserId())));
         Specification<Collection> spec = CollectionSpecification.hasUserWithId(user.getUserId());
     	spec = Specification.where(spec).and(CollectionSpecification.hasNoChildren());
         stats.setCollectionCount(collectionRepository.count(spec));

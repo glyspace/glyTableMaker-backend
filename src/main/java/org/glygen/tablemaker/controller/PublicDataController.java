@@ -167,7 +167,7 @@ public class PublicDataController {
     		@PathVariable("datasetIdentifier") String datasetIdentifier) {
     	
         String identifier = datasetIdentifier;
-        String version = "";
+        String version = "1";   // head is always version 1
         // check if the identifier contains a version
         String[] split = datasetIdentifier.split("-");
         if (split.length > 1) {

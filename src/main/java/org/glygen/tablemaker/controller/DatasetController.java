@@ -281,7 +281,8 @@ public class DatasetController {
         
         DatasetVersion version = new DatasetVersion();
         version.setHead(true);
-        version.setVersion("");
+        version.setVersion("1");
+        version.setComment("Initial version");
         version.setVersionDate(new Date());
         version.setLicense(d.getLicense());
         version.setPublications(d.getPublications());
@@ -499,10 +500,9 @@ public class DatasetController {
     		DatasetVersion version = new DatasetVersion();
     		version.setHead(true);
     		version.setDataset(existing);
-    		version.setVersion("");
-    		head.setComment(d.getChangeComment());
-    		head.setVersionDate(new Date());
-    		head.setVersion(versionNo +"");
+    		version.setVersion((versionNo+1) +"");
+    		version.setVersionDate(new Date());
+    		version.setComment(d.getChangeComment());
     		head.setHead(false);
     		if (d.getLicense() != null) {
     			version.setLicense(d.getLicense());
@@ -576,7 +576,7 @@ public class DatasetController {
         }
         
         String identifier = datasetIdentifier;
-        String version = "";
+        String version = "1";  // head is always version 1
         // check if the identifier contains a version
         String[] split = datasetIdentifier.split("-");
         if (split.length > 1) {
