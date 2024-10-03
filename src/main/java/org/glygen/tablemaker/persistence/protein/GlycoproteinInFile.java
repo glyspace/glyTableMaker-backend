@@ -1,4 +1,4 @@
-package org.glygen.tablemaker.persistence.glycan;
+package org.glygen.tablemaker.persistence.protein;
 
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
 
@@ -13,11 +13,11 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name="glycans_file_upload")
-public class GlycanInFile {
+@Table(name="glycoproteins_file_upload")
+public class GlycoproteinInFile {
 	
 	Long id;
-	Glycan glycan;
+	Glycoprotein glycoprotein;
 	BatchUploadEntity uploadFile;
 	Boolean isNew;     // used to keep track of glycans newly added from this file
 	
@@ -26,7 +26,7 @@ public class GlycanInFile {
      */
     @Id
     @GeneratedValue
-    @Column(name="glycanuploadid")
+    @Column(name="glyccoproteinnuploadid")
 	public Long getId() {
 		return id;
 	}
@@ -39,14 +39,14 @@ public class GlycanInFile {
      * @return the glycan
      */
     @JsonIgnore
-    @ManyToOne(targetEntity = Glycan.class)
-    @JoinColumn(name = "glycanid")  
-	public Glycan getGlycan() {
-		return glycan;
+    @ManyToOne(targetEntity = Glycoprotein.class)
+    @JoinColumn(name = "glycoproteinid")  
+	public Glycoprotein getGlycoprotein() {
+		return glycoprotein;
 	}
     
-	public void setGlycan(Glycan glycan) {
-		this.glycan = glycan;
+	public void setGlycoprotein(Glycoprotein glycoprotein) {
+		this.glycoprotein = glycoprotein;
 	}
 	
 	/**
@@ -69,4 +69,5 @@ public class GlycanInFile {
 	public void setIsNew(Boolean isNew) {
 		this.isNew = isNew;
 	}
+
 }
