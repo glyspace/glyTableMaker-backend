@@ -9,6 +9,8 @@ import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
@@ -159,6 +161,15 @@ public class Collection {
 	}
 	public void setTags(java.util.Collection<CollectionTag> tags) {
 		this.tags = tags;
+	}
+	
+	@Column(name="type", length=50)
+	@Enumerated(EnumType.STRING)
+	public CollectionType getType() {
+		return type;
+	}
+	public void setType(CollectionType type) {
+		this.type = type;
 	}
 
 }

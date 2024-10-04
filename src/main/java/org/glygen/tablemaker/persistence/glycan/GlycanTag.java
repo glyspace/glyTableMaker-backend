@@ -17,9 +17,9 @@ import jakarta.persistence.UniqueConstraint;
 import jakarta.xml.bind.annotation.XmlRootElement;
 
 @Entity
-@Table(name="glycan_tags", uniqueConstraints=
+@Table(name="tags", uniqueConstraints=
      @UniqueConstraint(columnNames={"label", "userid"}))	    
-@XmlRootElement (name="glycantag")
+@XmlRootElement (name="tag")
 @JsonSerialize
 public class GlycanTag {
 	
@@ -29,7 +29,7 @@ public class GlycanTag {
 	
     @Id
     @GeneratedValue
-    @Column(name="glycan_tag_id", unique = true, nullable = false)
+    @Column(name="tag_id", unique = true, nullable = false)
 	public Long getTagId() {
 		return tagId;
 	}

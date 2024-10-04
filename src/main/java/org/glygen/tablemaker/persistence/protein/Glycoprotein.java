@@ -14,7 +14,6 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
@@ -72,12 +71,7 @@ public class Glycoprotein {
 		this.description = description;
 	}
 	
-	@ManyToMany(fetch=FetchType.EAGER)
-	@JoinTable(
-	    name="glycoprotein_sites",
-	    joinColumns=@JoinColumn(name="glycoproteinid"),
-	    inverseJoinColumns=@JoinColumn(name="siteid")
-	)
+	@OneToMany(mappedBy = "glycoprotein", cascade=CascadeType.ALL, orphanRemoval = true)
 	public java.util.Collection<Site> getSites() {
 		return sites;
 	}
