@@ -20,7 +20,7 @@ public class GlycanInSite {
     Glycan glycan;
     Site site;
     
-    String type;
+    String type;   // glycan, fragment, motif
 
     @Id
     @GeneratedValue

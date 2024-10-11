@@ -479,7 +479,8 @@ public class UtilityController {
         		}
         		return getPublicationFrom(pub);
             } catch (Exception e) {    
-                throw new IllegalArgumentException("Invalid Input: Not a valid publication information. DOI is invalid");
+            	logger.warn("DOI retrieval failed", e);
+                throw new IllegalArgumentException("Pubmed retrieval with DOI failed. Reason:" + e.getMessage());
             }
         } else {
         	try {
@@ -495,8 +496,11 @@ public class UtilityController {
                     	throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
                     }
                     return getPublicationFrom(pub);
-                } catch (Exception e) {    
-                    throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
+                } catch (EntityNotFoundException e) {
+                	throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
+                } catch (Exception e) {
+                	logger.warn("Pubmed retrieval failed", e);
+                    throw new IllegalArgumentException("Pubmed retrieval failed. Please try again! Reason: " + e.getMessage());
                 }
         	} catch (NumberFormatException e) {
         		throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");

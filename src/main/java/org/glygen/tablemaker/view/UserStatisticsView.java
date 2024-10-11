@@ -5,6 +5,7 @@ public class UserStatisticsView {
     Long collectionCount = 0L;
     Long cocCount = 0L;
     Long datasetCount = 0L;
+    Long glycoproteinCount = 0L;
     /**
      * @return the glycanCount
      */
@@ -46,6 +47,12 @@ public class UserStatisticsView {
 	}
 	public void setDatasetCount(Long datasetCount) {
 		this.datasetCount = datasetCount;
+	}
+	public Long getGlycoproteinCount() {
+		return glycoproteinCount;
+	}
+	public void setGlycoproteinCount(Long glycoproteinCount) {
+		this.glycoproteinCount = glycoproteinCount;
 	}
     
     

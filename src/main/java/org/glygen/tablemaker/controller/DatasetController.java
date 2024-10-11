@@ -576,14 +576,21 @@ public class DatasetController {
         }
         
         String identifier = datasetIdentifier;
-        String version = "1";  // head is always version 1
+        String version = null; 
         // check if the identifier contains a version
         String[] split = datasetIdentifier.split("-");
         if (split.length > 1) {
         	identifier = split[0];
         	version = split[1];
         }
-        Dataset existing = datasetRepository.findByDatasetIdentifierAndUserAndVersions_version(identifier, user, version);
+        
+        Dataset existing=null;
+        if (version == null) {
+        	// get the head version
+        	existing = datasetRepository.findByDatasetIdentifierAndUserAndVersions_head(identifier, user, true);
+        } else {
+        	existing = datasetRepository.findByDatasetIdentifierAndUserAndVersions_version(identifier, user, version);
+        }
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier + " for the user");
         }

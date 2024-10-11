@@ -167,14 +167,19 @@ public class PublicDataController {
     		@PathVariable("datasetIdentifier") String datasetIdentifier) {
     	
         String identifier = datasetIdentifier;
-        String version = "1";   // head is always version 1
+        String version = null;
         // check if the identifier contains a version
         String[] split = datasetIdentifier.split("-");
         if (split.length > 1) {
         	identifier = split[0];
         	version = split[1];
         }
-        Dataset existing = datasetRepository.findByDatasetIdentifierAndVersions_version(identifier, version);
+        Dataset existing = null;
+        if (version == null) {
+        	existing = datasetRepository.findByDatasetIdentifierAndVersions_head(identifier, true);
+        } else {
+        	existing = datasetRepository.findByDatasetIdentifierAndVersions_version(identifier, version);
+        }
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier);
         }

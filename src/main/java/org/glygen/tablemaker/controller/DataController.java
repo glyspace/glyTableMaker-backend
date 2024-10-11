@@ -74,10 +74,13 @@ import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
+import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
+import org.glygen.tablemaker.persistence.dao.GlycoproteinSpecification;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
 import org.glygen.tablemaker.persistence.dao.TableReportRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
+import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
@@ -88,6 +91,7 @@ import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
+import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 import org.glygen.tablemaker.persistence.table.TableReport;
 import org.glygen.tablemaker.persistence.table.TableReportDetail;
 import org.glygen.tablemaker.service.AsyncService;
@@ -98,6 +102,7 @@ import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.SequenceUtils;
 import org.glygen.tablemaker.view.CollectionView;
+import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.FileWrapper;
 import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.GlycanView;
@@ -177,6 +182,7 @@ public class DataController {
     final private NamespaceRepository namespaceRepository;
     final private GlycanImageRepository glycanImageRepository;
     final private DatasetRepository datasetRepository;
+    final private GlycoproteinRepository glycoproteinRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -189,7 +195,8 @@ public class DataController {
     		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, 
     		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, 
     		TableReportRepository reportRepository, NamespaceRepository namespaceRepository, 
-    		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository) {
+    		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
+    		GlycoproteinRepository glycoproteinRepository) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
@@ -203,6 +210,7 @@ public class DataController {
 		this.namespaceRepository = namespaceRepository;
 		this.glycanImageRepository = glycanImageRepository;
 		this.datasetRepository = datasetRepository;
+		this.glycoproteinRepository = glycoproteinRepository;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -223,6 +231,7 @@ public class DataController {
         spec = CollectionSpecification.hasUserWithId(user.getUserId());
     	spec = Specification.where(spec).and(CollectionSpecification.hasChildren());
     	stats.setCocCount(collectionRepository.count(spec));
+    	stats.setGlycoproteinCount(glycoproteinRepository.count(GlycoproteinSpecification.hasUserWithId(user.getUserId())));
         return new ResponseEntity<>(new SuccessResponse(stats, "statistics gathered"), HttpStatus.OK);
     }
     
@@ -381,6 +390,125 @@ public class DataController {
         response.put("totalPages", glycansInPage.getTotalPages());
         
         return new ResponseEntity<>(new SuccessResponse(response, "glycans retrieved"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Get user's glycoproteins", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getglycoproteins")
+    public ResponseEntity<SuccessResponse> getGlycoproteins(
+            @RequestParam("start")
+            Integer start, 
+            @RequestParam("size")
+            Integer size,
+            @RequestParam("filters")
+            String filters,
+            @RequestParam("globalFilter")
+            String globalFilter,
+            @RequestParam("sorting")
+            String sorting) {
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+      
+        // parse filters and sorting
+        ObjectMapper mapper = new ObjectMapper();
+        List<Filter> filterList = null;
+        if (filters != null && !filters.equals("[]")) {
+            try {
+                filterList = mapper.readValue(filters, 
+                    new TypeReference<ArrayList<Filter>>() {});
+            } catch (JsonProcessingException e) {
+                throw new InternalError("filter parameter is invalid " + filters, e);
+            }
+        }
+        List<Sorting> sortingList = null;
+        List<Order> sortOrders = new ArrayList<>();
+        if (sorting != null && !sorting.equals("[]")) {
+            try {
+                sortingList = mapper.readValue(sorting, 
+                    new TypeReference<ArrayList<Sorting>>() {});
+                for (Sorting s: sortingList) {
+                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                }
+            } catch (JsonProcessingException e) {
+                throw new InternalError("sorting parameter is invalid " + sorting, e);
+            }
+        }
+        
+        // apply filters
+        List<Specification<Glycoprotein>> globalSpecificationList = new ArrayList<>();
+        List<Specification<Glycoprotein>> specificationList = new ArrayList<>();
+        
+        if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+        	globalSpecificationList.add(new GlycoproteinSpecification(new Filter ("uniprotId", globalFilter)));
+        	globalSpecificationList.add(new GlycoproteinSpecification(new Filter ("name", globalFilter)));
+        	globalSpecificationList.add(new GlycoproteinSpecification(new Filter ("geneSymbol", globalFilter)));
+        	globalSpecificationList.add(GlycoproteinSpecification.hasTag(globalFilter));
+        }
+        
+        if (filterList != null) {
+	        for (Filter f: filterList) {
+	        	if (!f.getId().equalsIgnoreCase("tags")) {
+	        		GlycoproteinSpecification s = new GlycoproteinSpecification(f);
+	        		specificationList.add(s);
+	        	} else {
+	        		specificationList.add(GlycoproteinSpecification.hasTag(f.getValue()));
+	        	}
+	        }
+        }
+        
+        Specification<Glycoprotein> globalSpec = null;
+        if (!globalSpecificationList.isEmpty()) {
+        	globalSpec = globalSpecificationList.get(0);
+        	for (int i=1; i < globalSpecificationList.size(); i++) {
+        		globalSpec = Specification.where(globalSpec).or(globalSpecificationList.get(i)); 
+        	}
+        }
+        
+        Specification<Glycoprotein> spec = null;
+        if (globalSpec != null && specificationList.isEmpty()) { // no more filters, add the user filter
+        	spec = Specification.where(globalSpec).and(GlycoproteinSpecification.hasUserWithId(user.getUserId()));
+        } else {
+	        if (!specificationList.isEmpty()) {
+	        	spec = specificationList.get(0);
+	        	for (int i=1; i < specificationList.size(); i++) {
+	        		spec = Specification.where(spec).and(specificationList.get(i)); 
+	        	}
+	        	
+	        	spec = Specification.where(spec).and(GlycoproteinSpecification.hasUserWithId(user.getUserId()));
+	        	
+	        	if (globalSpec != null) {
+	        		spec = Specification.where(spec).and(globalSpec);
+	        	}
+	        }
+        }
+        
+        Page<Glycoprotein> glycoproteinsInPage = null;
+        if (spec != null) {
+        	try {
+        		glycoproteinsInPage = glycoproteinRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
+        	} catch (Exception e) {
+        		logger.error(e.getMessage(), e);
+        		throw e;
+        	}
+        } else {
+        	glycoproteinsInPage = glycoproteinRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
+        }
+        
+        List<Glycoprotein> proteins = new ArrayList<>();
+        for (Glycoprotein p: glycoproteinsInPage.getContent()) {
+        	//TODO do we need to set/reset something???
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("objects", glycoproteinsInPage.getContent());
+        response.put("currentPage", glycoproteinsInPage.getNumber());
+        response.put("totalItems", glycoproteinsInPage.getTotalElements());
+        response.put("totalPages", glycoproteinsInPage.getTotalPages());
+        
+        return new ResponseEntity<>(new SuccessResponse(response, "glycoproteins retrieved"), HttpStatus.OK);
     }
     
     @Operation(summary = "Get collections", security = { @SecurityRequirement(name = "bearer-key") })

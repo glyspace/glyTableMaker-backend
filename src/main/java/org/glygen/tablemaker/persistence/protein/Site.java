@@ -1,11 +1,11 @@
 package org.glygen.tablemaker.persistence.protein;
 
-import org.glygen.tablemaker.persistence.glycan.Collection;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
@@ -20,6 +20,7 @@ public class Site {
 	
 	Long siteId;
 	String position;
+	GlycoproteinSiteType type;
 	java.util.Collection<GlycanInSite> glycans;
 	Glycoprotein glycoprotein;
 	
@@ -58,6 +59,15 @@ public class Site {
 	}
 	public void setGlycoprotein(Glycoprotein glycoprotein) {
 		this.glycoprotein = glycoprotein;
+	}
+	
+	@Column(name="type", length=50)
+	@Enumerated(EnumType.STRING)
+	public GlycoproteinSiteType getType() {
+		return type;
+	}
+	public void setType(GlycoproteinSiteType type) {
+		this.type = type;
 	}
 
 }

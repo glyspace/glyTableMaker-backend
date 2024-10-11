@@ -29,6 +29,8 @@ public class Glycoprotein {
 	String uniprotId;
 	String name;
 	String description;
+	String geneSymbol;
+	String sequence;
 	
 	Date dateCreated;
     UserEntity user;
@@ -125,5 +127,21 @@ public class Glycoprotein {
 	}
 	public void setGlycoproteinCollections(java.util.Collection<GlycoproteinInCollection> collections) {
 		this.glycoproteinCollections = collections;
+	}
+	
+	@Column
+	public String getGeneSymbol() {
+		return geneSymbol;
+	}
+	public void setGeneSymbol(String geneSymbol) {
+		this.geneSymbol = geneSymbol;
+	}
+	
+	@Column(columnDefinition="text")
+	public String getSequence() {
+		return sequence;
+	}
+	public void setSequence(String sequence) {
+		this.sequence = sequence;
 	}
 }

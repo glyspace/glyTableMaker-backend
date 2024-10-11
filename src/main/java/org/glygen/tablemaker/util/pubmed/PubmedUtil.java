@@ -17,9 +17,14 @@ import org.jdom.Document;
 import org.jdom.Element;
 import org.jdom.JDOMException;
 import org.jdom.input.SAXBuilder;
+import org.slf4j.Logger;
+
+import jakarta.persistence.EntityNotFoundException;
 
 public class PubmedUtil
 {
+	static Logger logger = org.slf4j.LoggerFactory.getLogger(PubmedUtil.class);
+	
 	private String m_strPubmedURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=xml&id=";
 	private HashMap<String, Element> m_hashElements = new HashMap<String, Element>();
 	private Document m_document = null;
@@ -77,6 +82,7 @@ public class PubmedUtil
         {
             t_result.appendCodePoint(t_count);
         }
+        logger.info ("result string from pubmed " + t_result.toString());
         return t_result.toString();
     }
 
@@ -89,10 +95,8 @@ public class PubmedUtil
 	 */
     private DTOPublication createFromPubmed(String a_strXML) throws JDOMException, IOException 
     {
-        if ( !this.readXML(a_strXML) ) 
-        {
-            return null;
-        }
+    	this.readXML(a_strXML);   // throws exception if the response is not in the expected format
+    	
         DTOPublication t_result = new DTOPublication();
 
         // parse IDs
@@ -269,19 +273,21 @@ public class PubmedUtil
 	 * @throws IOException
 	 */
 	@SuppressWarnings("unchecked")
-	private boolean readXML(String a_strXML) throws JDOMException, IOException 
+	private void readXML(String a_strXML) throws JDOMException, IOException 
 	{
 		SAXBuilder t_builder = new SAXBuilder();
 		this.m_document = t_builder.build(new StringReader(a_strXML));
 		Element t_elmentRoot = this.m_document.getRootElement();
 		if ( !t_elmentRoot.getName().equals("eSummaryResult") )
 		{
-			return false;
+			logger.warn("Pubmed response does not contain the details (eSummaryResult) for the given publication ");
+			throw new IOException ("Pubmed failed to respond");
 		}
 		List<Element> t_childDocSum = t_elmentRoot.getChildren("DocSum");
 		if ( t_childDocSum.size() != 1 )
 		{
-			return false;
+			logger.warn("Pubmed response does not contain the details (DocSum) for the given publication ");
+			throw new EntityNotFoundException ("Pubmed identifier cannot be found");
 		}
 		for (Element t_elementDocSum : t_childDocSum) 
 		{
@@ -296,7 +302,6 @@ public class PubmedUtil
 				}
 			}			
 		}
-		return true;
 	}
     
 	/**
