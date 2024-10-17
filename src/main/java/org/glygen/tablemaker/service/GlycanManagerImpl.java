@@ -13,10 +13,12 @@ import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanInFileRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanTagRepository;
+import org.glygen.tablemaker.persistence.dao.GlycoproteinInFileRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinInFile;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
@@ -29,13 +31,15 @@ public class GlycanManagerImpl implements GlycanManager {
 	final private GlycanTagRepository glycanTagRepository;
 	final private BatchUploadRepository uploadRepository;
 	final private GlycanInFileRepository glycanInFileRepository;
+	final private GlycoproteinInFileRepository glycoproteinInFileRepository;
 	final private UploadErrorRepository uploadErrorRepository;
     
-    public GlycanManagerImpl(GlycanTagRepository glycanTagRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, GlycanInFileRepository glycanInFileRepository, UploadErrorRepository uploadErrorRepository) {
+    public GlycanManagerImpl(GlycanTagRepository glycanTagRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, GlycanInFileRepository glycanInFileRepository, UploadErrorRepository uploadErrorRepository, GlycoproteinInFileRepository glycoproteinInFileRepository) {
 		this.glycanRepository = glycanRepository;
 		this.glycanTagRepository = glycanTagRepository;
 		this.uploadRepository = uploadRepository;
 		this.glycanInFileRepository = glycanInFileRepository;
+		this.glycoproteinInFileRepository = glycoproteinInFileRepository;
 		this.uploadErrorRepository = uploadErrorRepository;
 	}
     
@@ -65,6 +69,9 @@ public class GlycanManagerImpl implements GlycanManager {
             u.setUploadFile(upload);
             if (upload.getGlycans() == null) {
             	upload.setGlycans(new ArrayList<>());
+            }
+            if (upload.getGlycoproteins() == null) {
+            	upload.setGlycoproteins(new ArrayList<>());
             }
             if (upload.getErrors() == null) {
             	upload.setErrors(new ArrayList<>());
@@ -110,6 +117,10 @@ public class GlycanManagerImpl implements GlycanManager {
 	public void deleteBatchUpload (BatchUploadEntity upload) {
 		for (GlycanInFile g: upload.getGlycans()) {
 			glycanInFileRepository.delete(g);
+			g.setUploadFile(null);
+		}
+		for (GlycoproteinInFile g: upload.getGlycoproteins()) {
+			glycoproteinInFileRepository.delete(g);
 			g.setUploadFile(null);
 		}
 		for (UploadErrorEntity e: upload.getErrors()) {
