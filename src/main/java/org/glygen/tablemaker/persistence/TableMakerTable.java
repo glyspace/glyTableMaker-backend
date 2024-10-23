@@ -2,8 +2,10 @@ package org.glygen.tablemaker.persistence;
 
 public enum TableMakerTable {
 	GLYCAN,
+	GLYCOPROTEIN,
 	COLLECTION,
-	GLYCANINCOLLECTION,
+	GLYCANINCOLLECTION, 
+	GLYCOPROTEININCOLLECTION,
 	COC,
 	METADATA,
 	DATASET,

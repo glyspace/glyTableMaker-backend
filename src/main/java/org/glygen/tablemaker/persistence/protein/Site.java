@@ -13,13 +13,15 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.Transient;
 import jakarta.xml.bind.annotation.XmlTransient;
 
 @Entity
 public class Site {
 	
 	Long siteId;
-	String position;
+	String positionString;
+	SitePosition position;
 	GlycoproteinSiteType type;
 	java.util.Collection<GlycanInSite> glycans;
 	Glycoprotein glycoprotein;
@@ -34,11 +36,11 @@ public class Site {
 	}
 	
 	@Column
-	public String getPosition() {
-		return position;
+	public String getPositionString() {
+		return positionString;
 	}
-	public void setPosition(String position) {
-		this.position = position;
+	public void setPositionString(String position) {
+		this.positionString = position;
 	}
 	
 	@OneToMany(mappedBy = "site")
@@ -68,6 +70,14 @@ public class Site {
 	}
 	public void setType(GlycoproteinSiteType type) {
 		this.type = type;
+	}
+	
+	@Transient
+	public SitePosition getPosition() {
+		return position;
+	}
+	public void setPosition(SitePosition position) {
+		this.position = position;
 	}
 
 }

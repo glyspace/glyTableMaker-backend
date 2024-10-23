@@ -3,16 +3,19 @@ package org.glygen.tablemaker.view;
 import java.util.List;
 
 import org.glygen.tablemaker.persistence.glycan.CollectionTag;
+import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
-import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
+import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 
 public class CollectionView {
 	Long collectionId;
 	String name;
 	String description;
+	CollectionType type;
 	List<Metadata> metadata;
 	List<Glycan> glycans;
+	List<Glycoprotein> glycoproteins; 
 	List<CollectionView> children;
 	List<CollectionTag> tags;
 	
@@ -72,5 +75,17 @@ public class CollectionView {
 	}
 	public void setWarnings(List<DatasetError> warnings) {
 		this.warnings = warnings;
+	}
+	public CollectionType getType() {
+		return type;
+	}
+	public void setType(CollectionType type) {
+		this.type = type;
+	}
+	public List<Glycoprotein> getGlycoproteins() {
+		return glycoproteins;
+	}
+	public void setGlycoproteins(List<Glycoprotein> glycoproteins) {
+		this.glycoproteins = glycoproteins;
 	}
 }

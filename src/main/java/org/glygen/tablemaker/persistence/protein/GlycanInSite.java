@@ -21,6 +21,8 @@ public class GlycanInSite {
     Site site;
     
     String type;   // glycan, fragment, motif
+    String glycosylationType;
+    String glycosylationSubType;
 
     @Id
     @GeneratedValue
@@ -62,6 +64,24 @@ public class GlycanInSite {
 
 	public void setType(String type) {
 		this.type = type;
+	}
+
+	@Column
+	public String getGlycosylationType() {
+		return glycosylationType;
+	}
+
+	public void setGlycosylationType(String glycosylationType) {
+		this.glycosylationType = glycosylationType;
+	}
+
+	@Column
+	public String getGlycosylationSubType() {
+		return glycosylationSubType;
+	}
+
+	public void setGlycosylationSubType(String glycosylationSubType) {
+		this.glycosylationSubType = glycosylationSubType;
 	}
 
 }

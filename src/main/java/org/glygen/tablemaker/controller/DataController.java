@@ -80,8 +80,8 @@ import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
 import org.glygen.tablemaker.persistence.dao.TableReportRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
-import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.glycan.Collection;
+import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanFileFormat;
@@ -91,7 +91,11 @@ import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
+import org.glygen.tablemaker.persistence.protein.GlycanInSite;
 import org.glygen.tablemaker.persistence.protein.Glycoprotein;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
+import org.glygen.tablemaker.persistence.protein.Site;
+import org.glygen.tablemaker.persistence.protein.SitePosition;
 import org.glygen.tablemaker.persistence.table.TableReport;
 import org.glygen.tablemaker.persistence.table.TableReportDetail;
 import org.glygen.tablemaker.service.AsyncService;
@@ -102,10 +106,10 @@ import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.SequenceUtils;
 import org.glygen.tablemaker.view.CollectionView;
-import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.FileWrapper;
 import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.GlycanView;
+import org.glygen.tablemaker.view.GlycoproteinView;
 import org.glygen.tablemaker.view.SequenceFormat;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
@@ -497,13 +501,26 @@ public class DataController {
         	glycoproteinsInPage = glycoproteinRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
         }
         
-        List<Glycoprotein> proteins = new ArrayList<>();
+        List<GlycoproteinView> glycoproteins = new ArrayList<>();
         for (Glycoprotein p: glycoproteinsInPage.getContent()) {
-        	//TODO do we need to set/reset something???
+        	GlycoproteinView view = new GlycoproteinView (p);
+        	glycoproteins.add(view);
+        	if (p.getSites() != null) {
+        		for (Site s: p.getSites()) {
+        			if (s.getPositionString() != null) {
+        				ObjectMapper om = new ObjectMapper();
+        				try {
+							s.setPosition(om.readValue(s.getPositionString(), SitePosition.class));
+						} catch (JsonProcessingException e) {
+							logger.warn ("Position string is invalid: " + s.getPositionString());
+						}
+        			}
+        		}
+        	}
         }
         
         Map<String, Object> response = new HashMap<>();
-        response.put("objects", glycoproteinsInPage.getContent());
+        response.put("objects", glycoproteins);
         response.put("currentPage", glycoproteinsInPage.getNumber());
         response.put("totalItems", glycoproteinsInPage.getTotalElements());
         response.put("totalPages", glycoproteinsInPage.getTotalPages());
@@ -606,19 +623,43 @@ public class DataController {
         	cv.setCollectionId(c.getCollectionId());
         	cv.setName(c.getName());
         	cv.setDescription(c.getDescription());
+        	cv.setType(c.getType());
         	if (c.getMetadata() != null) cv.setMetadata(new ArrayList<>(c.getMetadata()));
         	if (c.getTags() != null) cv.setTags(new ArrayList<>(c.getTags()));
-        	cv.setGlycans(new ArrayList<Glycan>());
-        	for (GlycanInCollection gic: c.getGlycans()) {
-        		Glycan g = gic.getGlycan();
-        		g.setGlycanCollections(null);
-        		try {
-                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-                } catch (DataNotFoundException e) {
-                    // ignore
-                    logger.warn ("no image found for glycan " + g.getGlycanId());
-                }
-        		cv.getGlycans().add(g);
+        	if (c.getType() == null) {    // Legacy data
+        		c.setType(CollectionType.GLYCAN);
+        	}
+        	if (c.getType() == CollectionType.GLYCAN) {
+	        	cv.setGlycans(new ArrayList<Glycan>());
+	        	for (GlycanInCollection gic: c.getGlycans()) {
+	        		Glycan g = gic.getGlycan();
+	        		g.setGlycanCollections(null);
+	        		try {
+	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+	                } catch (DataNotFoundException e) {
+	                    // ignore
+	                    logger.warn ("no image found for glycan " + g.getGlycanId());
+	                }
+	        		cv.getGlycans().add(g);
+	        	}
+        	} else {   // Glycoproteins
+        		cv.setGlycoproteins(new ArrayList<>());
+        		for (GlycoproteinInCollection gp: c.getGlycoproteins()) {
+        			Glycoprotein p = gp.getGlycoprotein();
+        			for (Site s: p.getSites()) {
+        				for (GlycanInSite gic: s.getGlycans()) {
+        	        		Glycan g = gic.getGlycan();
+        	        		g.setGlycanCollections(null);
+        	        		try {
+        	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+        	                } catch (DataNotFoundException e) {
+        	                    // ignore
+        	                    logger.warn ("no image found for glycan " + g.getGlycanId());
+        	                }
+        	        	}
+        			}
+        			cv.getGlycoproteins().add(p);
+        		}
         	}
         	collections.add(cv);
         }
@@ -1365,6 +1406,7 @@ public class DataController {
     	Collection collection = new Collection();
     	collection.setName(c.getName());
     	collection.setDescription(c.getDescription());
+    	collection.setType(c.getType());
     	
     	if (c.getGlycans() != null && !c.getGlycans().isEmpty()) {
     		collection.setGlycans(new ArrayList<>());
@@ -1374,6 +1416,17 @@ public class DataController {
     			gic.setGlycan(g);
     			gic.setDateAdded(new Date());
     			collection.getGlycans().add(gic);
+    		}
+    	}
+    	
+    	if (c.getGlycoproteins() != null && !c.getGlycoproteins().isEmpty()) {
+    		collection.setGlycoproteins(new ArrayList<>());
+    		for (Glycoprotein g: c.getGlycoproteins()) {
+    			GlycoproteinInCollection gic = new GlycoproteinInCollection();
+    			gic.setCollection(collection);
+    			gic.setGlycoprotein(g);
+    			gic.setDateAdded(new Date());
+    			collection.getGlycoproteins().add(gic);
     		}
     	}
     	
@@ -1434,6 +1487,46 @@ public class DataController {
     	return new ResponseEntity<>(new SuccessResponse(c, "collection added"), HttpStatus.OK);
     }
     
+    @Operation(summary = "Add glycoprotein", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/addglycoprotein")
+    public ResponseEntity<SuccessResponse> addGlycoprotein(@RequestBody GlycoproteinView gp) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        // check if duplicate
+    	List<Glycoprotein> existing = glycoproteinRepository.findAllByUniprotIdAndUser(gp.getUniprotId(), user);
+    	if (existing.size() > 0) {
+    		throw new DuplicateException("A glycoprotein with this uniprot id already exists! ");
+    	}
+    	
+    	Glycoprotein glycoprotein = new Glycoprotein();
+    	glycoprotein.setName(gp.getName());
+    	glycoprotein.setGeneSymbol(gp.getGeneSymbol());
+    	glycoprotein.setUniprotId(gp.getUniprotId());
+    	glycoprotein.setSequence(gp.getSequence());
+    	glycoprotein.setSites(gp.getSites());
+    	glycoprotein.setTags(gp.getTags());
+    	glycoprotein.setUser(user);
+    	glycoprotein.setDateCreated(new Date());
+    	if (gp.getSites() != null) {
+    		for (Site s: gp.getSites()) {
+    			s.setGlycoprotein(glycoprotein);
+    			s.setPositionString(s.getPosition().toString()); // convert the position to JSON string
+    			if (s.getGlycans() != null) {
+    				for (GlycanInSite g: s.getGlycans()) {
+    					g.setSite(s);
+    				}
+    			}
+    		}
+    	}
+    	Glycoprotein saved = glycoproteinRepository.save(glycoprotein);
+    	return new ResponseEntity<>(new SuccessResponse(saved, "glycoprotein added"), HttpStatus.OK);
+    }
+    
     @Operation(summary = "update collection", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatecollection")
     public ResponseEntity<SuccessResponse> updateCollection(@Valid @RequestBody CollectionView c) {
@@ -1459,48 +1552,101 @@ public class DataController {
     	}
     	existing.setName(c.getName());
     	existing.setDescription(c.getDescription());
-    	if (existing.getGlycans() == null) {
-    		existing.setGlycans(new ArrayList<>());
-    	}
     	
-    	if (c.getGlycans() == null || c.getGlycans().isEmpty()) {
-    		existing.getGlycans().clear();
-    	} else {
-	    	// remove glycans as necessary
-    		List<GlycanInCollection> toBeRemoved = new ArrayList<>();
-	    	for (GlycanInCollection gic: existing.getGlycans()) {
-	    		boolean found = false;
-	    		for (Glycan g: c.getGlycans()) {
-	    			if (g.getGlycanId().equals(gic.getGlycan().getGlycanId())) {
-	    				// keep it
-	    				found = true;
-	    			}
-	    		}
-	    		if (!found) {
-	    			toBeRemoved.add(gic);
-	    		}
-	    	}
-	    	existing.getGlycans().removeAll(toBeRemoved);
-    	}
-    	
-    	if (c.getGlycans() != null && !c.getGlycans().isEmpty()) {
-    		// check if this glycan already exists in the collection
-    		for (Glycan g: c.getGlycans()) {
-    			boolean exists = false;
-    			for (GlycanInCollection gic: existing.getGlycans()) {
-        			if (gic.getGlycan().getGlycanId().equals(g.getGlycanId())) {
-        				exists = true;
-        				break;
+    	switch (existing.getType()) {
+    	case GLYCAN:
+    		if (existing.getGlycans() == null) {
+        		existing.setGlycans(new ArrayList<>());
+        	}
+        	
+        	if (c.getGlycans() == null || c.getGlycans().isEmpty()) {
+        		existing.getGlycans().clear();
+        	} else {
+    	    	// remove glycans as necessary
+        		List<GlycanInCollection> toBeRemoved = new ArrayList<>();
+    	    	for (GlycanInCollection gic: existing.getGlycans()) {
+    	    		boolean found = false;
+    	    		for (Glycan g: c.getGlycans()) {
+    	    			if (g.getGlycanId().equals(gic.getGlycan().getGlycanId())) {
+    	    				// keep it
+    	    				found = true;
+    	    			}
+    	    		}
+    	    		if (!found) {
+    	    			toBeRemoved.add(gic);
+    	    		}
+    	    	}
+    	    	existing.getGlycans().removeAll(toBeRemoved);
+        	}
+        	
+        	if (c.getGlycans() != null && !c.getGlycans().isEmpty()) {
+        		// check if this glycan already exists in the collection
+        		for (Glycan g: c.getGlycans()) {
+        			boolean exists = false;
+        			for (GlycanInCollection gic: existing.getGlycans()) {
+            			if (gic.getGlycan().getGlycanId().equals(g.getGlycanId())) {
+            				exists = true;
+            				break;
+            			}
+            		}
+        			if (!exists) {
+    	    			GlycanInCollection gic = new GlycanInCollection();
+    	    			gic.setCollection(existing);
+    	    			gic.setGlycan(g);
+    	    			gic.setDateAdded(new Date());
+    	    			existing.getGlycans().add(gic);
         			}
         		}
-    			if (!exists) {
-	    			GlycanInCollection gic = new GlycanInCollection();
-	    			gic.setCollection(existing);
-	    			gic.setGlycan(g);
-	    			gic.setDateAdded(new Date());
-	    			existing.getGlycans().add(gic);
-    			}
-    		}
+        	}
+        	break;
+    		
+		case GLYCOPROTEIN:
+			if (existing.getGlycoproteins() == null) {
+	    		existing.setGlycoproteins(new ArrayList<>());
+	    	}
+	    	
+	    	if (c.getGlycoproteins() == null || c.getGlycoproteins().isEmpty()) {
+	    		existing.getGlycoproteins().clear();
+	    	} else {
+		    	// remove glycans as necessary
+	    		List<GlycoproteinInCollection> toBeRemoved = new ArrayList<>();
+		    	for (GlycoproteinInCollection gic: existing.getGlycoproteins()) {
+		    		boolean found = false;
+		    		for (Glycoprotein g: c.getGlycoproteins()) {
+		    			if (g.getId().equals(gic.getGlycoprotein().getId())) {
+		    				// keep it
+		    				found = true;
+		    			}
+		    		}
+		    		if (!found) {
+		    			toBeRemoved.add(gic);
+		    		}
+		    	}
+		    	existing.getGlycoproteins().removeAll(toBeRemoved);
+	    	}
+	    	
+	    	if (c.getGlycoproteins() != null && !c.getGlycoproteins().isEmpty()) {
+	    		// check if this glycan already exists in the collection
+	    		for (Glycoprotein g: c.getGlycoproteins()) {
+	    			boolean exists = false;
+	    			for (GlycoproteinInCollection gic: existing.getGlycoproteins()) {
+	        			if (gic.getGlycoprotein().getId().equals(g.getId())) {
+	        				exists = true;
+	        				break;
+	        			}
+	        		}
+	    			if (!exists) {
+		    			GlycoproteinInCollection gic = new GlycoproteinInCollection();
+		    			gic.setCollection(existing);
+		    			gic.setGlycoprotein(g);
+		    			gic.setDateAdded(new Date());
+		    			existing.getGlycoproteins().add(gic);
+	    			}
+	    		}
+	    	}
+			break;
+		default:
+			break;
     	}
     	
     	if (existing.getMetadata() == null) {
