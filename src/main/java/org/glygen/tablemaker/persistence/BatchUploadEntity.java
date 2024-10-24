@@ -3,6 +3,7 @@ package org.glygen.tablemaker.persistence;
 import java.util.Collection;
 import java.util.Date;
 
+import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInFile;
@@ -28,6 +29,7 @@ public class BatchUploadEntity {
 	UploadStatus status;
 	Date startDate;
 	Date accessedDate;
+	CollectionType type = CollectionType.GLYCAN;
 	UserEntity user;
 	String filename;
 	String format;
@@ -56,6 +58,15 @@ public class BatchUploadEntity {
 		this.status = status;
 	}
 	
+	@Enumerated(EnumType.STRING)
+	@Column(name="type")
+	public CollectionType getType() {
+		return type;
+	}
+	
+	public void setType(CollectionType type) {
+		this.type = type;
+	}
 	
 	@Column
 	public Date getStartDate() {

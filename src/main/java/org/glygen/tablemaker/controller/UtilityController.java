@@ -40,11 +40,14 @@ import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.Namespace;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
+import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.service.EmailManager;
+import org.glygen.tablemaker.util.UniProtUtil;
 import org.glygen.tablemaker.util.pubmed.DOIUtil;
 import org.glygen.tablemaker.util.pubmed.DTOPublication;
 import org.glygen.tablemaker.util.pubmed.PubmedUtil;
+import org.glygen.tablemaker.view.GlycoproteinView;
 import org.glygen.tablemaker.view.NamespaceEntry;
 import org.glygen.tablemaker.view.StatisticsView;
 import org.glygen.tablemaker.view.SuccessResponse;
@@ -54,7 +57,9 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -631,4 +636,28 @@ public class UtilityController {
             throw new IllegalArgumentException("Invalid Input: Not a valid glytoucan id");
         }
 	}
+	
+	@Operation(summary = "Retrieve protein from UniProt with the given uniprot id")
+    @RequestMapping(value="/getproteinfromuniprot/{uniprotid}", method = RequestMethod.GET)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Protein retrieved successfully"), 
+            @ApiResponse(responseCode="404", description="Sequence with given id does not exist"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> getSequenceFromUniProt (
+            @Parameter(required=true, description="uniprotid such as P12345") 
+            @PathVariable("uniprotid") String uniprotId) {
+        if (uniprotId == null || uniprotId.trim().isEmpty()) {
+            throw new IllegalArgumentException("uniprotId should be provided");
+        }
+        try {
+            GlycoproteinView protein = UniProtUtil.getProteinFromUniProt(uniprotId.trim());
+            if (protein == null) {
+                throw new EntityNotFoundException("protein with the given UniProt ID " + uniprotId  + " cannot be found");
+            }
+            return new ResponseEntity<>(new SuccessResponse(protein, "Protein retrieved"), HttpStatus.OK);
+        } catch (Exception e) {
+            logger.error("Could not retrieve from uniprot", e);
+            throw new EntityNotFoundException("protein with the given UniProt ID " + uniprotId  + " cannot be found", e);
+        }
+    }
 }

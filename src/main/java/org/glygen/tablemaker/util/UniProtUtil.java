@@ -3,6 +3,7 @@ package org.glygen.tablemaker.util;
 import java.io.IOException;
 
 import org.glygen.tablemaker.persistence.protein.Glycoprotein;
+import org.glygen.tablemaker.view.GlycoproteinView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.http.HttpMethod;
@@ -30,7 +31,7 @@ public class UniProtUtil {
         }
     }
     
-    public static Glycoprotein getProteinFromUniProt (String uniProtId) throws Exception {
+    public static GlycoproteinView getProteinFromUniProt (String uniProtId) throws Exception {
     	
     	RestTemplate restTemplate = new RestTemplate();
         String requestURL = url + uniProtId + ".json";
@@ -39,7 +40,7 @@ public class UniProtUtil {
             String details = response.getBody();
             if (details == null)
                 return null;
-            Glycoprotein protein = new Glycoprotein ();
+            GlycoproteinView protein = new GlycoproteinView ();
             protein.setUniprotId(uniProtId);
             
             JSONObject obj = new JSONObject(details);
@@ -71,7 +72,7 @@ public class UniProtUtil {
     }
     
     public static void main(String[] args) {
-    	Glycoprotein prot;
+    	GlycoproteinView prot;
 		try {
 			prot = UniProtUtil.getProteinFromUniProt("P12345-112");
 			System.out.println (prot.getName() + " gene: " + prot.getGeneSymbol() + " seq: " + prot.getSequence());

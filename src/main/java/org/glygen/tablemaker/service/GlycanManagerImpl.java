@@ -14,10 +14,12 @@ import org.glygen.tablemaker.persistence.dao.GlycanInFileRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanTagRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinInFileRepository;
+import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
+import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInFile;
 import org.springframework.stereotype.Service;
 
@@ -33,14 +35,16 @@ public class GlycanManagerImpl implements GlycanManager {
 	final private GlycanInFileRepository glycanInFileRepository;
 	final private GlycoproteinInFileRepository glycoproteinInFileRepository;
 	final private UploadErrorRepository uploadErrorRepository;
+	final private GlycoproteinRepository glycoproteinRepository;
     
-    public GlycanManagerImpl(GlycanTagRepository glycanTagRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, GlycanInFileRepository glycanInFileRepository, UploadErrorRepository uploadErrorRepository, GlycoproteinInFileRepository glycoproteinInFileRepository) {
+    public GlycanManagerImpl(GlycanTagRepository glycanTagRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, GlycanInFileRepository glycanInFileRepository, UploadErrorRepository uploadErrorRepository, GlycoproteinInFileRepository glycoproteinInFileRepository, GlycoproteinRepository glycoproteinRepository) {
 		this.glycanRepository = glycanRepository;
 		this.glycanTagRepository = glycanTagRepository;
 		this.uploadRepository = uploadRepository;
 		this.glycanInFileRepository = glycanInFileRepository;
 		this.glycoproteinInFileRepository = glycoproteinInFileRepository;
 		this.uploadErrorRepository = uploadErrorRepository;
+		this.glycoproteinRepository = glycoproteinRepository;
 	}
     
 	@Override
@@ -110,6 +114,25 @@ public class GlycanManagerImpl implements GlycanManager {
 		}
 		glycan.setTags(newTagList);
 		glycanRepository.save(glycan);
+		
+	}
+	
+	@Override
+	public void setGlycoproteinTags(Glycoprotein glycoprotein, List<String> tags, UserEntity user) {
+		List<GlycanTag> newTagList = new ArrayList<>();
+		Set<String> noDuplicates = new HashSet<>(tags);
+		for (String tag: noDuplicates) {
+			GlycanTag gTag = new GlycanTag();
+			gTag.setLabel(tag);
+			gTag.setUser(user);
+			GlycanTag existing = glycanTagRepository.findByUserAndLabel(user, tag);
+			if (existing == null) {
+				existing = glycanTagRepository.save(gTag);
+			}
+			newTagList.add(existing);
+		}
+		glycoprotein.setTags(newTagList);
+		glycoproteinRepository.save(glycoprotein);
 		
 	}
 	

@@ -908,10 +908,57 @@ public class DataController {
         }
         if (user != null) {
         	List<BatchUploadEntity> uploads = uploadRepository.findByUserOrderByStartDateDesc(user);	
+        	List<BatchUploadEntity> filtered = new ArrayList<>();
         	if (uploads.isEmpty()) {
         		throw new DataNotFoundException("No active batch upload");
+        	} else {
+        		for (BatchUploadEntity upload: uploads) {
+        			// check the type
+        			if (upload.getType() == null || upload.getType() == CollectionType.GLYCAN) {
+        				filtered.add(upload);
+        			}
+        		}
+        		
         	}
-        	return new ResponseEntity<>(new SuccessResponse(uploads, "Batch uploads retrieved"), HttpStatus.OK);
+        	if (filtered.isEmpty()) {
+    			throw new DataNotFoundException("No active batch upload");
+    		}
+        	return new ResponseEntity<>(new SuccessResponse(filtered, "Batch uploads retrieved"), HttpStatus.OK);
+        } else {
+        	throw new BadRequestException("user cannot be found");
+        }
+    }
+    
+    @Operation(summary = "Get glycoprotein batch uploads", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/checkglycoproteinbatchupload")
+    @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Check performed successfully", content = {
+            @Content( schema = @Schema(implementation = SuccessResponse.class))}),
+            @ApiResponse(responseCode="415", description= "Media type is not supported"),
+            @ApiResponse(responseCode="500", description= "Internal Server Error") })
+    public ResponseEntity<SuccessResponse> getActiveGlycoproteinBatchUpload () {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        if (user != null) {
+        	List<BatchUploadEntity> uploads = uploadRepository.findByUserOrderByStartDateDesc(user);	
+        	List<BatchUploadEntity> filtered = new ArrayList<>();
+        	if (uploads.isEmpty()) {
+        		throw new DataNotFoundException("No active batch upload");
+        	} else {
+        		for (BatchUploadEntity upload: uploads) {
+        			// check the type
+        			if (upload.getType() != null && upload.getType() == CollectionType.GLYCOPROTEIN) {
+        				filtered.add(upload);
+        			}
+        		}
+        	}
+        	if (filtered.isEmpty()) {
+    			throw new DataNotFoundException("No active batch upload");
+    		}
+        	return new ResponseEntity<>(new SuccessResponse(filtered, "Batch uploads retrieved"), HttpStatus.OK);
         } else {
         	throw new BadRequestException("user cannot be found");
         }
@@ -1093,6 +1140,41 @@ public class DataController {
         throw new BadRequestException("glycan cannot be found");
     }
     
+    @Operation(summary = "Add tag for the given glycoprotein", 
+            security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value = "/addglycoproteintag/{proteinId}", method = RequestMethod.POST,
+            produces={"application/json", "application/xml"})
+    @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Update performed successfully", content = {
+            @Content( schema = @Schema(implementation = SuccessResponse.class))}),
+            @ApiResponse(responseCode="415", description= "Media type is not supported"),
+            @ApiResponse(responseCode="500", description= "Internal Server Error") })
+    public ResponseEntity<SuccessResponse> updateGlycoproteinTags(
+    		@Parameter(required=true, description="internal id of the glycoprotein") 
+            @PathVariable("proteinId")
+    		Long glycoproteinId,
+    		@RequestBody List<String> tags){
+    	
+    	if (tags == null) {
+    		throw new IllegalArgumentException("Tags cannnot be emnpty");
+    	}
+    	
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+
+    	Optional<Glycoprotein> prot = glycoproteinRepository.findById(glycoproteinId);
+    	if (prot != null) {
+            Glycoprotein g = prot.get();
+            glycanManager.setGlycoproteinTags(g, tags, user);
+            return new ResponseEntity<>(new SuccessResponse(g, "the given tags are added to the given glycoprotein"), HttpStatus.OK);
+        }
+	
+        throw new BadRequestException("glycoprotein cannot be found");
+    }
+    
 
     @Operation(summary = "Get current glycan tags for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getglycantags")
@@ -1140,6 +1222,40 @@ public class DataController {
         }
         glycanRepository.deleteById(glycanId);
         return new ResponseEntity<>(new SuccessResponse(glycanId, "Glycan deleted successfully"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Delete given glycoprotein from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value="/deleteglycoprotein/{proteinId}", method = RequestMethod.DELETE)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Glycan deleted successfully"), 
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to delete glycoproteins"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> deleteGlycoprotein (
+            @Parameter(required=true, description="internal id of the glycoprotein to delete") 
+            @PathVariable("proteinId") Long glycoproteinId) {
+        
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        Glycoprotein existing = glycoproteinRepository.findByIdAndUser(glycoproteinId, user);
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given glycoprotein " + glycoproteinId + " for the user");
+        }
+        //need to check if the glycan appears in any collection and give an error message
+        if (existing.getGlycoproteinCollections() != null && !existing.getGlycoproteinCollections().isEmpty()) {
+        	String collectionString = "";
+        	for (GlycoproteinInCollection col: existing.getGlycoproteinCollections()) {
+        		collectionString += col.getCollection().getName() + ", ";
+        	}
+        	collectionString = collectionString.substring(0, collectionString.lastIndexOf(","));
+        	throw new BadRequestException ("Cannot delete this glycoprotein. It is used in the following collections: " + collectionString);
+        }
+        glycoproteinRepository.deleteById(glycoproteinId);
+        return new ResponseEntity<>(new SuccessResponse(glycoproteinId, "Glycoprotein deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Delete the given collection from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1825,6 +1941,7 @@ public class DataController {
                 result.setUser(user);
                 result.setFilename(fileWrapper.getOriginalName());
                 result.setFormat(format.name());
+                result.setType(CollectionType.GLYCAN);
                 BatchUploadEntity saved = uploadRepository.save(result);
                 // keep the original file in the uploads directory
                 File uploadFolder = new File (uploadDir + File.separator + saved.getId());
