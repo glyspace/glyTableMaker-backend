@@ -108,9 +108,11 @@ import org.glygen.tablemaker.util.SequenceUtils;
 import org.glygen.tablemaker.view.CollectionView;
 import org.glygen.tablemaker.view.FileWrapper;
 import org.glygen.tablemaker.view.Filter;
+import org.glygen.tablemaker.view.GlycanInSiteView;
 import org.glygen.tablemaker.view.GlycanView;
 import org.glygen.tablemaker.view.GlycoproteinView;
 import org.glygen.tablemaker.view.SequenceFormat;
+import org.glygen.tablemaker.view.SiteView;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.glygen.tablemaker.view.UserStatisticsView;
@@ -1624,19 +1626,29 @@ public class DataController {
     	glycoprotein.setGeneSymbol(gp.getGeneSymbol());
     	glycoprotein.setUniprotId(gp.getUniprotId());
     	glycoprotein.setSequence(gp.getSequence());
-    	glycoprotein.setSites(gp.getSites());
     	glycoprotein.setTags(gp.getTags());
     	glycoprotein.setUser(user);
     	glycoprotein.setDateCreated(new Date());
+    	glycoprotein.setSites(new ArrayList<>());
     	if (gp.getSites() != null) {
-    		for (Site s: gp.getSites()) {
+    		for (SiteView sv: gp.getSites()) {
+    			Site s = new Site();
+    			s.setType(sv.getType());
     			s.setGlycoprotein(glycoprotein);
-    			s.setPositionString(s.getPosition().toString()); // convert the position to JSON string
-    			if (s.getGlycans() != null) {
-    				for (GlycanInSite g: s.getGlycans()) {
-    					g.setSite(s);
+    			s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
+    			s.setGlycans(new ArrayList<>());
+    			if (sv.getGlycans() != null) {
+    				for (GlycanInSiteView gv: sv.getGlycans()) {
+    					GlycanInSite g = new GlycanInSite();
+    					g.setGlycan(gv.getGlycan());
+    					g.setSite (s);
+    					g.setGlycosylationSubType(gv.getGlycosylationSubType());
+    					g.setGlycosylationType(gv.getGlycosylationType());
+    					g.setType(gv.getType());
+    					s.getGlycans().add(g);
     				}
     			}
+    			glycoprotein.getSites().add(s);
     		}
     	}
     	Glycoprotein saved = glycoproteinRepository.save(glycoprotein);

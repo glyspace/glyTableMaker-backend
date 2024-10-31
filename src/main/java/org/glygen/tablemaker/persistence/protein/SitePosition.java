@@ -8,19 +8,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class SitePosition {
 	
 	List<Position> positionList;
-	PositionType type;
 	
 	public List<Position> getPositionList() {
 		return positionList;
 	}
 	public void setPositionList(List<Position> positionList) {
 		this.positionList = positionList;
-	}
-	public PositionType getType() {
-		return type;
-	}
-	public void setType(PositionType type) {
-		this.type = type;
 	}
 	
 	@Override

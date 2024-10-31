@@ -654,6 +654,8 @@ public class UtilityController {
             if (protein == null) {
                 throw new EntityNotFoundException("protein with the given UniProt ID " + uniprotId  + " cannot be found");
             }
+            protein.setSites(new ArrayList<>());
+            protein.setTags(new ArrayList<>());
             return new ResponseEntity<>(new SuccessResponse(protein, "Protein retrieved"), HttpStatus.OK);
         } catch (Exception e) {
             logger.error("Could not retrieve from uniprot", e);
