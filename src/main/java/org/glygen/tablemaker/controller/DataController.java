@@ -766,12 +766,20 @@ public class DataController {
         	cv.setName(c.getName());
         	cv.setDescription(c.getDescription());
         	if (c.getTags() != null) cv.setTags(new ArrayList<>(c.getTags()));
+        	if (c.getType() == null) {    // Legacy data
+        		c.setType(CollectionType.GLYCAN);
+        	}
+        	cv.setType(c.getType());
         	cv.setChildren(new ArrayList<>());
         	for (Collection cc: c.getCollections()) {
         		CollectionView child = new CollectionView();
         		child.setCollectionId(cc.getCollectionId());
         		child.setName(cc.getName());
         		child.setDescription(cc.getDescription());
+        		if (child.getType() == null) {    // Legacy data
+            		child.setType(CollectionType.GLYCAN);
+            	}
+        		cc.setType(child.getType());
         		if (cc.getMetadata() != null) child.setMetadata(new ArrayList<>(cc.getMetadata()));
         		if (cc.getTags() != null) child.setTags(new ArrayList<>(cc.getTags()));
         		child.setGlycans(new ArrayList<Glycan>());
@@ -828,6 +836,9 @@ public class DataController {
     	CollectionView cv = new CollectionView();
         cv.setCollectionId(collection.getCollectionId());
     	cv.setName(collection.getName());
+    	if (collection.getType() == null) 
+    		collection.setType(CollectionType.GLYCAN);
+    	cv.setType(collection.getType());
     	cv.setDescription(collection.getDescription());
     	if (collection.getMetadata() != null) cv.setMetadata(new ArrayList<>(collection.getMetadata()));
     	if (collection.getTags() != null) cv.setTags(new ArrayList<>(collection.getTags()));
@@ -851,6 +862,9 @@ public class DataController {
 	    		CollectionView child = new CollectionView();
 	    		child.setCollectionId(c.getCollectionId());
 	    		child.setName(c.getName());
+	    		if (c.getType() == null)
+	    			c.setType(CollectionType.GLYCAN);
+	    		child.setType(c.getType());
 	    		child.setDescription(c.getDescription());
 	    		if (c.getMetadata() != null) child.setMetadata(new ArrayList<>(c.getMetadata()));
 	    		if (c.getTags() != null) child.setTags(new ArrayList<>(c.getTags()));
@@ -1589,8 +1603,18 @@ public class DataController {
     	if (existing.size() > 0) {
     		throw new DuplicateException("A collection of collections with this name already exists!");
     	}
+    	
+    	// check if all selected collections are of the same type
+    	CollectionType type = c.getType();
+    	for (CollectionView child: c.getChildren()) {
+    		if (child.getType() != type) {
+    			// error
+    			throw new IllegalArgumentException("All selected collections should be of the same type, either all Glycan or all Glyccoprotein!");
+    		}
+    	}
         
     	Collection collection = new Collection();
+    	collection.setType(c.getType());
     	collection.setName(c.getName());
     	collection.setDescription(c.getDescription());
     	collection.setCollections(new ArrayList<>());

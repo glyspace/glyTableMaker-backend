@@ -10,6 +10,7 @@ import org.glygen.tablemaker.persistence.protein.Site;
 
 public class GlycoproteinView {
 	
+	Long id;
 	String uniprotId;
 	String name;
 	String sequence;
@@ -27,6 +28,7 @@ public class GlycoproteinView {
 		this.name = p.getName();
 		this.sequence = p.getSequence();
 		this.uniprotId = p.getUniprotId();
+		this.id = p.getId();
 		if (p.getSites() != null) {
 			this.sites = new ArrayList<>();
 			for (Site s: p.getSites()) {
@@ -94,5 +96,13 @@ public class GlycoproteinView {
 	
 	public void setTags(List<GlycanTag> tags) {
 		this.tags = tags;
+	}
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
 	}
 }
