@@ -25,5 +25,4 @@ public class SitePosition {
 			return super.toString();
 		}
 	}
-
 }

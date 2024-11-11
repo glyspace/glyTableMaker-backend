@@ -41,6 +41,7 @@ import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.Namespace;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.protein.Glycoprotein;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.service.EmailManager;
 import org.glygen.tablemaker.util.UniProtUtil;
@@ -154,6 +155,26 @@ public class UtilityController {
 		}
 		
 		return new ResponseEntity<> (new SuccessResponse (datatypes, "glycan metadata list retrieved"), HttpStatus.OK);
+	}
+	
+	@Operation(summary = "Get glycoprotein related columns for tablemaker")
+    @GetMapping("/getglycoproteinmetadata")
+	@ApiResponses (value ={
+			@ApiResponse(responseCode="200", description="Return available glycoprotein columns"), 
+            @ApiResponse(responseCode="500", description="Internal Server Error")
+	})
+    public ResponseEntity<SuccessResponse> getGlycoproteinMetadata() {
+		List<Datatype> datatypes = new ArrayList<>();
+		Long i = -1L;
+		for (GlycoproteinColumns col: GlycoproteinColumns.values()) {
+			Datatype type = new Datatype();
+			type.setName(col.getLabel());
+			type.setDescription(col.name());
+			type.setDatatypeId(i--);
+			datatypes.add(type);
+		}
+		
+		return new ResponseEntity<> (new SuccessResponse (datatypes, "glycoprotein metadata list retrieved"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Retrieve type ahead suggestions")

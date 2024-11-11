@@ -44,7 +44,20 @@ insert into datatype_category (datatypeid, categoryid) values (14, 1) on conflic
 insert into datatype_category (datatypeid, categoryid) values (15, 1) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid, mandatory) values (16, 1, TRUE) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid) values (17, 1) on conflict do nothing;
-insert into tablemakertemplate (templateid, name, description) values (1, 'GlyGen', 'Template for submitting glycans to GlyGen') on conflict do nothing;
+
+insert into Category (categoryid, name, description) values(2, 'GlyGen Glycoproteomics Data', 'Metadata required for the data export into the GlyGen Glycoproteomics Data format.')  ON CONFLICT DO NOTHING; 
+insert into datatype_category (datatypeid, categoryid) values (2, 2) ON CONFLICT DO NOTHING;
+insert into datatype_category (datatypeid, categoryid, mandatory) values (3, 2, TRUE) ON CONFLICT DO NOTHING;
+insert into datatype_category (datatypeid, categoryid) values (4, 2) on conflict do nothing;
+insert into datatype_category (datatypeid, categoryid) values (5, 2) on conflict do nothing;
+insert into datatype_category (datatypeid, categoryid) values (6, 2) on conflict do nothing;
+insert into datatype_category (datatypeid, categoryid) values (7, 2) on conflict do nothing;
+insert into datatype_category (datatypeid, categoryid) values (11, 2) on conflict do nothing;
+insert into datatype_category (datatypeid, categoryid, mandatory) values (12, 2, TRUE) on conflict do nothing;
+insert into datatype_category (datatypeid, categoryid, mandatory) values (16, 2, TRUE) on conflict do nothing;
+insert into datatype_category (datatypeid, categoryid) values (17, 2) on conflict do nothing;
+
+insert into tablemakertemplate (templateid, name, description) values (1, 'GlyGen Glycomics', 'Template for submitting glycans to GlyGen') on conflict do nothing;
 insert into table_column (columnid, name, glycancolumn, column_order) values (1, 'GlyTouCan ID', 'GLYTOUCANID',  1) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (2, 'Evidence', 2, 'VALUE', 2) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (3, 'Species', 3, 'ID', 3) ON CONFLICT DO NOTHING;
@@ -79,6 +92,40 @@ insert into tablemakertemplate_table_column (columnid, templateid) values (14, 1
 insert into tablemakertemplate_table_column (columnid, templateid) values (15, 1) on conflict do nothing;
 insert into tablemakertemplate_table_column (columnid, templateid) values (16, 1) on conflict do nothing;
 insert into tablemakertemplate_table_column (columnid, templateid) values (17, 1) on conflict do nothing;
+
+insert into tablemakertemplate (templateid, name, description) values (2, 'GlyGen Glycoproteomics', 'Template for submitting glycoproteins to GlyGen') on conflict do nothing;
+insert into table_column (columnid, name, glycoproteincolumn, column_order) values (21, 'Uniprot ID', 'UNIPROTID',  1) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, glycoproteincolumn, column_order) values (32, 'GlyTouCan ID', 'GLYTOUCANID',  2) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, glycoproteincolumn, column_order) values (33, 'Amino Acid', 'AMINOACID',  3) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, glycoproteincolumn, column_order) values (34, 'Site/Position', 'SITE',  4) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, glycoproteincolumn, column_order) values (35, 'Glycosylation Type', 'GLYCOSYLATIONTYPE',  5) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, glycoproteincolumn, column_order) values (36, 'Glycosylation Subtype', 'GLYCOSYLATIONSUBTYPE',  6) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (22, 'Evidence', 2, 'VALUE', 7) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (23, 'Species', 3, 'ID', 8) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (24, 'Strain', 4, 'VALUE', 9) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (25, 'Tissue', 5, 'ID', 10) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (26, 'Cell line ID', 6, 'ID', 11) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (27, 'Disease', 7, 'ID', 12) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (28, 'Functional annotation/Keyword', 11, 'VALUE', 13) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (29, 'Experimental technique', 12, 'VALUE', 14) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (30, 'Contributor', 16, 'VALUE', 15) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (31, 'Comment', 17, 'VALUE', 16) ON CONFLICT DO NOTHING;
+insert into tablemakertemplate_table_column (columnid, templateid) values (21, 2) ON CONFLICT DO NOTHING;
+insert into tablemakertemplate_table_column (columnid, templateid) values (22, 2) ON CONFLICT DO NOTHING;
+insert into tablemakertemplate_table_column (columnid, templateid) values (23, 2) ON CONFLICT DO NOTHING;
+insert into tablemakertemplate_table_column (columnid, templateid) values (24, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (25, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (26, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (27, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (28, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (29, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (30, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (31, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (32, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (33, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (34, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (35, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (36, 2) on conflict do nothing;
 
 insert into license (id, name, attribution, commercialuse, distribution, url) values (1, 'CC0 1.0', 'The person who associated a work with this deed has dedicated the work to the public domain by waiving all of his or her rights to the work worldwide under copyright law, including all related and neighboring rights, to the extent allowed by law.', TRUE, 'You can copy, modify, distribute and perform the work, even for commercial purposes, all without asking permission.', 'https://creativecommons.org/publicdomain/zero/1.0/') on CONFLICT DO NOTHING;
 insert into license (id, name, attribution, commercialuse, distribution, url) values (2, 'CC BY 4.0', 'You must give appropriate credit , provide a link to the license, and indicate if changes were made . You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.', TRUE, 'No additional restrictions — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.', 'https://creativecommons.org/licenses/by/4.0/') on CONFLICT DO NOTHING;

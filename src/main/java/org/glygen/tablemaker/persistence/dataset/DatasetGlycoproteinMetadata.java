@@ -1,7 +1,7 @@
 package org.glygen.tablemaker.persistence.dataset;
 
 import org.glygen.tablemaker.persistence.glycan.Datatype;
-import org.glygen.tablemaker.persistence.protein.GlycanproteinColumns;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -22,7 +22,7 @@ public class DatasetGlycoproteinMetadata {
 	
 	Long id;
 	Datatype datatype;
-	GlycanproteinColumns glycoproteinColumn;
+	GlycoproteinColumns glycoproteinColumn;
 	String value;
     String valueUri;
  	String valueId;
@@ -65,11 +65,11 @@ public class DatasetGlycoproteinMetadata {
 
 	@Enumerated(EnumType.STRING)
 	@Column(name="glycoproteincolumn", length=50)
-	public GlycanproteinColumns getGlycoproteinColumn() {
+	public GlycoproteinColumns getGlycoproteinColumn() {
 		return glycoproteinColumn;
 	}
 
-	public void setGlycoproteinColumn(GlycanproteinColumns glycoproteinColumn) {
+	public void setGlycoproteinColumn(GlycoproteinColumns glycoproteinColumn) {
 		this.glycoproteinColumn = glycoproteinColumn;
 	}
 

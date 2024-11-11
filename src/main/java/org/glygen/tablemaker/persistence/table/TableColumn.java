@@ -1,6 +1,7 @@
 package org.glygen.tablemaker.persistence.table;
 
 import org.glygen.tablemaker.persistence.glycan.Datatype;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -25,6 +26,7 @@ public class TableColumn {
 	Datatype datatype;
 	ValueType type;
 	GlycanColumns glycanColumn;
+	GlycoproteinColumns proteinColumn;
 	String defaultValue;
 	
 	@Id
@@ -45,7 +47,7 @@ public class TableColumn {
 		this.order = order;
 	}
 	
-	@Column(unique=true, nullable=false)
+	@Column(nullable=false)
 	public String getName() {
 		return name;
 	}
@@ -87,5 +89,14 @@ public class TableColumn {
 	}
 	public void setDefaultValue(String defaultValue) {
 		this.defaultValue = defaultValue;
+	}
+	
+	@Enumerated(EnumType.STRING)
+	@Column(name="glycoproteincolumn")
+	public GlycoproteinColumns getProteinColumn() {
+		return proteinColumn;
+	}
+	public void setProteinColumn(GlycoproteinColumns proteinColumn) {
+		this.proteinColumn = proteinColumn;
 	}
 }

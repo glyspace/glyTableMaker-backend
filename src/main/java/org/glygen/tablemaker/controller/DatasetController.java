@@ -653,6 +653,7 @@ public class DatasetController {
     				}
     			}
     			dv.setNoGlycans(dv.getData() != null ? dv.getData().size() : 0);
+    			//TODO how to calculate no of proteins
     			if (version.getPublications() != null) dv.setPublications(new ArrayList<>(version.getPublications()));
     			break;
     		} 

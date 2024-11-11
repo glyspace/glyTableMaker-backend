@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.protein.GlycanInSite;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
@@ -46,6 +47,7 @@ public class Glycan {
     RegistrationStatus status;
     UserEntity user;
     java.util.Collection<GlycanInCollection> glycanCollections;
+    java.util.Collection<GlycanInSite> sites;
     java.util.Collection<GlycanTag> tags;
     byte[] cartoon;
     java.util.Collection<GlycanInFile> uploadFiles;
@@ -291,5 +293,13 @@ public class Glycan {
 			}
 		}
 		return false;
+	}
+	
+	@OneToMany(mappedBy = "glycan")
+	public java.util.Collection<GlycanInSite> getSites() {
+		return sites;
+	}
+	public void setSites(java.util.Collection<GlycanInSite> sites) {
+		this.sites = sites;
 	}
 }

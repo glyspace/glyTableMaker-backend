@@ -2,6 +2,7 @@ package org.glygen.tablemaker.persistence.protein;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -43,7 +44,7 @@ public class Site {
 		this.positionString = position;
 	}
 	
-	@OneToMany(mappedBy = "site")
+	@OneToMany(mappedBy = "site", cascade=CascadeType.ALL, orphanRemoval = true)
 	public java.util.Collection<GlycanInSite> getGlycans() {
 		return glycans;
 	}
@@ -78,6 +79,42 @@ public class Site {
 	}
 	public void setPosition(SitePosition position) {
 		this.position = position;
+	}
+	
+	@Transient
+	public String getAminoAcidString () {
+		String aminoacidString = "";
+		if (position != null && position.positionList != null) {
+			for (Position pos: position.positionList) { 
+				aminoacidString += pos.getAminoAcid() + "|";
+			}
+			return aminoacidString.substring(0, aminoacidString.length()-1);
+		} 
+		return aminoacidString;
+	}
+	
+	@Transient
+	public String getLocationString () {
+		String locationString="";
+		switch (type) {
+		case ALTERNATIVE:
+			if (position != null && position.positionList != null) {
+				for (Position pos: position.positionList) {
+					locationString += pos.location + "|";
+				}
+				return locationString.substring(0, locationString.length()-1);
+			}
+		case EXPLICIT:
+			if (position != null && position.positionList != null && position.positionList.size() > 0)
+				return position.positionList.get(0).location + "";
+		case RANGE:
+			if (position != null && position.positionList != null && position.positionList.size() > 1)
+				return position.positionList.get(0).location + "-" + position.positionList.get(1).location;
+		default:
+			break;
+		
+		}
+		return locationString;
 	}
 
 }

@@ -621,48 +621,7 @@ public class DataController {
         
         List<CollectionView> collections = new ArrayList<>();
         for (Collection c: collectionsInPage.getContent()) {
-        	CollectionView cv = new CollectionView();
-        	cv.setCollectionId(c.getCollectionId());
-        	cv.setName(c.getName());
-        	cv.setDescription(c.getDescription());
-        	cv.setType(c.getType());
-        	if (c.getMetadata() != null) cv.setMetadata(new ArrayList<>(c.getMetadata()));
-        	if (c.getTags() != null) cv.setTags(new ArrayList<>(c.getTags()));
-        	if (c.getType() == null) {    // Legacy data
-        		c.setType(CollectionType.GLYCAN);
-        	}
-        	if (c.getType() == CollectionType.GLYCAN) {
-	        	cv.setGlycans(new ArrayList<Glycan>());
-	        	for (GlycanInCollection gic: c.getGlycans()) {
-	        		Glycan g = gic.getGlycan();
-	        		g.setGlycanCollections(null);
-	        		try {
-	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-	                } catch (DataNotFoundException e) {
-	                    // ignore
-	                    logger.warn ("no image found for glycan " + g.getGlycanId());
-	                }
-	        		cv.getGlycans().add(g);
-	        	}
-        	} else {   // Glycoproteins
-        		cv.setGlycoproteins(new ArrayList<>());
-        		for (GlycoproteinInCollection gp: c.getGlycoproteins()) {
-        			Glycoprotein p = gp.getGlycoprotein();
-        			for (Site s: p.getSites()) {
-        				for (GlycanInSite gic: s.getGlycans()) {
-        	        		Glycan g = gic.getGlycan();
-        	        		g.setGlycanCollections(null);
-        	        		try {
-        	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-        	                } catch (DataNotFoundException e) {
-        	                    // ignore
-        	                    logger.warn ("no image found for glycan " + g.getGlycanId());
-        	                }
-        	        	}
-        			}
-        			cv.getGlycoproteins().add(p);
-        		}
-        	}
+        	CollectionView cv = createCollectionView (c, imageLocation);
         	collections.add(cv);
         }
         
@@ -761,41 +720,7 @@ public class DataController {
         
         List<CollectionView> collections = new ArrayList<>();
         for (Collection c: collectionsInPage.getContent()) {
-        	CollectionView cv = new CollectionView();
-        	cv.setCollectionId(c.getCollectionId());
-        	cv.setName(c.getName());
-        	cv.setDescription(c.getDescription());
-        	if (c.getTags() != null) cv.setTags(new ArrayList<>(c.getTags()));
-        	if (c.getType() == null) {    // Legacy data
-        		c.setType(CollectionType.GLYCAN);
-        	}
-        	cv.setType(c.getType());
-        	cv.setChildren(new ArrayList<>());
-        	for (Collection cc: c.getCollections()) {
-        		CollectionView child = new CollectionView();
-        		child.setCollectionId(cc.getCollectionId());
-        		child.setName(cc.getName());
-        		child.setDescription(cc.getDescription());
-        		if (child.getType() == null) {    // Legacy data
-            		child.setType(CollectionType.GLYCAN);
-            	}
-        		cc.setType(child.getType());
-        		if (cc.getMetadata() != null) child.setMetadata(new ArrayList<>(cc.getMetadata()));
-        		if (cc.getTags() != null) child.setTags(new ArrayList<>(cc.getTags()));
-        		child.setGlycans(new ArrayList<Glycan>());
-            	for (GlycanInCollection gic: cc.getGlycans()) {
-            		Glycan g = gic.getGlycan();
-            		g.setGlycanCollections(null);
-            		try {
-                        g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-                    } catch (DataNotFoundException e) {
-                        // ignore
-                        logger.warn ("no image found for glycan " + g.getGlycanId());
-                    }
-            		child.getGlycans().add(g);
-            	}
-        		cv.getChildren().add(child);
-        	}
+        	CollectionView cv = createCollectionView (c, imageLocation);
         	collections.add(cv);
         }
         
@@ -807,9 +732,6 @@ public class DataController {
         
         return new ResponseEntity<>(new SuccessResponse(response, "collections of collections retrieved"), HttpStatus.OK);
     }
-    
-    
-    
     
     @Operation(summary = "Get collection by the given id", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcollection/{collectionId}")
@@ -827,12 +749,12 @@ public class DataController {
             throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
         }
         
-        CollectionView cv = createCollectionView (existing);
+        CollectionView cv = createCollectionView (existing, imageLocation);
         
         return new ResponseEntity<>(new SuccessResponse(cv, "collection retrieved"), HttpStatus.OK);
     }
     
-    CollectionView createCollectionView (Collection collection) {
+    static CollectionView createCollectionView (Collection collection, String imageLocation) {
     	CollectionView cv = new CollectionView();
         cv.setCollectionId(collection.getCollectionId());
     	cv.setName(collection.getName());
@@ -842,19 +764,41 @@ public class DataController {
     	cv.setDescription(collection.getDescription());
     	if (collection.getMetadata() != null) cv.setMetadata(new ArrayList<>(collection.getMetadata()));
     	if (collection.getTags() != null) cv.setTags(new ArrayList<>(collection.getTags()));
-    	if (collection.getGlycans() != null && !collection.getGlycans().isEmpty()) {
-    		cv.setGlycans(new ArrayList<Glycan>());
-	    	for (GlycanInCollection gic: collection.getGlycans()) {
-	    		Glycan g = gic.getGlycan();
-	    		g.setGlycanCollections(null);
-	    		try {
-	                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-	            } catch (DataNotFoundException e) {
-	                // ignore
-	                logger.warn ("no image found for glycan " + g.getGlycanId());
-	            }
-	    		cv.getGlycans().add(g);
+    	if (collection.getType() == CollectionType.GLYCAN) {
+	    	if (collection.getGlycans() != null && !collection.getGlycans().isEmpty()) {
+	    		cv.setGlycans(new ArrayList<Glycan>());
+		    	for (GlycanInCollection gic: collection.getGlycans()) {
+		    		Glycan g = gic.getGlycan();
+		    		g.setGlycanCollections(null);
+		    		g.setSites(null);
+		    		try {
+		                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+		            } catch (DataNotFoundException e) {
+		                // ignore
+		                logger.warn ("no image found for glycan " + g.getGlycanId());
+		            }
+		    		cv.getGlycans().add(g);
+		    	}
 	    	}
+    	} else {   // Glycoproteins
+    		cv.setGlycoproteins(new ArrayList<>());
+    		for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+    			Glycoprotein p = gp.getGlycoprotein();
+    			for (Site s: p.getSites()) {
+    				for (GlycanInSite gic: s.getGlycans()) {
+    	        		Glycan g = gic.getGlycan();
+    	        		g.setGlycanCollections(null);
+    	        		g.setSites(null);
+    	        		try {
+    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+    	                } catch (DataNotFoundException e) {
+    	                    // ignore
+    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
+    	                }
+    	        	}
+    			}
+    			cv.getGlycoproteins().add(p);
+    		}
     	}
     	if (collection.getCollections() != null && !collection.getCollections().isEmpty()) {
     		cv.setChildren(new ArrayList<>());
@@ -868,18 +812,42 @@ public class DataController {
 	    		child.setDescription(c.getDescription());
 	    		if (c.getMetadata() != null) child.setMetadata(new ArrayList<>(c.getMetadata()));
 	    		if (c.getTags() != null) child.setTags(new ArrayList<>(c.getTags()));
-	        	child.setGlycans(new ArrayList<Glycan>());
-	        	for (GlycanInCollection gic: c.getGlycans()) {
-	        		Glycan g = gic.getGlycan();
-	        		g.setGlycanCollections(null);
-	        		try {
-	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-	                } catch (DataNotFoundException e) {
-	                    // ignore
-	                    logger.warn ("no image found for glycan " + g.getGlycanId());
-	                }
-	        		child.getGlycans().add(g);
-	        	}
+	    		if (c.getType() == CollectionType.GLYCAN) {
+	    	    	if (c.getGlycans() != null && !c.getGlycans().isEmpty()) {
+			        	child.setGlycans(new ArrayList<Glycan>());
+			        	for (GlycanInCollection gic: c.getGlycans()) {
+			        		Glycan g = gic.getGlycan();
+			        		g.setGlycanCollections(null);
+			        		g.setSites(null);
+			        		try {
+			                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+			                } catch (DataNotFoundException e) {
+			                    // ignore
+			                    logger.warn ("no image found for glycan " + g.getGlycanId());
+			                }
+			        		child.getGlycans().add(g);
+			        	}
+	    	    	}
+	    		} else {
+	    			child.setGlycoproteins(new ArrayList<>());
+	        		for (GlycoproteinInCollection gp: c.getGlycoproteins()) {
+	        			Glycoprotein p = gp.getGlycoprotein();
+	        			for (Site s: p.getSites()) {
+	        				for (GlycanInSite gic: s.getGlycans()) {
+	        	        		Glycan g = gic.getGlycan();
+	        	        		g.setGlycanCollections(null);
+	        	        		g.setSites(null);
+	        	        		try {
+	        	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+	        	                } catch (DataNotFoundException e) {
+	        	                    // ignore
+	        	                    logger.warn ("no image found for glycan " + g.getGlycanId());
+	        	                }
+	        	        	}
+	        			}
+	        			child.getGlycoproteins().add(p);
+	        		}
+	    		}
 	        	cv.getChildren().add(child);
 	    	}
     	}
@@ -903,7 +871,7 @@ public class DataController {
             throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
         }
         
-        CollectionView cv = createCollectionView(existing);
+        CollectionView cv = createCollectionView(existing, imageLocation);
         
         return new ResponseEntity<>(new SuccessResponse(cv, "collection retrieved"), HttpStatus.OK);
     }
@@ -1232,6 +1200,17 @@ public class DataController {
         	String collectionString = "";
         	for (GlycanInCollection col: existing.getGlycanCollections()) {
         		collectionString += col.getCollection().getName() + ", ";
+        	}
+        	collectionString = collectionString.substring(0, collectionString.lastIndexOf(","));
+        	throw new BadRequestException ("Cannot delete this glycan. It is used in the following collections: " + collectionString);
+        }
+        //need to check if the glycan appears in any glycoprotein collection and give an error message
+        if (existing.getSites() != null && !existing.getSites().isEmpty()) {
+        	String collectionString = "";
+        	for (GlycanInSite site: existing.getSites()) {
+        		for (GlycoproteinInCollection col: site.getSite().getGlycoprotein().getGlycoproteinCollections()) {
+        			collectionString += col.getCollection().getName() + ", ";
+        		}
         	}
         	collectionString = collectionString.substring(0, collectionString.lastIndexOf(","));
         	throw new BadRequestException ("Cannot delete this glycan. It is used in the following collections: " + collectionString);
@@ -1855,7 +1834,7 @@ public class DataController {
     		UtilityController.getCanonicalForm (namespaceRepository, existing.getMetadata());
     	}
     	Collection saved = collectionManager.saveCollectionWithMetadata(existing);
-    	CollectionView cv = createCollectionView(saved);
+    	CollectionView cv = createCollectionView(saved, imageLocation);
     	return new ResponseEntity<>(new SuccessResponse(cv, "collection updated"), HttpStatus.OK);
     }
     
@@ -1927,7 +1906,7 @@ public class DataController {
     	}
     	
     	Collection saved = collectionRepository.save(existing);
-    	CollectionView cv = createCollectionView(saved);
+    	CollectionView cv = createCollectionView(saved, imageLocation);
     	return new ResponseEntity<>(new SuccessResponse(cv, "collection of collections updated"), HttpStatus.OK);
     }
     

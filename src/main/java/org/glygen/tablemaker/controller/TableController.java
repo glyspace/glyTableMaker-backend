@@ -36,8 +36,13 @@ import org.glygen.tablemaker.persistence.dao.TableReportRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
+import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
+import org.glygen.tablemaker.persistence.protein.GlycanInSite;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
+import org.glygen.tablemaker.persistence.protein.Site;
+import org.glygen.tablemaker.persistence.protein.SitePosition;
 import org.glygen.tablemaker.persistence.table.FileFormat;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.persistence.table.TableColumn;
@@ -106,7 +111,9 @@ public class TableController {
         }
 		List<TableMakerTemplate> templates = templateRepository.findAllByUser(user);
 		Optional<TableMakerTemplate> glygenTemplate = templateRepository.findById(1L);
+		Optional<TableMakerTemplate> glycoproteinTemplate = templateRepository.findById(2L);
 		if (glygenTemplate.isPresent()) templates.add(0, glygenTemplate.get());
+		if (glycoproteinTemplate.isPresent()) templates.add(1, glycoproteinTemplate.get());
 		
 		// order columns according to the given order
 		for (TableMakerTemplate template: templates) {
@@ -207,13 +214,15 @@ public class TableController {
 		for (TableColumn col: table.getColumns()) {
 			if (col.getGlycanColumn() == GlycanColumns.CARTOON) {
 				for (Collection c: collectionList) {
-					for (GlycanInCollection g: c.getGlycans()) {
-						try {
-			                g.getGlycan().setCartoon(
-			                		DataController.getImageForGlycan(
-			                				imageLocation, g.getGlycan().getGlycanId()));
-						} catch (DataNotFoundException e) {
-							// do nothing, warning will be added later
+					if (c.getGlycans() != null) {
+						for (GlycanInCollection g: c.getGlycans()) {
+							try {
+				                g.getGlycan().setCartoon(
+				                		DataController.getImageForGlycan(
+				                				imageLocation, g.getGlycan().getGlycanId()));
+							} catch (DataNotFoundException e) {
+								// do nothing, warning will be added later
+							}
 						}
 					}
 				}
@@ -228,138 +237,167 @@ public class TableController {
 		}
 		rows.add(row);
 		for (Collection c: collectionList) {
-			for (GlycanInCollection g: c.getGlycans()) {
-				row = new String[table.getColumns().size()];
-				rows.add(row);
-				int i=0;
-				for (TableColumn col: table.getColumns()) {
-					if (col.getGlycanColumn() != null) {
-						switch (col.getGlycanColumn()) {
-						case CARTOON:
-							if (g.getGlycan().getCartoon() == null && col.getDefaultValue() != null) {
-								row[i] = col.getDefaultValue();
-							} else {
-								if (g.getGlycan().getCartoon() != null) {
-									row[i] = "IMAGE" + g.getGlycan().getGlycanId();
-									cartoons.put ("IMAGE" + g.getGlycan().getGlycanId(), g.getGlycan().getCartoon());
+			if (c.getType() == null || c.getType() == CollectionType.GLYCAN) {
+				for (GlycanInCollection g: c.getGlycans()) {
+					row = new String[table.getColumns().size()];
+					rows.add(row);
+					int i=0;
+					for (TableColumn col: table.getColumns()) {
+						if (col.getGlycanColumn() != null) {
+							switch (col.getGlycanColumn()) {
+							case CARTOON:
+								if (g.getGlycan().getCartoon() == null && col.getDefaultValue() != null) {
+									row[i] = col.getDefaultValue();
+								} else {
+									if (g.getGlycan().getCartoon() != null) {
+										row[i] = "IMAGE" + g.getGlycan().getGlycanId();
+										cartoons.put ("IMAGE" + g.getGlycan().getGlycanId(), g.getGlycan().getCartoon());
+									} else {
+										// warning
+										report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in collection " + c.getName() + " does not have a cartoon. Column is left empty");
+										row[i] = "";
+									}
+								}
+								break;
+							case GLYTOUCANID:
+								if (g.getGlycan().getGlytoucanID() == null && col.getDefaultValue() != null) {
+									row[i] = col.getDefaultValue();
+								} else if (g.getGlycan().getGlytoucanID() != null){
+									row[i] = g.getGlycan().getGlytoucanID();
 								} else {
 									// warning
-									report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in collection " + c.getName() + " does not have a cartoon. Column is left empty");
+									report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in collection " + c.getName() + " does not have a value for GlytoucanID. Column is left empty!");
 									row[i] = "";
 								}
-							}
-							break;
-						case GLYTOUCANID:
-							if (g.getGlycan().getGlytoucanID() == null && col.getDefaultValue() != null) {
-								row[i] = col.getDefaultValue();
-							} else if (g.getGlycan().getGlytoucanID() != null){
-								row[i] = g.getGlycan().getGlytoucanID();
-							} else {
-								// warning
-								report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in collection " + c.getName() + " does not have a value for GlytoucanID. Column is left empty!");
-								row[i] = "";
-							}
-							break;
-						case MASS:
-							if (g.getGlycan().getMass() == null && col.getDefaultValue() != null) {
-								row[i] = col.getDefaultValue();
-							} else if (g.getGlycan().getMass() != null){
-								row[i] = g.getGlycan().getMass() + "";
-							} else {
-								// warning
-								report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in collection " + c.getName() + " does not have a value for mass. Column is left empty!");
-								row[i] = "";
-							}
-							break;
-						default:
-							row[i] = "";
-							break;
-						}
-					} else if (col.getDatatype() != null) {
-						boolean found = false;
-						for (Metadata metadata: c.getMetadata()) {
-							if (metadata.getType().getDatatypeId().equals(col.getDatatype().getDatatypeId())) {
-								if (col.getType() != null) {
-									switch (col.getType()) {
-									case ID:
-										if (!metadata.getType().getNamespace().getHasId()) {
-											// ERROR!
-											report.addError(metadata.getType().getNamespace().getName() + " does not have value ID but \"ID\" is requested for " + col.getName() + " column.");
-										} else {
-											if (metadata.getValueId() == null && col.getDefaultValue() != null) {
-												row[i] = col.getDefaultValue();
-											} else {
-												if (!found) {   // first one
-													row[i] = metadata.getValueId();
-												} else {
-													row[i] += "|" + metadata.getValueId();
-												}
-											}
-										}
-										break;
-									case URI:
-										if (!metadata.getType().getNamespace().getHasUri()) {
-											// ERROR!
-											report.addError(metadata.getType().getNamespace().getName() + " does not have value URI but \"URI\" is requested for " + col.getName() + " column.");
-										} else {
-											if (metadata.getValueUri() == null && col.getDefaultValue() != null) {
-												row[i] = col.getDefaultValue();
-											} else {
-												if (!found) {   // first one
-													row[i] = metadata.getValueUri();
-												} else {
-													row[i] += "|" + metadata.getValueUri();
-												}
-											}
-										}
-										break;
-									case VALUE:
-									default:
-										if (metadata.getValue() == null && col.getDefaultValue() != null) {
-											row[i] = col.getDefaultValue();
-										} else {
-											if (!found) {   // first one
-												row[i] = metadata.getValue();
-											} else {
-												row[i] += "|" + metadata.getValue();
-											}
-										}
-										break;
-									}
+								break;
+							case MASS:
+								if (g.getGlycan().getMass() == null && col.getDefaultValue() != null) {
+									row[i] = col.getDefaultValue();
+								} else if (g.getGlycan().getMass() != null){
+									row[i] = g.getGlycan().getMass() + "";
 								} else {
-									if (metadata.getValue() == null && col.getDefaultValue() != null) {
-										row[i] = col.getDefaultValue();
-									} else {
-										if (!found) {   // first one
-											row[i] = metadata.getValue();
-										} else {
-											row[i] += "|" + metadata.getValue();
-										}
-									}
+									// warning
+									report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in collection " + c.getName() + " does not have a value for mass. Column is left empty!");
+									row[i] = "";
 								}
-								found = true;
+								break;
+							default:
+								row[i] = "";
+								break;
+							}
+						} else if (col.getDatatype() != null) {
+							handleDatatypeColumn(c, col, row, i, report);
+						} else if (col.getDefaultValue() != null) {
+							row[i] = col.getDefaultValue();
+						} else {
+							row[i] = "";
+						}
+						i++;
+					}
+				}
+			}
+			else {
+				// glycoprotein collection
+				for (GlycoproteinInCollection gp: c.getGlycoproteins()) {
+					for (Site s: gp.getGlycoprotein().getSites()) {
+						for (GlycanInSite g: s.getGlycans()) {
+							row = new String[table.getColumns().size()];
+							rows.add(row);
+							int i=0;
+							for (TableColumn col: table.getColumns()) {
+								if (col.getProteinColumn() != null) { //TODO fill in these columns
+									switch (col.getProteinColumn()) {
+									case AMINOACID:
+										if ( s.getAminoAcidString().isBlank() && col.getDefaultValue() != null) {
+											row[i] = col.getDefaultValue();
+										} else if (!s.getAminoAcidString().isBlank()){
+											row[i] = s.getAminoAcidString();
+										} else {
+											// warning
+											report.addWarning("Protein " + gp.getGlycoprotein().getName() + " in collection " + c.getName() + " does not have a value for Aminoacid. Column is left empty!");
+											row[i] = "";
+										}
+										break;
+									case GLYCOSYLATIONSUBTYPE:
+										if (g.getGlycosylationSubType() == null && col.getDefaultValue() != null) {
+											row[i] = col.getDefaultValue();
+										} else if (g.getGlycosylationSubType() != null){
+											row[i] = g.getGlycosylationSubType();
+										} else {
+											// warning
+											report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in protein " + gp.getGlycoprotein().getName() + " in collection " + c.getName() + " does not have a value for Glycosylation Subtype. Column is left empty!");
+											row[i] = "";
+										}
+										break;
+									case GLYCOSYLATIONTYPE:
+										if (g.getGlycosylationType() == null && col.getDefaultValue() != null) {
+											row[i] = col.getDefaultValue();
+										} else if (g.getGlycosylationType() != null){
+											row[i] = g.getGlycosylationType();
+										} else {
+											// warning
+											report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in protein " + gp.getGlycoprotein().getName() + " in collection " + c.getName() + " does not have a value for Glycosylation Type. Column is left empty!");
+											row[i] = "";
+										}
+										break;
+									case GLYTOUCANID:
+										if (g.getGlycan().getGlytoucanID() == null && col.getDefaultValue() != null) {
+											row[i] = col.getDefaultValue();
+										} else if (g.getGlycan().getGlytoucanID() != null){
+											row[i] = g.getGlycan().getGlytoucanID();
+										} else {
+											// warning
+											report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in protein " + gp.getGlycoprotein().getName() + " in collection " + c.getName() + " does not have a value for GlytoucanID. Column is left empty!");
+											row[i] = "";
+										}
+										break;
+									case SITE:
+										if ( s.getLocationString().isBlank() && col.getDefaultValue() != null) {
+											row[i] = col.getDefaultValue();
+										} else if (!s.getLocationString().isBlank()){
+											row[i] = s.getLocationString();
+										} else {
+											// warning
+											report.addWarning("Protein " + gp.getGlycoprotein().getName() + " in collection " + c.getName() + " does not have a value for site location. Column is left empty!");
+											row[i] = "";
+										}
+										break;
+									case UNIPROTID:
+										if (gp.getGlycoprotein().getUniprotId() == null && col.getDefaultValue() != null) {
+											row[i] = col.getDefaultValue();
+										} else if (gp.getGlycoprotein().getUniprotId() != null) {
+											row[i] = gp.getGlycoprotein().getUniprotId();
+										} else {
+											// warning
+											report.addWarning("Protein " + gp.getGlycoprotein().getName() + " in collection " + c.getName() + " does not have a value for Uniprot ID. Column is left empty!");
+											row[i] = "";
+										}
+										break;
+									default:
+										break;
+									
+									}
+								} else if (col.getDatatype() != null) {
+									handleDatatypeColumn(c, col, row, i, report);
+								}
+								else if (col.getDatatype() != null) {
+									handleDatatypeColumn(c, col, row, i, report);
+								} else if (col.getDefaultValue() != null) {
+									row[i] = col.getDefaultValue();
+								} else {
+									row[i] = "";
+								}
+								i++;
 							}
 						}
-						if (!found) {
-							// add a warning to the report
-							// warning
-							report.addWarning(c.getName() + " does not have metadata for \"" + col.getName() + "\" column. Column is left empty!");
-							row[i] = "";
-							
-						}
-					} else if (col.getDefaultValue() != null) {
-						row[i] = col.getDefaultValue();
-					} else {
-						row[i] = "";
 					}
-					i++;
 				}
 			}
 		}
 		
 		if (rows.size() == 1) {
 			// no glycans found in the collections
-			report.addError("There are no glycans in the selected collections");
+			report.addError("There are no glycans/glycoproteins in the selected collections");
 		}
 		
 		if (report.getErrors() == null || report.getErrors().isEmpty()) {
@@ -397,6 +435,79 @@ public class TableController {
 				throw new RuntimeException ("Failed to generate the report", e);
 			}
 			
+		}
+	}
+	
+	void handleDatatypeColumn (Collection c, TableColumn col, String[] row, int i, TableReportDetail report) {
+		boolean found = false;
+		for (Metadata metadata: c.getMetadata()) {
+			if (metadata.getType().getDatatypeId().equals(col.getDatatype().getDatatypeId())) {
+				if (col.getType() != null) {
+					switch (col.getType()) {
+					case ID:
+						if (!metadata.getType().getNamespace().getHasId()) {
+							// ERROR!
+							report.addError(metadata.getType().getNamespace().getName() + " does not have value ID but \"ID\" is requested for " + col.getName() + " column.");
+						} else {
+							if (metadata.getValueId() == null && col.getDefaultValue() != null) {
+								row[i] = col.getDefaultValue();
+							} else {
+								if (!found) {   // first one
+									row[i] = metadata.getValueId();
+								} else {
+									row[i] += "|" + metadata.getValueId();
+								}
+							}
+						}
+						break;
+					case URI:
+						if (!metadata.getType().getNamespace().getHasUri()) {
+							// ERROR!
+							report.addError(metadata.getType().getNamespace().getName() + " does not have value URI but \"URI\" is requested for " + col.getName() + " column.");
+						} else {
+							if (metadata.getValueUri() == null && col.getDefaultValue() != null) {
+								row[i] = col.getDefaultValue();
+							} else {
+								if (!found) {   // first one
+									row[i] = metadata.getValueUri();
+								} else {
+									row[i] += "|" + metadata.getValueUri();
+								}
+							}
+						}
+						break;
+					case VALUE:
+					default:
+						if (metadata.getValue() == null && col.getDefaultValue() != null) {
+							row[i] = col.getDefaultValue();
+						} else {
+							if (!found) {   // first one
+								row[i] = metadata.getValue();
+							} else {
+								row[i] += "|" + metadata.getValue();
+							}
+						}
+						break;
+					}
+				} else {
+					if (metadata.getValue() == null && col.getDefaultValue() != null) {
+						row[i] = col.getDefaultValue();
+					} else {
+						if (!found) {   // first one
+							row[i] = metadata.getValue();
+						} else {
+							row[i] += "|" + metadata.getValue();
+						}
+					}
+				}
+				found = true;
+			}
+		}
+		if (!found) {
+			// add a warning to the report
+			// warning
+			report.addWarning(c.getName() + " does not have metadata for \"" + col.getName() + "\" column. Column is left empty!");
+			row[i] = "";	
 		}
 	}
 		
