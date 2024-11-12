@@ -19,16 +19,24 @@ import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
+import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Grant;
 import org.glygen.tablemaker.persistence.dataset.Publication;
 import org.glygen.tablemaker.persistence.glycan.Collection;
+import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
+import org.glygen.tablemaker.persistence.protein.GlycanInSite;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
+import org.glygen.tablemaker.persistence.protein.Position;
+import org.glygen.tablemaker.persistence.protein.Site;
+import org.glygen.tablemaker.persistence.protein.SitePosition;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
@@ -39,6 +47,7 @@ import org.glygen.tablemaker.view.DatasetInputView;
 import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.GlygenMetadataRow;
+import org.glygen.tablemaker.view.GlygenProteinMetadataRow;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.slf4j.Logger;
@@ -289,7 +298,20 @@ public class DatasetController {
         
         newDataset.getVersions().add(version);
         
-        version.setData(generateData(version, d.getCollections()));
+        // find the type
+        CollectionType type = CollectionType.GLYCAN;
+        for (CollectionView col: d.getCollections()) {
+        	if (col.getType() != null) {
+        		type = col.getType();
+        		break;
+        	}
+        }
+        
+        if (type == CollectionType.GLYCAN) {
+        	version.setData(generateData(version, d.getCollections()));
+        } else {
+        	version.setGlycoproteinData(generateGlycoproteinData(version, d.getCollections()));
+        }
         version.setDataset(newDataset);
         
         Dataset saved = datasetManager.saveDataset (newDataset);
@@ -297,6 +319,85 @@ public class DatasetController {
         return new ResponseEntity<>(new SuccessResponse(saved, "dataset has been published"), HttpStatus.OK);
 	}
 	
+	List<DatasetGlycoproteinMetadata> generateGlycoproteinData(DatasetVersion version,
+			List<CollectionView> collections) {
+		
+		List<DatasetGlycoproteinMetadata> metadata = new ArrayList<>();
+		TableMakerTemplate glygenTemplate = templateRepository.findById(2L).get();
+		// generate the data
+        for (CollectionView cv: collections) {
+        	// glycoprotein collection
+        	Optional<Collection> collectionHandle = collectionRepository.findById(cv.getCollectionId());
+        	Collection collection = collectionHandle.get();
+			for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+				for (Site s: gp.getGlycoprotein().getSites()) {
+					if (s.getPositionString() != null) {
+        				ObjectMapper om = new ObjectMapper();
+        				try {
+							s.setPosition(om.readValue(s.getPositionString(), SitePosition.class));
+						} catch (JsonProcessingException e) {
+							logger.warn ("Position string is invalid: " + s.getPositionString());
+						}
+        			}
+					for (GlycanInSite g: s.getGlycans()) {
+						for (TableColumn col: glygenTemplate.getColumns()) {
+		        			DatasetGlycoproteinMetadata dm = new DatasetGlycoproteinMetadata();
+		            		dm.setDataset(version);
+		            		dm.setRowId(collection.getCollectionId() + "-"
+		            				+ gp.getGlycoprotein().getId() 
+		            				+ "-" + s.getSiteId() 
+		            				+ "-" + g.getGlycan().getGlycanId());
+		            		if (col.getProteinColumn() != null) {
+		            			switch (col.getProteinColumn()) {
+								case AMINOACID:
+									dm.setGlycoproteinColumn(col.getProteinColumn());
+		        					dm.setValue(s.getAminoAcidString());
+									break;
+								case GLYCOSYLATIONSUBTYPE:
+									dm.setGlycoproteinColumn(col.getProteinColumn());
+		        					dm.setValue(g.getGlycosylationSubType());
+									break;
+								case GLYCOSYLATIONTYPE:
+									dm.setGlycoproteinColumn(col.getProteinColumn());
+		        					dm.setValue(g.getGlycosylationType());
+									break;
+								case GLYTOUCANID:
+									dm.setGlycoproteinColumn(col.getProteinColumn());
+		        					dm.setValue(g.getGlycan().getGlytoucanID());
+									break;
+								case SITE:
+									dm.setGlycoproteinColumn(col.getProteinColumn());
+		        					dm.setValue(s.getLocationString());
+									break;
+								case UNIPROTID:
+									dm.setGlycoproteinColumn(col.getProteinColumn());
+		        					dm.setValue(gp.getGlycoprotein().getUniprotId());
+									break;
+								default:
+									break;
+		            			}
+		            		}
+		            		else {
+		        				dm.setDatatype(col.getDatatype());
+		        				for (Metadata m: collection.getMetadata()) {
+		        					if (m.getType().getDatatypeId() == col.getDatatype().getDatatypeId()) {
+		        						dm.setValue(m.getValue());
+		        						dm.setValueId(m.getValueId());
+		        						dm.setValueUri(m.getValueUri());
+		        						break;
+		        					}
+		        				}
+		        			}
+		            		metadata.add(dm);
+						}
+					}
+				}
+			}
+        }
+			
+        return metadata;
+	}
+
 	List<DatasetMetadata> generateData (DatasetVersion version, List<CollectionView> collections) {
 		List<DatasetMetadata> metadata = new ArrayList<>();
 		TableMakerTemplate glygenTemplate = templateRepository.findById(1L).get();
@@ -336,6 +437,7 @@ public class DatasetController {
         			metadata.add(dm);
         		}
 			}
+        	
         }
         return metadata;
 	}
@@ -653,7 +755,45 @@ public class DatasetController {
     				}
     			}
     			dv.setNoGlycans(dv.getData() != null ? dv.getData().size() : 0);
-    			//TODO how to calculate no of proteins
+    			if (version.getGlycoproteinData() != null) {   
+    				dv.setGlycoproteinData(new ArrayList<>());
+    				Map<String, List<DatasetGlycoproteinMetadata>> rowMap = new HashMap<>();
+    				for (DatasetGlycoproteinMetadata m: version.getGlycoproteinData()) {
+    					if (rowMap.get(m.getRowId()) == null) {
+    						rowMap.put(m.getRowId(), new ArrayList<>());
+    					}
+    					rowMap.get(m.getRowId()).add(m);
+    				}
+    				for (String key: rowMap.keySet()) {
+    					GlygenProteinMetadataRow row = new GlygenProteinMetadataRow();
+    					row.setRowId(key);
+    					row.setColumns(rowMap.get(key));
+    					for (DatasetGlycoproteinMetadata col: row.getColumns()) {
+    						if (col.getGlycoproteinColumn() != null && col.getGlycoproteinColumn() == GlycoproteinColumns.GLYTOUCANID) {
+    							try {
+    								byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), imageRepository, imageLocation);
+    								row.setCartoon(cartoon);
+    							} catch (Exception e) {
+    								logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
+    							}
+    							break;
+    						}
+    					}
+    					dv.getGlycoproteinData().add(row);
+    				}
+    			}
+    			// calculate no of proteins
+    			int noProteins = 0;
+    			String uniprotId = null;
+    			for (DatasetGlycoproteinMetadata meta : version.getGlycoproteinData()) {
+    				if (meta.getGlycoproteinColumn() != null && meta.getGlycoproteinColumn() == GlycoproteinColumns.UNIPROTID) {
+    					if (uniprotId == null || !meta.getValue().equals (uniprotId)) {
+    						uniprotId = meta.getValue();
+    						noProteins++;
+    					} 
+    				}
+    			}
+    			dv.setNoProteins(noProteins);
     			if (version.getPublications() != null) dv.setPublications(new ArrayList<>(version.getPublications()));
     			break;
     		} 
@@ -667,12 +807,14 @@ public class DatasetController {
 		List<DatasetError> errorList = new ArrayList<>();
 		List<DatasetError> warningList = new ArrayList<>();
 		
-		Optional<TableMakerTemplate> glygenTemplate = templateRepository.findById(1L);
+		Long templateId = cv.getType() == null || cv.getType() == CollectionType.GLYCAN ? 1L : 2L;
+				
+		Optional<TableMakerTemplate> glygenTemplate = templateRepository.findById(templateId);
 		if (!glygenTemplate.isPresent()) {
 			throw new RuntimeException ("GlyGen template is not found!");
 		}
 		
-		Optional<DatatypeCategory> glygenCatHandle = datatypeCategoryRepository.findById(1L);
+		Optional<DatatypeCategory> glygenCatHandle = datatypeCategoryRepository.findById(templateId);
 		if (!glygenCatHandle.isPresent()) {
 			throw new RuntimeException ("GlyGen datatype category is not found!");
 		}
@@ -702,6 +844,72 @@ public class DatasetController {
 					break;
 				default:
 					break;
+				}
+			} else if (col.getProteinColumn() != null) {
+				switch (col.getProteinColumn()) {
+				case AMINOACID:
+					for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+						for (Site s: gp.getGlycoprotein().getSites()) {
+							if (s.getPositionString() == null || s.getPositionString().length() == 0) {
+								// error
+								errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for Amino Acid.", 1));
+							}
+							else if (s.getPositionString() != null) {
+		        				ObjectMapper om = new ObjectMapper();
+		        				try {
+									s.setPosition(om.readValue(s.getPositionString(), SitePosition.class));
+									for (Position pos: s.getPosition().getPositionList()) {
+										if (pos.getAminoAcid() == null) {
+											errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for Amino Acid.", 1));
+										}
+									}
+								} catch (JsonProcessingException e) {
+									logger.warn ("Position string is invalid: " + s.getPositionString());
+									// error
+									errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for Amino Acid.", 1));
+								}
+		        			}
+							
+						}
+					}
+					break;
+				case GLYCOSYLATIONSUBTYPE:
+					break;
+				case GLYCOSYLATIONTYPE:
+					break;
+				case GLYTOUCANID:
+					for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+						for (Site s: gp.getGlycoprotein().getSites()) {
+							for (GlycanInSite g: s.getGlycans()) {
+								if (g.getGlycan().getGlytoucanID() == null) {
+									// error
+									errorList.add(new DatasetError("Glycan " + g.getGlycan().getGlycanId() + " in a glycoprotein in collection " + col.getName() + " does not have a value for GlytoucanID.", 1));
+								}
+							}
+						}
+					}
+					break;
+				case SITE:
+					for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+						for (Site s: gp.getGlycoprotein().getSites()) {
+							if (s.getPositionString() == null || s.getPositionString().length() == 0) {
+								// error
+								errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for Site/Location.", 1));
+							}
+						}
+					}
+					break;
+				case UNIPROTID:
+					for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+						if (gp.getGlycoprotein().getUniprotId() == null) {
+							// error
+							errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for UniprotID.", 1));
+						}
+					}
+					break;
+				default:
+					break;
+				
 				}
 			} else {
 				boolean found = false;

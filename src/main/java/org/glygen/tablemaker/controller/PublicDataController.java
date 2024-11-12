@@ -12,6 +12,7 @@ import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
+import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
@@ -19,6 +20,7 @@ import org.glygen.tablemaker.view.DatasetTableDownloadView;
 import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.GlygenMetadataRow;
+import org.glygen.tablemaker.view.GlygenProteinMetadataRow;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.slf4j.Logger;
@@ -196,49 +198,97 @@ public class PublicDataController {
 		File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ".csv");
 		
 		try {
-			// get GlygenTemplate
-			TableMakerTemplate glygenTemplate = templateRepository.findById(1L).get();
-			String[] header = new String[glygenTemplate.getColumns().size()];
-			for (TableColumn col: glygenTemplate.getColumns()) {
-				header[col.getOrder()-1] = col.getName();
-			}
-			List<String[]> rows = new ArrayList<>();
-			// generate rows from the data
-			rows.add(header);
-			List<GlygenMetadataRow> data = table.getData();
-			if (data != null) {
-				for (GlygenMetadataRow r: data) {
-					String[] row = new String[r.getColumns().size()];
-					for (TableColumn col: glygenTemplate.getColumns()) {
-						for (DatasetMetadata c: r.getColumns()) {
-							if (col.getGlycanColumn() != null && col.getGlycanColumn().equals(c.getGlycanColumn())) {
-								row[col.getOrder()-1] = c.getValue();
-								break;
-							} else if (col.getDatatype() != null && c.getDatatype() != null &&
-									col.getDatatype().getName().equals (c.getDatatype().getName())) {
-								switch (col.getType()) {
-								case ID:
-									row[col.getOrder()-1] = c.getValueId();
-									break;
-								case URI:
-									row[col.getOrder()-1] = c.getValueUri();
-									break;
-								case VALUE:
+			if (table.getData() != null && !table.getData().isEmpty()) {
+				// get GlygenTemplate
+				TableMakerTemplate glygenTemplate = templateRepository.findById(1L).get();
+				String[] header = new String[glygenTemplate.getColumns().size()];
+				for (TableColumn col: glygenTemplate.getColumns()) {
+					header[col.getOrder()-1] = col.getName();
+				}
+				List<String[]> rows = new ArrayList<>();
+				// generate rows from the data
+				rows.add(header);
+				List<GlygenMetadataRow> data = table.getData();
+				if (data != null) {
+					for (GlygenMetadataRow r: data) {
+						String[] row = new String[r.getColumns().size()];
+						for (TableColumn col: glygenTemplate.getColumns()) {
+							for (DatasetMetadata c: r.getColumns()) {
+								if (col.getGlycanColumn() != null && col.getGlycanColumn().equals(c.getGlycanColumn())) {
 									row[col.getOrder()-1] = c.getValue();
 									break;
-								default:
-									row[col.getOrder()-1] = c.getValue();
+								} else if (col.getDatatype() != null && c.getDatatype() != null &&
+										col.getDatatype().getName().equals (c.getDatatype().getName())) {
+									switch (col.getType()) {
+									case ID:
+										row[col.getOrder()-1] = c.getValueId();
+										break;
+									case URI:
+										row[col.getOrder()-1] = c.getValueUri();
+										break;
+									case VALUE:
+										row[col.getOrder()-1] = c.getValue();
+										break;
+									default:
+										row[col.getOrder()-1] = c.getValue();
+										break;
+									
+									}
 									break;
-								
 								}
-								break;
 							}
 						}
+						rows.add(row);
 					}
-					rows.add(row);
 				}
+				TableController.writeToCSV(rows, newFile);
+			} else if (table.getGlycoproteinData() != null && !table.getGlycoproteinData().isEmpty()) {
+				// get GlygenTemplate
+				TableMakerTemplate glygenTemplate = templateRepository.findById(2L).get();   // glycoprotein template
+				String[] header = new String[glygenTemplate.getColumns().size()];
+				for (TableColumn col: glygenTemplate.getColumns()) {
+					header[col.getOrder()-1] = col.getName();
+				}
+				List<String[]> rows = new ArrayList<>();
+				// generate rows from the data
+				rows.add(header);
+				List<GlygenProteinMetadataRow> data = table.getGlycoproteinData();
+				if (data != null) {
+					for (GlygenProteinMetadataRow r: data) {
+						String[] row = new String[r.getColumns().size()];
+						for (TableColumn col: glygenTemplate.getColumns()) {
+							for (DatasetGlycoproteinMetadata c: r.getColumns()) {
+								if (col.getProteinColumn() != null && col.getProteinColumn().equals(c.getGlycoproteinColumn())) {
+									row[col.getOrder()-1] = c.getValue();
+									break;
+								} else if (col.getDatatype() != null && c.getDatatype() != null &&
+										col.getDatatype().getName().equals (c.getDatatype().getName())) {
+									switch (col.getType()) {
+									case ID:
+										row[col.getOrder()-1] = c.getValueId();
+										break;
+									case URI:
+										row[col.getOrder()-1] = c.getValueUri();
+										break;
+									case VALUE:
+										row[col.getOrder()-1] = c.getValue();
+										break;
+									default:
+										row[col.getOrder()-1] = c.getValue();
+										break;
+									
+									}
+									break;
+								}
+							}
+						}
+						rows.add(row);
+					}
+				}
+				TableController.writeToCSV(rows, newFile);
+			} else {
+				throw new IllegalArgumentException ("Failed to generate download file. There is no data!");
 			}
-			TableController.writeToCSV(rows, newFile);
 			return FileController.download(newFile, filename+".csv", null);
 		} catch (IOException e) {
 			throw new IllegalArgumentException ("Failed to generate download file. Reason: " + e.getMessage());

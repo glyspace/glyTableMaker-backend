@@ -38,6 +38,7 @@ public class DatasetView {
 	List<DatabaseResource> associatedDatasources;
 	List<Publication> associatedPapers;
 	List<GlygenMetadataRow> data;
+	List<GlygenProteinMetadataRow> glycoproteinData;
 	List<DatasetVersion> versions;
 	
 	public Long getId() {
@@ -159,6 +160,12 @@ public class DatasetView {
 	}
 	public void setVersions(List<DatasetVersion> vers) {
 		this.versions = vers;
+	}
+	public List<GlygenProteinMetadataRow> getGlycoproteinData() {
+		return glycoproteinData;
+	}
+	public void setGlycoproteinData(List<GlygenProteinMetadataRow> glycoproteinData) {
+		this.glycoproteinData = glycoproteinData;
 	}
 	
 	

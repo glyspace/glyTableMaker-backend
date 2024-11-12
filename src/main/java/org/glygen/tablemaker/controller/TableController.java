@@ -300,6 +300,14 @@ public class TableController {
 				// glycoprotein collection
 				for (GlycoproteinInCollection gp: c.getGlycoproteins()) {
 					for (Site s: gp.getGlycoprotein().getSites()) {
+						if (s.getPositionString() != null) {
+	        				ObjectMapper om = new ObjectMapper();
+	        				try {
+								s.setPosition(om.readValue(s.getPositionString(), SitePosition.class));
+							} catch (JsonProcessingException e) {
+								logger.warn ("Position string is invalid: " + s.getPositionString());
+							}
+	        			}
 						for (GlycanInSite g: s.getGlycans()) {
 							row = new String[table.getColumns().size()];
 							rows.add(row);

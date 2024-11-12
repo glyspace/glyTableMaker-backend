@@ -6,6 +6,7 @@ public class DatasetTableDownloadView {
 	
 	String filename;
 	List<GlygenMetadataRow> data;
+	List<GlygenProteinMetadataRow> glycoproteinData;
 	
 	public String getFilename() {
 		return filename;
@@ -18,5 +19,11 @@ public class DatasetTableDownloadView {
 	}
 	public void setData(List<GlygenMetadataRow> data) {
 		this.data = data;
+	}
+	public List<GlygenProteinMetadataRow> getGlycoproteinData() {
+		return glycoproteinData;
+	}
+	public void setGlycoproteinData(List<GlygenProteinMetadataRow> glycoproteinData) {
+		this.glycoproteinData = glycoproteinData;
 	}
 }
