@@ -1618,11 +1618,11 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
         
-        // check if duplicate
+     /*   // check if duplicate
     	List<Glycoprotein> existing = glycoproteinRepository.findAllByUniprotIdAndUser(gp.getUniprotId(), user);
     	if (existing.size() > 0) {
     		throw new DuplicateException("A glycoprotein with this uniprot id already exists! ");
-    	}
+    	}*/
     	
     	Glycoprotein glycoprotein = new Glycoprotein();
     	glycoprotein.setName(gp.getName());
