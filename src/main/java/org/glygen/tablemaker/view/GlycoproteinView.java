@@ -13,6 +13,7 @@ public class GlycoproteinView {
 	Long id;
 	String uniprotId;
 	String name;
+	String proteinName;
 	String sequence;
 	String geneSymbol;
 	
@@ -26,6 +27,7 @@ public class GlycoproteinView {
 	public GlycoproteinView(Glycoprotein p) {
 		this.geneSymbol = p.getGeneSymbol();
 		this.name = p.getName();
+		this.proteinName = p.getProteinName();
 		this.sequence = p.getSequence();
 		this.uniprotId = p.getUniprotId();
 		this.id = p.getId();
@@ -104,5 +106,13 @@ public class GlycoproteinView {
 
 	public void setId(Long id) {
 		this.id = id;
+	}
+
+	public String getProteinName() {
+		return proteinName;
+	}
+
+	public void setProteinName(String proteinName) {
+		this.proteinName = proteinName;
 	}
 }

@@ -28,6 +28,7 @@ public class Glycoprotein {
 	Long id;
 	String uniprotId;
 	String name;
+	String proteinName;
 	String description;
 	String geneSymbol;
 	String sequence;
@@ -143,5 +144,13 @@ public class Glycoprotein {
 	}
 	public void setSequence(String sequence) {
 		this.sequence = sequence;
+	}
+	
+	@Column
+	public String getProteinName() {
+		return proteinName;
+	}
+	public void setProteinName(String proteinName) {
+		this.proteinName = proteinName;
 	}
 }

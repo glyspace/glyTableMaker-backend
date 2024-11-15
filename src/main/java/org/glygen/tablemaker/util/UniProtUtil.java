@@ -2,7 +2,6 @@ package org.glygen.tablemaker.util;
 
 import java.io.IOException;
 
-import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 import org.glygen.tablemaker.view.GlycoproteinView;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -49,7 +48,7 @@ public class UniProtUtil {
             	JSONObject rec = description.getJSONObject("recommendedName");
             	if (rec != null) {
             		JSONObject fullName = rec.getJSONObject("fullName");
-            		protein.setName(fullName.getString("value"));
+            		protein.setProteinName(fullName.getString("value"));
             	}
             }
             

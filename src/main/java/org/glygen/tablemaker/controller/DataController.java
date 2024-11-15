@@ -1626,6 +1626,7 @@ public class DataController {
     	
     	Glycoprotein glycoprotein = new Glycoprotein();
     	glycoprotein.setName(gp.getName());
+    	glycoprotein.setProteinName(gp.getProteinName());
     	glycoprotein.setGeneSymbol(gp.getGeneSymbol());
     	glycoprotein.setUniprotId(gp.getUniprotId());
     	glycoprotein.setSequence(gp.getSequence());
