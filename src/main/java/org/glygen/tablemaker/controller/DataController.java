@@ -1219,6 +1219,62 @@ public class DataController {
         return new ResponseEntity<>(new SuccessResponse(glycanId, "Glycan deleted successfully"), HttpStatus.OK);
     }
     
+    @Operation(summary = "Delete given glycans from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value="/deletemultipleglycans", method = RequestMethod.POST)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Glycan deleted successfully"), 
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to delete glycans"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> deleteMultipleGlycans (
+            @Parameter(required=true, description="list of internal ids of the glycans to delete") 
+            @RequestBody Integer[] glycanIds) {
+        
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        StringBuffer errorMessage = new StringBuffer();
+        for (Integer glycanId: glycanIds) {
+	        Glycan existing = glycanRepository.findByGlycanIdAndUser(glycanId.longValue(), user);
+	        if (existing == null) {
+	            errorMessage.append("Could not find the given glycan " + glycanId + " for the user\n");
+	        }
+	        //need to check if the glycan appears in any collection and give an error message
+	        if (existing.getGlycanCollections() != null && !existing.getGlycanCollections().isEmpty()) {
+	        	String collectionString = "";
+	        	for (GlycanInCollection col: existing.getGlycanCollections()) {
+	        		collectionString += col.getCollection().getName() + ", ";
+	        	}
+	        	collectionString = collectionString.substring(0, collectionString.lastIndexOf(","));
+	        	errorMessage.append ("Cannot delete " + (existing.getGlytoucanID() != null ?  existing.getGlytoucanID() : existing.getGlycanId()) 
+	        			+ ". It is used in the following collections: " + collectionString + "\n");
+	        	continue;
+	        }
+	        //need to check if the glycan appears in any glycoprotein collection and give an error message
+	        if (existing.getSites() != null && !existing.getSites().isEmpty()) {
+	        	String collectionString = "";
+	        	for (GlycanInSite site: existing.getSites()) {
+	        		for (GlycoproteinInCollection col: site.getSite().getGlycoprotein().getGlycoproteinCollections()) {
+	        			collectionString += col.getCollection().getName() + ", ";
+	        		}
+	        	}
+	        	collectionString = collectionString.substring(0, collectionString.lastIndexOf(","));
+	        	errorMessage.append("Cannot delete " + (existing.getGlytoucanID() != null ?  existing.getGlytoucanID() : existing.getGlycanId())
+	        			+ ". It is used in the following collections: " + collectionString + "\n");
+	        	continue;
+	        }
+	        glycanRepository.deleteById(glycanId.longValue());
+        }
+        if (!errorMessage.isEmpty()) {
+        	throw new BadRequestException(errorMessage.toString());
+        }
+        return new ResponseEntity<>(new SuccessResponse(glycanIds, "Glycans deleted successfully"), HttpStatus.OK);
+    }
+    
     @Operation(summary = "Delete given glycoprotein from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
     @RequestMapping(value="/deleteglycoprotein/{proteinId}", method = RequestMethod.DELETE)
     @ApiResponses (value ={@ApiResponse(responseCode="200", description="Glycan deleted successfully"), 
