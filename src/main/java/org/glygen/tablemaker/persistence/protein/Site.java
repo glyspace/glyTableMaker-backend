@@ -84,12 +84,24 @@ public class Site {
 	@Transient
 	public String getAminoAcidString () {
 		String aminoacidString = "";
-		if (position != null && position.positionList != null) {
-			for (Position pos: position.positionList) { 
-				aminoacidString += pos.getAminoAcid() + "|";
+		switch (type) {
+		case ALTERNATIVE:
+			if (position != null && position.positionList != null) {
+				for (Position pos: position.positionList) {
+					aminoacidString += pos.getAminoAcid() + "|";
+				}
+				return aminoacidString.substring(0, aminoacidString.length()-1);
 			}
-			return aminoacidString.substring(0, aminoacidString.length()-1);
-		} 
+		case EXPLICIT:
+			if (position != null && position.positionList != null && position.positionList.size() > 0)
+				return position.positionList.get(0).location + "";
+		case RANGE:
+			if (position != null && position.positionList != null && position.positionList.size() > 1)
+				return position.positionList.get(0).location + "-" + position.positionList.get(1).location;
+		default:
+			break;
+		
+		}
 		return aminoacidString;
 	}
 	

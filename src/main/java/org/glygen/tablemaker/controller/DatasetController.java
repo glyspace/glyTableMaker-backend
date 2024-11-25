@@ -99,6 +99,9 @@ public class DatasetController {
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
 	
+	@Value("${glygen.export.version}")
+    String exportVersion;
+	
 	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository) {
 		this.datasetRepository = datasetRepository;
 		this.userRepository = userRepository;
@@ -295,6 +298,7 @@ public class DatasetController {
         version.setVersionDate(new Date());
         version.setLicense(d.getLicense());
         version.setPublications(d.getPublications());
+        version.setGlygenExportVersion(exportVersion);
         
         newDataset.getVersions().add(version);
         
@@ -605,6 +609,7 @@ public class DatasetController {
     		version.setVersion((versionNo+1) +"");
     		version.setVersionDate(new Date());
     		version.setComment(d.getChangeComment());
+    		version.setGlygenExportVersion(exportVersion);
     		head.setHead(false);
     		if (d.getLicense() != null) {
     			version.setLicense(d.getLicense());

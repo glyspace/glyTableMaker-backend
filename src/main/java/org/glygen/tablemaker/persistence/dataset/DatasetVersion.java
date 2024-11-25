@@ -35,6 +35,7 @@ public class DatasetVersion {
 	License license;
 	Boolean head;
 	CollectionType type;
+	String glygenExportVersion = "1";
 	
 	Collection<DatasetMetadata> data;
 	Collection<DatasetGlycoproteinMetadata> glycoproteinData;
@@ -143,5 +144,13 @@ public class DatasetVersion {
 	@Column(name="type", length=50)
 	public CollectionType getType() {
 		return type;
+	}
+	
+	@Column(name="export_version", length=10)
+	public String getGlygenExportVersion() {
+		return glygenExportVersion;
+	}
+	public void setGlygenExportVersion(String glygenExportVersion) {
+		this.glygenExportVersion = glygenExportVersion;
 	}
 }
