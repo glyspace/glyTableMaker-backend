@@ -29,6 +29,7 @@ import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.FeedbackRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
+import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
 import org.glygen.tablemaker.persistence.dao.LicenseRepository;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
@@ -95,6 +96,7 @@ public class UtilityController {
 	private final DatasetRepository datasetRepository;
 	private final PublicationRepository publicationRepository;
 	private final GlycanImageRepository glycanImageRepository;
+	private final GlycoproteinRepository glycoproteinRepository;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -105,7 +107,10 @@ public class UtilityController {
 			LicenseRepository licenseRepository, 
 			UserRepository userRepository, 
 			GlycanRepository glycanRepository, 
-			DatasetRepository datasetRepository, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository) {
+			DatasetRepository datasetRepository, 
+			PublicationRepository publicationRepository, 
+			GlycanImageRepository glycanImageRepository, 
+			GlycoproteinRepository glycoproteinRepository) {
 		this.namespaceRepository = namespaceRepository;
 		this.feedbackRepository = feedbackRepository;
 		this.emailManager = emailManager;
@@ -115,6 +120,7 @@ public class UtilityController {
 		this.datasetRepository = datasetRepository;
 		this.publicationRepository = publicationRepository;
 		this.glycanImageRepository = glycanImageRepository;
+		this.glycoproteinRepository = glycoproteinRepository;
 	}
 	
 	@Operation(summary = "Get all namespaces")
@@ -570,6 +576,7 @@ public class UtilityController {
         stats.setUserCount(userRepository.count());
         stats.setDatasetCount(datasetRepository.count());
         stats.setGlycanCount((long)glycanRepository.findDistinctGlytoucanId().size());
+        stats.setProteinCount((long)glycoproteinRepository.findDistinctUniprotId().size());
         stats.setNewGlycanCount(
         		glycanRepository.countByStatus(RegistrationStatus.NEWLY_REGISTERED) + 
         		glycanRepository.countByStatus(RegistrationStatus.NEWLY_SUBMITTED_FOR_REGISTRATION));
@@ -589,8 +596,8 @@ public class UtilityController {
         orgs.add("NIH");
         orgs.add("FDA");
         orgs.add("DOI"); 
-        // TODO add from the datasets
-        //orgs.addAll(datasetRepository.getAllFundingOrganizations());
+        // add from the datasets
+        orgs.addAll(datasetRepository.getAllFundingOrganizations());
         if (!orgs.contains("Other")) {
             orgs.add("Other");
         }

@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 
 public interface GlycoproteinRepository extends JpaRepository<Glycoprotein, Long>, JpaSpecificationExecutor<Glycoprotein> {
 	
@@ -17,5 +18,8 @@ public interface GlycoproteinRepository extends JpaRepository<Glycoprotein, Long
     
     public List<Glycoprotein> findAllByUniprotIdAndUser (String uniprotId, UserEntity user);
     public Glycoprotein findByIdAndUser (Long id, UserEntity user);
+    
+    @Query("SELECT DISTINCT g.uniprotId FROM Glycoprotein g")
+    List<String> findDistinctUniprotId();
 
 }

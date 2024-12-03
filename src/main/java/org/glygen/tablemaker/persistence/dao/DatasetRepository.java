@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 
 public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpecificationExecutor<Dataset> {
 	
@@ -21,5 +22,8 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	public Dataset findByDatasetIdentifierAndVersions_head (String identifier, Boolean head);
 	public Dataset findByDatasetIdAndUser (Long id, UserEntity user);
 	public List<Dataset> findAllByNameAndUser (String name, UserEntity user);
+	
+	@Query("SELECT DISTINCT g.fundingOrganization FROM Grant g")
+	public List<String> getAllFundingOrganizations ();
 
 }
