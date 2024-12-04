@@ -63,7 +63,7 @@ public class MetadataController {
 	
 	@Operation(summary = "Get datatype categories", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcategories")
-    public ResponseEntity<SuccessResponse> getCategories() {
+    public ResponseEntity<SuccessResponse<List<DatatypeCategoryView>>> getCategories() {
 		// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -97,14 +97,14 @@ public class MetadataController {
 				}
 			} 
 		}
-    	return new ResponseEntity<SuccessResponse>(
-    			new SuccessResponse (userCategories, "datatype categories retrieved"), HttpStatus.OK);
+    	return new ResponseEntity<>(
+    			new SuccessResponse<List<DatatypeCategoryView>> (userCategories, "datatype categories retrieved"), HttpStatus.OK);
     	
     }
 	
 	@Operation(summary = "Add datatype", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/adddatatype")
-    public ResponseEntity<SuccessResponse> addDatatype(
+    public ResponseEntity<SuccessResponse<Datatype>> addDatatype(
     		@Parameter(required=true, description="the created datatype is assigned to the given category")
     		@RequestParam("categoryid")
     		Long categoryId, 
@@ -133,19 +133,19 @@ public class MetadataController {
     		DatatypeCategory cat = category.get();
     		d.setDatatypeId(null); // needs to be a new datatype
     		Datatype saved = metadataManager.addDatatypeToCategory (d, cat, (mandatory == null ? false: mandatory));   
-    		return new ResponseEntity<>(new SuccessResponse(saved, "datatype added to given category"), HttpStatus.OK);
+    		return new ResponseEntity<>(new SuccessResponse<Datatype>(saved, "datatype added to given category"), HttpStatus.OK);
     	} else {
 	    	Datatype saved = datatypeRepository.save(d);
 	    	saved.setUri(d.getUri()+saved.getDatatypeId());
 	    	datatypeRepository.save(saved);
-	    	return new ResponseEntity<>(new SuccessResponse(saved, "datatype added"), HttpStatus.OK);
+	    	return new ResponseEntity<>(new SuccessResponse<Datatype>(saved, "datatype added"), HttpStatus.OK);
     	}
     	
     }
 	
 	@Operation(summary = "Add datatype category", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addcategory")
-    public ResponseEntity<SuccessResponse> addCategory(@Valid @RequestBody DatatypeCategory d) {
+    public ResponseEntity<SuccessResponse<DatatypeCategory>> addCategory(@Valid @RequestBody DatatypeCategory d) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -161,12 +161,12 @@ public class MetadataController {
     	
         d.setUser(user);
     	DatatypeCategory saved = datatypeCategoryRepository.save(d);
-    	return new ResponseEntity<>(new SuccessResponse(saved, "datatype category added"), HttpStatus.OK);
+    	return new ResponseEntity<>(new SuccessResponse<DatatypeCategory>(saved, "datatype category added"), HttpStatus.OK);
     }
 	
 	@Operation(summary = "Update datatype category", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatecategory")
-    public ResponseEntity<SuccessResponse> updateCategory(
+    public ResponseEntity<SuccessResponse<DatatypeCategory>> updateCategory(
     		@Valid @RequestBody DatatypeCategory d) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -193,12 +193,12 @@ public class MetadataController {
         existing.setName(d.getName());
         existing.setDataTypes(d.getDataTypes());
     	DatatypeCategory saved = datatypeCategoryRepository.save(d);
-    	return new ResponseEntity<>(new SuccessResponse(saved, "datatype category updated"), HttpStatus.OK);
+    	return new ResponseEntity<>(new SuccessResponse<DatatypeCategory>(saved, "datatype category updated"), HttpStatus.OK);
     }
 	
 	@Operation(summary = "Update datatype", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatedatatype")
-    public ResponseEntity<SuccessResponse> updateDatatype(
+    public ResponseEntity<SuccessResponse<Datatype>> updateDatatype(
     		@Parameter(required=false, description="the created datatype is assigned to the given category")
     		@RequestParam(required=false, name="categoryid")
     		Long categoryId, 
@@ -246,10 +246,10 @@ public class MetadataController {
     		DatatypeCategory cat = category.get();
     		Datatype saved = metadataManager.addDatatypeToCategory (existing, cat, d.getMandatory());  
     		datatypeCategoryRepository.save(existingCat);
-    		return new ResponseEntity<>(new SuccessResponse(saved, "datatype updated to given category"), HttpStatus.OK);
+    		return new ResponseEntity<>(new SuccessResponse<Datatype>(saved, "datatype updated to given category"), HttpStatus.OK);
     	} else {
 	    	datatypeRepository.save(existing);
-	    	return new ResponseEntity<>(new SuccessResponse(existing, "datatype updated"), HttpStatus.OK);
+	    	return new ResponseEntity<>(new SuccessResponse<Datatype>(existing, "datatype updated"), HttpStatus.OK);
     	}
     }
 	
@@ -260,7 +260,7 @@ public class MetadataController {
             @ApiResponse(responseCode="403", description="Not enough privileges to delete categories"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> deleteCategory (
+    public ResponseEntity<SuccessResponse<Long>> deleteCategory (
             @Parameter(required=true, description="internal id of the datatype category to delete") 
             @PathVariable("categoryId") Long categoryId) {
 		
@@ -280,7 +280,7 @@ public class MetadataController {
             throw new IllegalArgumentException ("Could not find the given category " + categoryId + " for the user");
         }
         metadataManager.deleteDatatypeCategory(existing.get());
-        return new ResponseEntity<>(new SuccessResponse(categoryId, "Category deleted successfully"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<Long>(categoryId, "Category deleted successfully"), HttpStatus.OK);
     }
 	
 	@Operation(summary = "Delete given datatype from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
@@ -290,7 +290,7 @@ public class MetadataController {
             @ApiResponse(responseCode="403", description="Not enough privileges to delete datatypes"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> deleteDatatype (
+    public ResponseEntity<SuccessResponse<Long>> deleteDatatype (
             @Parameter(required=true, description="internal id of the datatype to delete") 
             @PathVariable("datatypeId") Long datatypeId) {
 		
@@ -310,12 +310,12 @@ public class MetadataController {
             throw new IllegalArgumentException ("Could not find the given datatype " + datatypeId + " for the user");
         }
         metadataManager.deleteDatatype(existing.get());
-        return new ResponseEntity<>(new SuccessResponse(datatypeId, "Datatype deleted successfully"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<Long>(datatypeId, "Datatype deleted successfully"), HttpStatus.OK);
     }
 	
 	@Operation(summary = "Get datatype collections", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcollectionsfordatatype")
-	public ResponseEntity<SuccessResponse> getCollectionsWithDatatype (
+	public ResponseEntity<SuccessResponse<List<Collection>>> getCollectionsWithDatatype (
 			@Parameter(required=true, description="datatype id")
     		@RequestParam("datatypeId")
     		Long datatypeId) {
@@ -335,7 +335,7 @@ public class MetadataController {
         for (Metadata m: metadata) {
         	collections.add(m.getCollection());
         }
-        return new ResponseEntity<>(new SuccessResponse(collections, "Collections with the given datatype retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<List<Collection>>(collections, "Collections with the given datatype retrieved"), HttpStatus.OK);
 	}
 	
 	

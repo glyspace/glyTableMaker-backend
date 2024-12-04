@@ -106,6 +106,7 @@ import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.SequenceUtils;
 import org.glygen.tablemaker.view.CollectionView;
+import org.glygen.tablemaker.view.ExcelFileWrapper;
 import org.glygen.tablemaker.view.FileWrapper;
 import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.GlycanInSiteView;
@@ -735,7 +736,7 @@ public class DataController {
     
     @Operation(summary = "Get collection by the given id", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcollection/{collectionId}")
-    public ResponseEntity<SuccessResponse> getCollectionById(
+    public ResponseEntity<SuccessResponse<CollectionView>> getCollectionById(
     		@Parameter(required=true, description="id of the collection to be retrieved") 
     		@PathVariable("collectionId") Long collectionId) {
     	// get user info
@@ -751,7 +752,7 @@ public class DataController {
         
         CollectionView cv = createCollectionView (existing, imageLocation);
         
-        return new ResponseEntity<>(new SuccessResponse(cv, "collection retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<CollectionView>(cv, "collection retrieved"), HttpStatus.OK);
     }
     
     static CollectionView createCollectionView (Collection collection, String imageLocation) {
@@ -857,7 +858,7 @@ public class DataController {
     
     @Operation(summary = "Get collection of collections by the given id", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcoc/{collectionId}")
-    public ResponseEntity<SuccessResponse> getCoCById(
+    public ResponseEntity<SuccessResponse<CollectionView>> getCoCById(
     		@Parameter(required=true, description="id of the collection to be retrieved") 
     		@PathVariable("collectionId") Long collectionId) {
     	// get user info
@@ -873,7 +874,7 @@ public class DataController {
         
         CollectionView cv = createCollectionView(existing, imageLocation);
         
-        return new ResponseEntity<>(new SuccessResponse(cv, "collection retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<CollectionView>(cv, "collection retrieved"), HttpStatus.OK);
     }
     
    
@@ -883,7 +884,7 @@ public class DataController {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
             @ApiResponse(responseCode="415", description= "Media type is not supported"),
             @ApiResponse(responseCode="500", description= "Internal Server Error") })
-    public ResponseEntity<SuccessResponse> getActiveBatchUpload () {
+    public ResponseEntity<SuccessResponse<List<BatchUploadEntity>>> getActiveBatchUpload () {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -907,7 +908,7 @@ public class DataController {
         	if (filtered.isEmpty()) {
     			throw new DataNotFoundException("No active batch upload");
     		}
-        	return new ResponseEntity<>(new SuccessResponse(filtered, "Batch uploads retrieved"), HttpStatus.OK);
+        	return new ResponseEntity<>(new SuccessResponse<List<BatchUploadEntity>>(filtered, "Batch uploads retrieved"), HttpStatus.OK);
         } else {
         	throw new BadRequestException("user cannot be found");
         }
@@ -919,7 +920,7 @@ public class DataController {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
             @ApiResponse(responseCode="415", description= "Media type is not supported"),
             @ApiResponse(responseCode="500", description= "Internal Server Error") })
-    public ResponseEntity<SuccessResponse> getActiveGlycoproteinBatchUpload () {
+    public ResponseEntity<SuccessResponse<List<BatchUploadEntity>>> getActiveGlycoproteinBatchUpload () {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -942,7 +943,7 @@ public class DataController {
         	if (filtered.isEmpty()) {
     			throw new DataNotFoundException("No active batch upload");
     		}
-        	return new ResponseEntity<>(new SuccessResponse(filtered, "Batch uploads retrieved"), HttpStatus.OK);
+        	return new ResponseEntity<>(new SuccessResponse<List<BatchUploadEntity>>(filtered, "Batch uploads retrieved"), HttpStatus.OK);
         } else {
         	throw new BadRequestException("user cannot be found");
         }
@@ -956,7 +957,7 @@ public class DataController {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
             @ApiResponse(responseCode="415", description= "Media type is not supported"),
             @ApiResponse(responseCode="500", description= "Internal Server Error") })
-    public ResponseEntity<SuccessResponse> updateActiveBatchUpload(
+    public ResponseEntity<SuccessResponse<BatchUploadEntity>> updateActiveBatchUpload(
     		@Parameter(required=true, description="internal id of the file upload to mark as read") 
             @PathVariable("uploadId")
     		Long batchUploadId){
@@ -966,7 +967,7 @@ public class DataController {
             BatchUploadEntity entity = upload.get();
             entity.setAccessedDate(new Date());
             uploadRepository.save(entity);
-            return new ResponseEntity<>(new SuccessResponse(entity, "file upload is marked as read"), HttpStatus.OK);
+            return new ResponseEntity<>(new SuccessResponse<BatchUploadEntity>(entity, "file upload is marked as read"), HttpStatus.OK);
         }
 	
         throw new BadRequestException("file upload cannot be found");
@@ -979,7 +980,7 @@ public class DataController {
             @ApiResponse(responseCode="403", description="Not enough privileges to delete file uploads"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> deleteBatchUpload (
+    public ResponseEntity<SuccessResponse<Long>> deleteBatchUpload (
             @Parameter(required=true, description="id of the file upload to delete") 
             @PathVariable("uploadId") Long uploadId) {
         
@@ -996,7 +997,7 @@ public class DataController {
         
         BatchUploadEntity toDelete = found.get(0);
         glycanManager.deleteBatchUpload(toDelete);
-        return new ResponseEntity<>(new SuccessResponse(uploadId, "File upload deleted successfully"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<Long>(uploadId, "File upload deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Send error report email", 
@@ -1034,14 +1035,14 @@ public class DataController {
         	Optional<BatchUploadEntity> upload = uploadRepository.findById(errorId);
         	if (upload != null) {
         		emailManager.sendErrorReport(upload.get(), emails.toArray(new String[0]));
-        		return new ResponseEntity<>(new SuccessResponse(upload, "file upload report is sent"), HttpStatus.OK);
+        		return new ResponseEntity<>(new SuccessResponse<BatchUploadEntity>(upload.get(), "file upload report is sent"), HttpStatus.OK);
         	}
         	
         } else {
 	    	Optional<UploadErrorEntity> upload = uploadErrorRepository.findById(errorId);
 	    	if (upload != null) {
 	    		emailManager.sendErrorReport(upload.get(), emails.toArray(new String[0]));
-	            return new ResponseEntity<>(new SuccessResponse(upload, "file upload report is sent"), HttpStatus.OK);
+	            return new ResponseEntity<>(new SuccessResponse<UploadErrorEntity>(upload.get(), "file upload report is sent"), HttpStatus.OK);
 	        }
         }
 	
@@ -1056,7 +1057,7 @@ public class DataController {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
             @ApiResponse(responseCode="415", description= "Media type is not supported"),
             @ApiResponse(responseCode="500", description= "Internal Server Error") })
-    public ResponseEntity<SuccessResponse> addTagForFileUpload(
+    public ResponseEntity<SuccessResponse<BatchUploadEntity>> addTagForFileUpload(
     		@Parameter(required=true, description="internal id of the file upload") 
             @PathVariable("uploadId")
     		Long batchUploadId,
@@ -1083,7 +1084,7 @@ public class DataController {
             	}
             	glycanManager.addTagToGlycans(glycans, (String)tag, user);
             }
-            return new ResponseEntity<>(new SuccessResponse(entity, "the tag is added to all glycans of this file upload"), HttpStatus.OK);
+            return new ResponseEntity<>(new SuccessResponse<BatchUploadEntity>(entity, "the tag is added to all glycans of this file upload"), HttpStatus.OK);
         }
 	
         throw new BadRequestException("file upload cannot be found");
@@ -1097,7 +1098,7 @@ public class DataController {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
             @ApiResponse(responseCode="415", description= "Media type is not supported"),
             @ApiResponse(responseCode="500", description= "Internal Server Error") })
-    public ResponseEntity<SuccessResponse> updateGlycanTags(
+    public ResponseEntity<SuccessResponse<Glycan>> updateGlycanTags(
     		@Parameter(required=true, description="internal id of the glycan") 
             @PathVariable("glycanId")
     		Long glycanId,
@@ -1118,7 +1119,7 @@ public class DataController {
     	if (glycan != null) {
             Glycan g = glycan.get();
             glycanManager.setGlycanTags(g, tags, user);
-            return new ResponseEntity<>(new SuccessResponse(g, "the given tags are added to the given glycan"), HttpStatus.OK);
+            return new ResponseEntity<>(new SuccessResponse<Glycan>(g, "the given tags are added to the given glycan"), HttpStatus.OK);
         }
 	
         throw new BadRequestException("glycan cannot be found");
@@ -1132,7 +1133,7 @@ public class DataController {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
             @ApiResponse(responseCode="415", description= "Media type is not supported"),
             @ApiResponse(responseCode="500", description= "Internal Server Error") })
-    public ResponseEntity<SuccessResponse> updateGlycoproteinTags(
+    public ResponseEntity<SuccessResponse<Glycoprotein>> updateGlycoproteinTags(
     		@Parameter(required=true, description="internal id of the glycoprotein") 
             @PathVariable("proteinId")
     		Long glycoproteinId,
@@ -1153,7 +1154,7 @@ public class DataController {
     	if (prot != null) {
             Glycoprotein g = prot.get();
             glycanManager.setGlycoproteinTags(g, tags, user);
-            return new ResponseEntity<>(new SuccessResponse(g, "the given tags are added to the given glycoprotein"), HttpStatus.OK);
+            return new ResponseEntity<>(new SuccessResponse<Glycoprotein>(g, "the given tags are added to the given glycoprotein"), HttpStatus.OK);
         }
 	
         throw new BadRequestException("glycoprotein cannot be found");
@@ -1162,7 +1163,7 @@ public class DataController {
 
     @Operation(summary = "Get current glycan tags for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getglycantags")
-    public ResponseEntity<SuccessResponse> getGlycanTags() {
+    public ResponseEntity<SuccessResponse<List<GlycanTag>>> getGlycanTags() {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -1171,7 +1172,7 @@ public class DataController {
         }
 
     	List<GlycanTag> tags = glycanManager.getTags(user);
-    	return new ResponseEntity<>(new SuccessResponse(tags, "user's glycan tags retrieved successfully"), HttpStatus.OK);
+    	return new ResponseEntity<>(new SuccessResponse<List<GlycanTag>>(tags, "user's glycan tags retrieved successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Delete given glycan from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1181,7 +1182,7 @@ public class DataController {
             @ApiResponse(responseCode="403", description="Not enough privileges to delete glycans"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> deleteGlycan (
+    public ResponseEntity<SuccessResponse<Long>> deleteGlycan (
             @Parameter(required=true, description="internal id of the glycan to delete") 
             @PathVariable("glycanId") Long glycanId) {
         
@@ -1216,7 +1217,7 @@ public class DataController {
         	throw new BadRequestException ("Cannot delete this glycan. It is used in the following collections: " + collectionString);
         }
         glycanRepository.deleteById(glycanId);
-        return new ResponseEntity<>(new SuccessResponse(glycanId, "Glycan deleted successfully"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<Long>(glycanId, "Glycan deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Delete given glycans from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1226,7 +1227,7 @@ public class DataController {
             @ApiResponse(responseCode="403", description="Not enough privileges to delete glycans"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> deleteMultipleGlycans (
+    public ResponseEntity<SuccessResponse<Integer[]>> deleteMultipleGlycans (
             @Parameter(required=true, description="list of internal ids of the glycans to delete") 
             @RequestBody Integer[] glycanIds) {
         
@@ -1272,7 +1273,7 @@ public class DataController {
         if (!errorMessage.isEmpty()) {
         	throw new BadRequestException(errorMessage.toString());
         }
-        return new ResponseEntity<>(new SuccessResponse(glycanIds, "Glycans deleted successfully"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<Integer[]>(glycanIds, "Glycans deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Delete given glycoprotein from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1282,7 +1283,7 @@ public class DataController {
             @ApiResponse(responseCode="403", description="Not enough privileges to delete glycoproteins"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> deleteGlycoprotein (
+    public ResponseEntity<SuccessResponse<Long>> deleteGlycoprotein (
             @Parameter(required=true, description="internal id of the glycoprotein to delete") 
             @PathVariable("proteinId") Long glycoproteinId) {
         
@@ -1306,7 +1307,7 @@ public class DataController {
         	throw new BadRequestException ("Cannot delete this glycoprotein. It is used in the following collections: " + collectionString);
         }
         glycoproteinRepository.deleteById(glycoproteinId);
-        return new ResponseEntity<>(new SuccessResponse(glycoproteinId, "Glycoprotein deleted successfully"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<Long>(glycoproteinId, "Glycoprotein deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Delete the given collection from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1316,7 +1317,7 @@ public class DataController {
             @ApiResponse(responseCode="403", description="Not enough privileges to delete collections"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> deleteCollection (
+    public ResponseEntity<SuccessResponse<Long>> deleteCollection (
             @Parameter(required=true, description="id of the collection to delete") 
             @PathVariable("collectionId") Long collectionId) {
         
@@ -1350,7 +1351,7 @@ public class DataController {
         			+ "Delete from the parent collection first! Collection of collections referencing it: " + parents.substring(0, parents.lastIndexOf(", ")));
         }
         collectionRepository.deleteById(collectionId);
-        return new ResponseEntity<>(new SuccessResponse(collectionId, "Collection deleted successfully"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<Long>(collectionId, "Collection deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Delete the given collection of collections from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1360,7 +1361,7 @@ public class DataController {
             @ApiResponse(responseCode="403", description="Not enough privileges to delete collections"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> deleteCoC (
+    public ResponseEntity<SuccessResponse<Long>> deleteCoC (
             @Parameter(required=true, description="id of the collection to delete") 
             @PathVariable("collectionId") Long collectionId) {
         
@@ -1375,12 +1376,12 @@ public class DataController {
             throw new IllegalArgumentException ("Could not find the given collection of collections (" + collectionId + ") for the user");
         }
         collectionRepository.deleteById(collectionId);
-        return new ResponseEntity<>(new SuccessResponse(collectionId, "Collection deleted successfully"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<Long>(collectionId, "Collection deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Add glycan", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addglycan")
-    public ResponseEntity<SuccessResponse> addGlycan(@Valid @RequestBody GlycanView g,
+    public ResponseEntity<SuccessResponse<Glycan>> addGlycan(@Valid @RequestBody GlycanView g,
     		@Parameter(required=false, description="composition type")
 			@RequestParam (required=false, defaultValue="BASE")
 			CompositionType compositionType) {
@@ -1517,7 +1518,7 @@ public class DataController {
             imageEntity.setWurcs(added.getWurcs());
             glycanImageRepository.save(imageEntity);
         } 
-        return new ResponseEntity<>(new SuccessResponse(glycan, "glycan added"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<Glycan>(glycan, "glycan added"), HttpStatus.OK);
     }
     
     private static String toUnknownForm(String strWURCS) throws WURCSException {
@@ -1556,7 +1557,7 @@ public class DataController {
     
     @Operation(summary = "Add collection", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addcollection")
-    public ResponseEntity<SuccessResponse> addCollection(@Valid @RequestBody CollectionView c) {
+    public ResponseEntity<SuccessResponse<CollectionView>> addCollection(@Valid @RequestBody CollectionView c) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -1616,12 +1617,13 @@ public class DataController {
     		saved.setMetadata(c.getMetadata());
     		saved = collectionManager.saveCollectionWithMetadata(saved);
     	}
-    	return new ResponseEntity<>(new SuccessResponse(saved, "collection added"), HttpStatus.OK);
+    	CollectionView sv = createCollectionView(saved, imageLocation);
+    	return new ResponseEntity<>(new SuccessResponse<CollectionView>(sv, "collection added"), HttpStatus.OK);
     }
     
     @Operation(summary = "Add collection of collections", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addcoc")
-    public ResponseEntity<SuccessResponse> addCoC(@Valid @RequestBody CollectionView c) {
+    public ResponseEntity<SuccessResponse<CollectionView>> addCoC(@Valid @RequestBody CollectionView c) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -1661,12 +1663,12 @@ public class DataController {
     	
         collection.setUser(user);
     	collectionRepository.save(collection);
-    	return new ResponseEntity<>(new SuccessResponse(c, "collection added"), HttpStatus.OK);
+    	return new ResponseEntity<>(new SuccessResponse<CollectionView>(c, "collection added"), HttpStatus.OK);
     }
     
     @Operation(summary = "Add glycoprotein", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addglycoprotein")
-    public ResponseEntity<SuccessResponse> addGlycoprotein(@RequestBody GlycoproteinView gp) {
+    public ResponseEntity<SuccessResponse<Glycoprotein>> addGlycoprotein(@RequestBody GlycoproteinView gp) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -1712,12 +1714,12 @@ public class DataController {
     		}
     	}
     	Glycoprotein saved = glycoproteinRepository.save(glycoprotein);
-    	return new ResponseEntity<>(new SuccessResponse(saved, "glycoprotein added"), HttpStatus.OK);
+    	return new ResponseEntity<>(new SuccessResponse<Glycoprotein>(saved, "glycoprotein added"), HttpStatus.OK);
     }
     
     @Operation(summary = "update collection", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatecollection")
-    public ResponseEntity<SuccessResponse> updateCollection(@Valid @RequestBody CollectionView c) {
+    public ResponseEntity<SuccessResponse<CollectionView>> updateCollection(@Valid @RequestBody CollectionView c) {
     	if (c.getCollectionId() == null) {
     		throw new IllegalArgumentException("collection id should be provided for update");
     	}
@@ -1892,12 +1894,12 @@ public class DataController {
     	}
     	Collection saved = collectionManager.saveCollectionWithMetadata(existing);
     	CollectionView cv = createCollectionView(saved, imageLocation);
-    	return new ResponseEntity<>(new SuccessResponse(cv, "collection updated"), HttpStatus.OK);
+    	return new ResponseEntity<>(new SuccessResponse<CollectionView>(cv, "collection updated"), HttpStatus.OK);
     }
     
     @Operation(summary = "update collection of collections", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatecoc")
-    public ResponseEntity<SuccessResponse> updateCoC(@Valid @RequestBody CollectionView c) {
+    public ResponseEntity<SuccessResponse<CollectionView>> updateCoC(@Valid @RequestBody CollectionView c) {
     	if (c.getCollectionId() == null) {
     		throw new IllegalArgumentException("collection id should be provided for update");
     	}
@@ -1964,19 +1966,25 @@ public class DataController {
     	
     	Collection saved = collectionRepository.save(existing);
     	CollectionView cv = createCollectionView(saved, imageLocation);
-    	return new ResponseEntity<>(new SuccessResponse(cv, "collection of collections updated"), HttpStatus.OK);
+    	return new ResponseEntity<>(new SuccessResponse<CollectionView>(cv, "collection of collections updated"), HttpStatus.OK);
     }
     
     @Operation(summary = "Add glycans from file", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addglycanfromfile")
-    public ResponseEntity<SuccessResponse> addGlycansFromFile(
+    public ResponseEntity<SuccessResponse<Boolean>> addGlycansFromFile(
     		@Parameter(required=true, name="file", description="details of the uploded file") 
 	        @RequestBody
     		FileWrapper fileWrapper, 
     		@Parameter(required=true, name="filetype", description="type of the file", schema = @Schema(type = "string",
-    		allowableValues= {"GWS", "WURCS"})) 
+    		allowableValues= {"GWS", "WURCS", "EXCEL"})) 
 	        @RequestParam(required=true, value="filetype") String fileType,
 	        @RequestParam(required=false, value="tag") String tag) {
+    	
+    	boolean glytoucanId = false;
+    	if (fileType != null && fileType.equalsIgnoreCase("Excel")) {
+    		fileType = "WURCS";
+    		glytoucanId = true;
+    	}
     	
     	SequenceFormat format = SequenceFormat.valueOf(fileType);
     	
@@ -2020,12 +2028,13 @@ public class DataController {
                 if (!uploadFolder.exists()) {
                 	uploadFolder.mkdirs();
                 }
-                boolean success = file.renameTo(new File (uploadFolder + File.separator + fileWrapper.getOriginalName()));
+                File newFile = new File (uploadFolder + File.separator + fileWrapper.getOriginalName());
+                boolean success = file.renameTo(newFile);
                 if (!success) {
                 	logger.error("Could not store the original file");
                 }
                 try {    
-                    CompletableFuture<SuccessResponse> response = null;
+                    CompletableFuture<SuccessResponse<BatchUploadEntity>> response = null;
                     
                     // process the file and add the glycans 
                     switch (format) {
@@ -2033,7 +2042,11 @@ public class DataController {
                     	response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, ";", tag);
                     	break;
                     case WURCS:
-                    	response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, "\\n", tag);
+                    	if (glytoucanId) {
+                    		response = batchUploadService.addGlycanFromExcelFile(newFile, saved, user, fileWrapper.getExcelParameters(), tag);
+                    	} else {
+                    		response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, "\\n", tag);
+                    	}
                     	break;
 					default:
 						break;
@@ -2084,7 +2097,7 @@ public class DataController {
             }
     	    
         }
-    	return new ResponseEntity<>(new SuccessResponse(null, "glycan added"), HttpStatus.OK); 
+    	return new ResponseEntity<>(new SuccessResponse<Boolean>(true, "glycan added"), HttpStatus.OK); 
     }
     
     @Operation(summary = "Download glycans", security = { @SecurityRequirement(name = "bearer-key") })

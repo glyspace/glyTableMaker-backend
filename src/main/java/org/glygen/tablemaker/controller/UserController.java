@@ -94,7 +94,7 @@ public class UserController {
             @ApiResponse(responseCode="404", description="User with given login name does not exist"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> getUser (
+    public ResponseEntity<SuccessResponse<User>> getUser (
             @Parameter(required=true, description="login name of the user")
             @PathVariable("userName")
             String userName) {
@@ -138,7 +138,7 @@ public class UserController {
         userView.setUserType(user.getLoginType().name());
         userView.setGroupName(user.getGroupName());
         userView.setDepartment(user.getDepartment());
-        return ResponseEntity.ok(new SuccessResponse(userView, "User Information retrieved successfully"));
+        return ResponseEntity.ok(new SuccessResponse<User>(userView, "User Information retrieved successfully"));
     }
     
     @PostMapping("/update/{userName}")
@@ -152,7 +152,7 @@ public class UserController {
                 @ApiResponse(responseCode="404", description="User with given login name does not exist"),
                 @ApiResponse(responseCode="415", description="Media type is not supported"),
                 @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> updateUser (@RequestBody(required=true) User user, @PathVariable("userName") String loginId) {
+    public ResponseEntity<SuccessResponse<User>> updateUser (@RequestBody(required=true) User user, @PathVariable("userName") String loginId) {
         UserEntity userEntity = userRepository.findByUsernameIgnoreCase(loginId.trim());
         if (userEntity == null) {
             // find it with email
@@ -216,7 +216,7 @@ public class UserController {
             throw new BadCredentialsException ("The user has not been authenticated");
         }
         
-        return ResponseEntity.ok(new SuccessResponse(user, "User updated successfully"));
+        return ResponseEntity.ok(new SuccessResponse<User>(user, "User updated successfully"));
     }
     
     @GetMapping("/availableUsername")
@@ -235,7 +235,7 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<SuccessResponse> register(@Valid @RequestBody User user) {
+    public ResponseEntity<SuccessResponse<User>> register(@Valid @RequestBody User user) {
         
         UserEntity newUser = new UserEntity();
         newUser.setUsername(user.getUserName());        
@@ -280,7 +280,7 @@ public class UserController {
         }
         logger.info("New user {} is added to the system", newUser.getUsername());
         user.setPassword(null);   // Do not send the password
-        return ResponseEntity.ok(new SuccessResponse(user, "Registered successfully"));
+        return ResponseEntity.ok(new SuccessResponse<User>(user, "Registered successfully"));
     }
     
     @GetMapping(value = "/registrationConfirm")
@@ -290,13 +290,13 @@ public class UserController {
             @ApiResponse(responseCode="400", description="Link already expired (ErrorCode=4050 Expired)"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> confirmRegistration(@RequestParam("token") final String token) throws UnsupportedEncodingException {
+    public ResponseEntity<SuccessResponse<Boolean>> confirmRegistration(@RequestParam("token") final String token) throws UnsupportedEncodingException {
         final String result = userManager.validateVerificationToken(token.trim());
         if (result.equals(UserManagerImpl.TOKEN_VALID)) {
             final UserEntity user = userManager.getUserByToken(token.trim());
             // we don't need the token after confirmation
             userManager.deleteVerificationToken(token.trim());
-            return ResponseEntity.ok(new SuccessResponse(null, "Verified Successfully"));
+            return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "Verified Successfully"));
         } else if (result.equals(UserManagerImpl.TOKEN_INVALID)) {
             logger.error("Token entered is not valid!");
             throw new IllegalArgumentException("Token entered is not valid");
@@ -314,7 +314,7 @@ public class UserController {
             @ApiResponse(responseCode="400", description="Illegal argument - valid email has to be provided"),
             @ApiResponse(responseCode="404", description="User with given email does not exist"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public @ResponseBody ResponseEntity<SuccessResponse> recoverUsername (@RequestParam(value="email", required=true) String email) {
+    public @ResponseBody ResponseEntity<SuccessResponse<Boolean>> recoverUsername (@RequestParam(value="email", required=true) String email) {
         UserEntity user = userManager.recoverLogin(email.trim());
         
         if (user == null) {
@@ -325,7 +325,7 @@ public class UserController {
         emailManager.sendUserName(user);
         
         logger.info("UserName Recovery email is sent to {}", userEmail);
-        return ResponseEntity.ok(new SuccessResponse(null, "Email containing the username was sent"));
+        return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "Email containing the username was sent"));
     }
     
     @GetMapping("/{userName}/password")
@@ -335,7 +335,7 @@ public class UserController {
             @Content(mediaType = "application/json", schema = @Schema(implementation = SuccessResponse.class))}), 
             @ApiResponse(responseCode="404", description="User with given login name does not exist"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public @ResponseBody ResponseEntity<SuccessResponse> recoverPassword (
+    public @ResponseBody ResponseEntity<SuccessResponse<Boolean>> recoverPassword (
             @PathVariable("userName") String loginId) {
         UserEntity user = userRepository.findByUsernameIgnoreCase(loginId.trim());
         if (user == null) {
@@ -346,7 +346,7 @@ public class UserController {
         }
         emailManager.sendPasswordReminder(user);
         logger.info("Password recovery email is sent to {}", user.getEmail());
-        return ResponseEntity.ok(new SuccessResponse(null, "Password recovery email is sent"));        
+        return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "Password recovery email is sent"));        
     }
     
     @PutMapping("/{userName}/password")
@@ -359,7 +359,7 @@ public class UserController {
             @ApiResponse(responseCode="403", description="Not enough privileges to update password"),
             @ApiResponse(responseCode="404", description="User with given login name does not exist"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public @ResponseBody ResponseEntity<SuccessResponse> changePassword (
+    public @ResponseBody ResponseEntity<SuccessResponse<Boolean>> changePassword (
             Principal p,
             @Parameter(description = "your password", schema = @Schema(type = "string", format = "password"))
             @RequestBody(required=true) 
@@ -407,11 +407,11 @@ public class UserController {
             logger.error("Current Password is not valid!");
             throw new IllegalArgumentException("Current password is invalid");
         }
-        return ResponseEntity.ok(new SuccessResponse(null, "Password changed successfully"));  
+        return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "Password changed successfully"));  
     }
 
     @PostMapping("/authenticate")
-    public ResponseEntity<SuccessResponse> authenticateUser(@Valid @RequestBody LoginRequest login) {
+    public ResponseEntity<SuccessResponse<LoginResponse>> authenticateUser(@Valid @RequestBody LoginRequest login) {
 
         var authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(login.getUsername(), login.getPassword()));
@@ -431,7 +431,7 @@ public class UserController {
             userView.setUserName(user.getUsername());
             
             LoginResponse resp = new LoginResponse(jwt, userView);
-            return ResponseEntity.ok(new SuccessResponse(resp, "Login Successfully"));
+            return ResponseEntity.ok(new SuccessResponse<LoginResponse>(resp, "Login Successfully"));
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             throw new RuntimeException("Failed to generate an authentication token!", e);
         }

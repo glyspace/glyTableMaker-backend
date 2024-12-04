@@ -13,6 +13,7 @@ public class FileWrapper {
     Long fileSize;
     String description;
     Date createdDate;
+    ExcelFileWrapper excelParameters;
     
     /**
      * @return the identifier
@@ -122,4 +123,10 @@ public class FileWrapper {
     public void setExtension(String extension) {
         this.extension = extension;
     }
+	public ExcelFileWrapper getExcelParameters() {
+		return excelParameters;
+	}
+	public void setExcelParameters(ExcelFileWrapper excelParameters) {
+		this.excelParameters = excelParameters;
+	}
 }

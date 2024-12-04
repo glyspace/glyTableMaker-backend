@@ -40,7 +40,7 @@ public class FileController {
 	@Operation(summary = "Upload file", security = { @SecurityRequirement(name = "bearer-key") })
 	@RequestMapping(value = "/upload", method=RequestMethod.POST, 
 	        consumes= {"application/octet-stream"})
-	public ResponseEntity<SuccessResponse> uploadFile(
+	public ResponseEntity<SuccessResponse<FileWrapper>> uploadFile(
 	        HttpEntity<byte[]> requestBody,
             @RequestParam("resumableFilename") String resumableFilename,
             @RequestParam ("resumableRelativePath") String resumableRelativePath,
@@ -99,15 +99,15 @@ public class FileController {
             ResumableInfoStorage.getInstance().remove(info);
             int index = info.resumableFilePath.indexOf(".temp") == -1 ? info.resumableFilePath.length() : info.resumableFilePath.indexOf(".temp");
             file.setIdentifier(info.resumableFilePath.substring(info.resumableFilePath.lastIndexOf(File.separator) + 1, index));
-            return new ResponseEntity<>(new SuccessResponse(file, "file uploaded"), HttpStatus.OK);
+            return new ResponseEntity<>(new SuccessResponse<FileWrapper>(file, "file uploaded"), HttpStatus.OK);
         } else {
-        	return new ResponseEntity<>(new SuccessResponse(file, "file uploaded"), HttpStatus.ACCEPTED);
+        	return new ResponseEntity<>(new SuccessResponse<FileWrapper>(file, "file uploaded"), HttpStatus.ACCEPTED);
         }
 	}
 	
 	@Operation(summary = "Check status for upload file", security = { @SecurityRequirement(name = "bearer-key") })
 	@GetMapping("/upload")
-	public ResponseEntity<SuccessResponse> resumeUpload (
+	public ResponseEntity<SuccessResponse<Integer>> resumeUpload (
 			@RequestParam("resumableFilename") String resumableFilename,
 			@RequestParam ("resumableRelativePath") String resumableRelativePath,
             @RequestParam ("resumableTotalChunks") String resumableTotalChunks,
@@ -129,7 +129,7 @@ public class FileController {
         	}
         }
         if (info.uploadedChunks.contains(new ResumableFileInfo.ResumableChunkNumber(resumableChunkNumber))) {
-        	return new ResponseEntity<>(new SuccessResponse(resumableChunkNumber, "file uploaded"), HttpStatus.OK);
+        	return new ResponseEntity<>(new SuccessResponse<Integer>(resumableChunkNumber, "file uploaded"), HttpStatus.OK);
         } else {
             throw new UploadNotFinishedException("Not found");  // this will return HttpStatus no_content 204
         }

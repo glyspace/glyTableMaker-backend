@@ -248,7 +248,7 @@ public class DatasetController {
 	
 	@Operation(summary = "Publish dataset", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/publishdataset")
-    public ResponseEntity<SuccessResponse> publishDataset(@Valid @RequestBody DatasetInputView d) throws MethodArgumentNotValidException {
+    public ResponseEntity<SuccessResponse<DatasetView>> publishDataset(@Valid @RequestBody DatasetInputView d) throws MethodArgumentNotValidException {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -319,8 +319,8 @@ public class DatasetController {
         version.setDataset(newDataset);
         
         Dataset saved = datasetManager.saveDataset (newDataset);
-        
-        return new ResponseEntity<>(new SuccessResponse(saved, "dataset has been published"), HttpStatus.OK);
+        DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation);
+        return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset has been published"), HttpStatus.OK);
 	}
 	
 	List<DatasetGlycoproteinMetadata> generateGlycoproteinData(DatasetVersion version,
@@ -667,12 +667,12 @@ public class DatasetController {
 		Dataset saved = datasetManager.saveDataset(existing);
     	
     	DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation);
-    	return new ResponseEntity<>(new SuccessResponse(dv, "dataset updated"), HttpStatus.OK);
+    	return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset updated"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Get dataset by the given id", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getdataset/{datasetIdentifier}")
-    public ResponseEntity<SuccessResponse> getDataset(
+    public ResponseEntity<SuccessResponse<DatasetView>> getDataset(
     		@Parameter(required=true, description="id of the dataseet to be retrieved") 
     		@PathVariable("datasetIdentifier") String datasetIdentifier) {
     	// get user info
@@ -704,7 +704,7 @@ public class DatasetController {
         
         DatasetView dv = createDatasetView (existing, version, glycanImageRepository, imageLocation);
         
-        return new ResponseEntity<>(new SuccessResponse(dv, "dataset retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset retrieved"), HttpStatus.OK);
     }
 	
     public static DatasetView createDatasetView(Dataset d, String versionString, GlycanImageRepository imageRepository, String imageLocation) {

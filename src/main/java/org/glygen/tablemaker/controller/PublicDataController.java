@@ -48,6 +48,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 
 @RestController
@@ -73,7 +77,7 @@ public class PublicDataController {
 	
 	@Operation(summary = "Get public datasets")
     @GetMapping("/getdatasets")
-    public ResponseEntity<SuccessResponse> getDatasets(
+    public ResponseEntity<SuccessResponse<Map<String, Object>>> getDatasets(
             @RequestParam("start")
             Integer start, 
             @RequestParam("size")
@@ -159,17 +163,17 @@ public class PublicDataController {
         response.put("totalItems", datasetsInPage.getTotalElements());
         response.put("totalPages", datasetsInPage.getTotalPages());
         
-        return new ResponseEntity<>(new SuccessResponse(response, "datasets retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "datasets retrieved"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Get dataset by the given id")
     @GetMapping("/getdataset/{datasetIdentifier}")
-    public ResponseEntity<SuccessResponse> getDataset(
-    		@Parameter(required=true, description="id of the dataseet to be retrieved") 
+    public ResponseEntity<SuccessResponse<DatasetView>> getDataset(
+    		@Parameter(required=true, description="id of the dataset to be retrieved") 
     		@PathVariable("datasetIdentifier") String datasetIdentifier) {
     	
         DatasetView dv = getDatasetFromRepository(datasetIdentifier);
-        return new ResponseEntity<>(new SuccessResponse(dv, "dataset retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset retrieved"), HttpStatus.OK);
     }
 	
 	DatasetView getDatasetFromRepository (String datasetIdentifier) {
@@ -302,9 +306,13 @@ public class PublicDataController {
 	
 	@Operation(summary = "Generate table for the given dataset and download")
     @GetMapping("/downloadtablefordataset/{datasetIdentifier}")
+	@ApiResponses (value ={@ApiResponse(responseCode="200", description="File downloaded successfully"), 
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
 	public ResponseEntity<Resource> downloadTableForDataset (
-			@Parameter(required=true, description="id of the dataseet to be retrieved") 
+			@Parameter(required=true, description="id of the dataset to be retrieved") 
     		@PathVariable("datasetIdentifier") String datasetIdentifier,
+    		@Parameter(required=false, description="filename to save the downloaded file as. If not provided, it will be automatically generated") 
     		@RequestParam(required=false, value="filename")
             String fileName) {
 		

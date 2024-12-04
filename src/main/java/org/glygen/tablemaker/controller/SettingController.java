@@ -50,7 +50,7 @@ public class SettingController {
 	
 	@Operation(summary = "Get settings for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getsettings")
-    public ResponseEntity<SuccessResponse> getSettings() {
+    public ResponseEntity<SuccessResponse<List<SettingEntity>>> getSettings() {
 		// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -59,13 +59,13 @@ public class SettingController {
         }
         
         List<SettingEntity> settings = settingRepository.findAllByUser(user);
-        return new ResponseEntity<SuccessResponse>(
-    			new SuccessResponse (settings, "settings retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(
+    			new SuccessResponse<List<SettingEntity>> (settings, "settings retrieved"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Get column settings for the user for the given table", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcolumnsettings")
-    public ResponseEntity<SuccessResponse> getColumnSettings(
+    public ResponseEntity<SuccessResponse<List<ColumnVisibillitySetting>>> getColumnSettings(
     		@Parameter(required=true, description="table name for the column settings") 
     		@RequestParam("tablename")
     		TableMakerTable tableName) {
@@ -77,13 +77,13 @@ public class SettingController {
         }
         
         List<ColumnVisibillitySetting> settings = columnRepository.findByTableNameAndUser(tableName, user);
-        return new ResponseEntity<SuccessResponse>(
-    			new SuccessResponse (settings, "column settings retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(
+    			new SuccessResponse<List<ColumnVisibillitySetting>> (settings, "column settings retrieved"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Get all column settings for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getallcolumnsettings")
-    public ResponseEntity<SuccessResponse> getAllColumnSettings() {
+    public ResponseEntity<SuccessResponse<Map<String, List<ColumnVisibillitySetting>>>> getAllColumnSettings() {
 		// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -106,13 +106,13 @@ public class SettingController {
         	}
         }
         
-        return new ResponseEntity<SuccessResponse>(
-    			new SuccessResponse (columnSettings, "column settings retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(
+    			new SuccessResponse<Map<String, List<ColumnVisibillitySetting>>> (columnSettings, "column settings retrieved"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "update setting", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatesetting")
-    public ResponseEntity<SuccessResponse> updateSetting(@Valid @RequestBody SettingEntity setting) {
+    public ResponseEntity<SuccessResponse<SettingEntity>> updateSetting(@Valid @RequestBody SettingEntity setting) {
 		// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -131,12 +131,12 @@ public class SettingController {
         	saved = settingRepository.save(setting);
         }
         
-        return new ResponseEntity<>(new SuccessResponse(saved, "setting updated"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<SettingEntity>(saved, "setting updated"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "update column settings", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatecolumnsetting")
-    public ResponseEntity<SuccessResponse> updateColumnSetting(
+    public ResponseEntity<SuccessResponse<List<ColumnVisibillitySetting>>> updateColumnSetting(
     		@Valid 
     		@RequestBody 
     		List<ColumnVisibillitySetting> settings) {
@@ -166,6 +166,6 @@ public class SettingController {
 	        }
         }
         
-        return new ResponseEntity<>(new SuccessResponse(settings, "column setting updated"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<List<ColumnVisibillitySetting>>(settings, "column setting updated"), HttpStatus.OK);
 	}
 }

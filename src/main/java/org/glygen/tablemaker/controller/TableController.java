@@ -102,7 +102,7 @@ public class TableController {
 	
 	@Operation(summary = "Get all templates for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/gettemplates")
-    public ResponseEntity<SuccessResponse> getTemplates() {
+    public ResponseEntity<SuccessResponse<List<TableMakerTemplate>>> getTemplates() {
 		// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -121,14 +121,14 @@ public class TableController {
 			Collections.sort(columns, Comparator.comparing(TableColumn::getOrder));
 			template.setColumns(columns);
 		}
-    	return new ResponseEntity<SuccessResponse>(
-    			new SuccessResponse (templates, "templates retrieved"), HttpStatus.OK);
+    	return new ResponseEntity<>(
+    			new SuccessResponse<List<TableMakerTemplate>> (templates, "templates retrieved"), HttpStatus.OK);
     	
     }
 	
 	@Operation(summary = "Get download report", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getreport/{reportId}")
-    public ResponseEntity<SuccessResponse> getTableReport(
+    public ResponseEntity<SuccessResponse<TableReportDetail>> getTableReport(
     		@Parameter(required=true, description="id of the report to be retrieved") 
     		@PathVariable("reportId") Long reportId) {
 		Optional<TableReport> report = reportRepository.findById(reportId);
@@ -137,8 +137,8 @@ public class TableController {
 			if (r.getReportJSON() != null) {
 				try {
 					TableReportDetail detail = new ObjectMapper().readValue (r.getReportJSON(), TableReportDetail.class);
-					return new ResponseEntity<SuccessResponse>(
-			    			new SuccessResponse (detail, "report retrieved"), HttpStatus.OK);
+					return new ResponseEntity<>(
+			    			new SuccessResponse<TableReportDetail> (detail, "report retrieved"), HttpStatus.OK);
 				} catch (JsonProcessingException e) {
 					throw new RuntimeException("Could not get report details");
 				}
@@ -151,7 +151,7 @@ public class TableController {
 	
 	@Operation(summary = "Add table maker template for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addtemplate")
-    public ResponseEntity<SuccessResponse> addTemplate(
+    public ResponseEntity<SuccessResponse<TableMakerTemplate>> addTemplate(
     		@Valid @RequestBody TableMakerTemplate template) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -168,7 +168,7 @@ public class TableController {
     	
     	template.setUser(user);
     	TableMakerTemplate saved = templateRepository.save(template);
-    	return new ResponseEntity<>(new SuccessResponse(saved, "template added"), HttpStatus.OK);
+    	return new ResponseEntity<>(new SuccessResponse<TableMakerTemplate>(saved, "template added"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Generate table and download", security = { @SecurityRequirement(name = "bearer-key") })

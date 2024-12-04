@@ -1,28 +1,28 @@
 package org.glygen.tablemaker.view;
 
-public class SuccessResponse {
+public class SuccessResponse<T> {
     
-    Object data;
+    T data;
     String message;
     
     public SuccessResponse() {
         // TODO Auto-generated constructor stub
     }
     
-    public SuccessResponse (Object d, String m) {
+    public SuccessResponse (T d, String m) {
         this.data = d;
         this.message = m;
     }
     /**
      * @return the data
      */
-    public Object getData() {
+    public T getData() {
         return data;
     }
     /**
      * @param data the data to set
      */
-    public void setData(Object data) {
+    public void setData(T data) {
         this.data = data;
     }
     /**
