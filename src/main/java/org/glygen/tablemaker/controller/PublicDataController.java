@@ -168,7 +168,12 @@ public class PublicDataController {
     		@Parameter(required=true, description="id of the dataseet to be retrieved") 
     		@PathVariable("datasetIdentifier") String datasetIdentifier) {
     	
-        String identifier = datasetIdentifier;
+        DatasetView dv = getDatasetFromRepository(datasetIdentifier);
+        return new ResponseEntity<>(new SuccessResponse(dv, "dataset retrieved"), HttpStatus.OK);
+    }
+	
+	DatasetView getDatasetFromRepository (String datasetIdentifier) {
+		String identifier = datasetIdentifier;
         String version = null;
         // check if the identifier contains a version
         String[] split = datasetIdentifier.split("-");
@@ -187,9 +192,8 @@ public class PublicDataController {
         }
         
         DatasetView dv = DatasetController.createDatasetView (existing, version, glycanImageRepository, imageLocation);
-        
-        return new ResponseEntity<>(new SuccessResponse(dv, "dataset retrieved"), HttpStatus.OK);
-    }
+        return dv;
+	}
 	
 	@Operation(summary = "Generate table and download")
     @PostMapping("/downloadtable")
@@ -295,4 +299,24 @@ public class PublicDataController {
 		}
 		
 	}
+	
+	@Operation(summary = "Generate table for the given dataset and download")
+    @GetMapping("/downloadtablefordataset/{datasetIdentifier}")
+	public ResponseEntity<Resource> downloadTableForDataset (
+			@Parameter(required=true, description="id of the dataseet to be retrieved") 
+    		@PathVariable("datasetIdentifier") String datasetIdentifier,
+    		@RequestParam(required=false, value="filename")
+            String fileName) {
+		
+		DatasetView dv = getDatasetFromRepository(datasetIdentifier);
+		
+		DatasetTableDownloadView downloadView = new DatasetTableDownloadView();
+		downloadView.setFilename(fileName);
+		downloadView.setData(dv.getData());
+		downloadView.setGlycoproteinData(dv.getGlycoproteinData());
+		
+		return downloadTable(downloadView);
+	}
+	
+	
 }
