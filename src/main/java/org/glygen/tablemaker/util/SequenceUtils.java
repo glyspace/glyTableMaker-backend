@@ -1,5 +1,8 @@
 package org.glygen.tablemaker.util;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.eurocarbdb.MolecularFramework.io.SugarImporterException;
 import org.eurocarbdb.MolecularFramework.sugar.Sugar;
 import org.eurocarbdb.MolecularFramework.util.visitor.GlycoVisitorException;
@@ -7,6 +10,10 @@ import org.eurocarbdb.application.glycanbuilder.ResidueType;
 import org.eurocarbdb.application.glycanbuilder.dataset.ResidueDictionary;
 import org.eurocarbdb.application.glycanbuilder.massutil.IonCloud;
 import org.eurocarbdb.application.glycanbuilder.massutil.MassOptions;
+import org.glycoinfo.GlycanCompositionConverter.structure.Composition;
+import org.glycoinfo.GlycanCompositionConverter.utils.CompositionParseException;
+import org.glycoinfo.GlycanCompositionConverter.utils.CompositionUtils;
+import org.glycoinfo.GlycanCompositionConverter.utils.DictionaryException;
 import org.glycoinfo.WURCSFramework.io.GlycoCT.GlycoVisitorValidationForWURCS;
 import org.glycoinfo.WURCSFramework.io.GlycoCT.WURCSExporterGlycoCT;
 import org.glycoinfo.WURCSFramework.util.WURCSException;
@@ -20,6 +27,43 @@ import org.slf4j.LoggerFactory;
 
 public class SequenceUtils {
 	static org.slf4j.Logger logger = LoggerFactory.getLogger(SequenceUtils.class);
+	
+	static Map<String, String> singleLetterMapping = new HashMap<>();
+	
+	static {
+		singleLetterMapping.put("P", "P");
+		singleLetterMapping.put("X", "Pen");
+		singleLetterMapping.put("F", "Fuc");
+		singleLetterMapping.put("H", "Hex");
+		singleLetterMapping.put("HexA", "HexA");
+		singleLetterMapping.put("GlcA", "GlcA");
+		singleLetterMapping.put("N", "HexNAc");
+		singleLetterMapping.put("G", "Neu5Gc");
+		singleLetterMapping.put("S", "Neu5Ac");
+		singleLetterMapping.put("Kdn", "Kdn");
+		singleLetterMapping.put("Sl", "NeuAcLac");
+		
+		/*singleLetterMapping.put("Sa", "Fuc");
+		singleLetterMapping.put("Sm", "Fuc");
+		singleLetterMapping.put("Ga", "Fuc");
+		singleLetterMapping.put("Sd", "Fuc");
+		singleLetterMapping.put("Se", "Fuc");
+		singleLetterMapping.put("Gd", "Fuc");
+		singleLetterMapping.put("Ge", "Fuc");
+		singleLetterMapping.put("HexAe", "Fuc");*/
+	}
+	
+/**	
+	Ethyl esterified Hexuronic acid	HexAe
+	lactonized n-acetylneuraminic acid	Sl
+	ammonia amidated n-acetylneuraminic acid	Sa
+	methyl esterified n-acetylneuraminic acid	Sm
+	ammonia amidated n-glycolylneuraminic acid	Ga
+	dimethylamidated n-acetylneuraminic acid	Sd
+	ethyl esterified n-acetylneuraminic acid	Se
+	dimethylamidated n-glycolylneuraminic acid	Gd
+	ethyl esterified n-glycolylneuraminic acid	Ge
+**/
 	
 	public static void registerGlycan (Glycan glycan) {
     	// if not, register
@@ -136,4 +180,83 @@ public class SequenceUtils {
             throw new IllegalArgumentException("Invalid Input: Glytoucan ID " + glytoucanId + " failed. Reason: " + e.getMessage());
         }
     }
+    
+    public static Composition getWurcsCompsitionFromByonic (String sequence) throws DictionaryException, CompositionParseException {
+    	if (sequence != null) {
+    		String[] monoWithCountList = sequence.split("\\)");
+    		String composition  = "";
+    		for (String monoWithCount: monoWithCountList) {
+    			String mono = monoWithCount.substring(0, monoWithCount.indexOf("("));
+    			String count = monoWithCount.substring(monoWithCount.indexOf("(")+1);
+    			if (mono.equalsIgnoreCase("methyl")) {
+    				mono = "Me";
+    			}
+    			if (mono.equalsIgnoreCase("phospho")) {
+    				mono = "P";
+    			}
+    			composition += mono + ":" + count + "|";
+    		}
+    		if (composition.endsWith("|"))
+    			composition = composition.substring(0, composition.length()-1);
+    		
+    		Composition compo = CompositionUtils.parse(composition);
+    		return compo;
+    	}
+    	
+    	return null;
+    }
+    
+    public static Composition getWurcsCompsitionFromCondensed (String sequence) throws DictionaryException, CompositionParseException {
+    	if (sequence != null) {
+    		
+    		String composition  = "";
+    		// split by numbers
+    		String splitRE = "(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)";
+    		String[] monoWithCountList = sequence.split(splitRE);
+    		boolean number = false;
+    		for (String item: monoWithCountList) {
+    			if (number) {
+    				composition += ":" + item + "|";
+    				number = false;
+    			} else {
+    				if (singleLetterMapping.get(item) != null)
+    					composition += singleLetterMapping.get(item);
+    				else {
+    					throw new CompositionParseException ("Unrecognized string " + item + " in the condenced sequence");
+    				}
+    				number = true;
+    			}
+    		}
+    		
+    		if (composition.endsWith("|"))
+    			composition = composition.substring(0, composition.length()-1);
+    		
+    		Composition compo = CompositionUtils.parse(composition);
+    		return compo;
+    	}
+    	
+    	return null;
+    }
+    
+    public static void main(String[] args) {
+		// test byonic export
+    	
+    	try {
+			Composition c = getWurcsCompsitionFromByonic("HexNac(2)dHex(1)");
+			System.out.println (c.toString());
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
+    	
+    	// test Juan's condensed sequence
+    	try {
+    		
+    		Composition c = getWurcsCompsitionFromCondensed("H2N2F1");
+			System.out.println (c.toString());
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
+	}
 }
