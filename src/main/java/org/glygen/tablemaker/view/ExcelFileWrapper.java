@@ -5,6 +5,7 @@ public class ExcelFileWrapper {
 	Integer sheetNumber = 1;
 	Integer columnNo = 1;
 	Integer startRow = 1;
+	String sheetName;
 	
 	public Integer getSheetNumber() {
 		return sheetNumber;
@@ -23,6 +24,12 @@ public class ExcelFileWrapper {
 	}
 	public void setStartRow(Integer rowNo) {
 		this.startRow = rowNo;
+	}
+	public String getSheetName() {
+		return sheetName;
+	}
+	public void setSheetName(String sheetName) {
+		this.sheetName = sheetName;
 	}
 	
 	

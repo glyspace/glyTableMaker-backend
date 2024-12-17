@@ -146,10 +146,18 @@ public class AsyncServiceImpl implements AsyncService {
 			if (excelParameters != null) {
 				if (excelParameters.getSheetNumber() != null) 
 					sheetNo = excelParameters.getSheetNumber()-1;   // 0 based index
+				else if (excelParameters.getSheetName() != null && !excelParameters.getSheetName().isEmpty()) {
+					sheetNo = workbook.getSheetIndex(excelParameters.getSheetName().trim());
+				}
 	 			if (excelParameters.getColumnNo() != null) 
 					columnNo = excelParameters.getColumnNo()-1;
 				if (excelParameters.getStartRow() != null) 
 					rowNo = excelParameters.getStartRow()-1;
+			}
+			
+			if (sheetNo == -1) {
+				errors.add(new UploadErrorEntity("-1", "Sheet name is invalid", null));
+				return CompletableFuture.failedFuture(new BatchUploadException("Sheet name is invalid.", errors));
 			}
 			Sheet sheet = workbook.getSheetAt(sheetNo);
 			Iterator<Row> rowIterator = sheet.iterator();

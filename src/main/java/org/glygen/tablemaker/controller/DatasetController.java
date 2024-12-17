@@ -787,16 +787,19 @@ public class DatasetController {
     					dv.getGlycoproteinData().add(row);
     				}
     			}
+    			
     			// calculate no of proteins
     			int noProteins = 0;
-    			String uniprotId = null;
-    			for (DatasetGlycoproteinMetadata meta : version.getGlycoproteinData()) {
-    				if (meta.getGlycoproteinColumn() != null && meta.getGlycoproteinColumn() == GlycoproteinColumns.UNIPROTID) {
-    					if (uniprotId == null || !meta.getValue().equals (uniprotId)) {
-    						uniprotId = meta.getValue();
-    						noProteins++;
-    					} 
-    				}
+    			if (version.getGlycoproteinData() != null) { 
+	    			String uniprotId = null;
+	    			for (DatasetGlycoproteinMetadata meta : version.getGlycoproteinData()) {
+	    				if (meta.getGlycoproteinColumn() != null && meta.getGlycoproteinColumn() == GlycoproteinColumns.UNIPROTID) {
+	    					if (uniprotId == null || !meta.getValue().equals (uniprotId)) {
+	    						uniprotId = meta.getValue();
+	    						noProteins++;
+	    					} 
+	    				}
+	    			}
     			}
     			dv.setNoProteins(noProteins);
     			if (version.getPublications() != null) dv.setPublications(new ArrayList<>(version.getPublications()));
