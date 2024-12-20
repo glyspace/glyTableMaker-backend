@@ -14,12 +14,10 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
-
-import javax.imageio.ImageIO;
-
-import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
+
+import javax.imageio.ImageIO;
 
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.glygen.tablemaker.config.NamespaceHandler;
@@ -41,7 +39,6 @@ import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.Namespace;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
-import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.service.EmailManager;
@@ -59,7 +56,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -84,6 +80,7 @@ import jakarta.validation.Valid;
 public class UtilityController {
 	
 	private static final String m_strPubmedURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=xml&id=";
+	private static final String m_strDOIURL="https://doi.org/";
 	
 	static Logger logger = org.slf4j.LoggerFactory.getLogger(UtilityController.class);
 	
@@ -129,8 +126,8 @@ public class UtilityController {
 			@ApiResponse(responseCode="200", description="Return the namespaces"), 
             @ApiResponse(responseCode="500", description="Internal Server Error")
 	})
-    public ResponseEntity<SuccessResponse> getNamespaces() {
-		return new ResponseEntity<> (new SuccessResponse (namespaceRepository.findAll(), "namespace list retrieved"), HttpStatus.OK);
+    public ResponseEntity<SuccessResponse<List<Namespace>>> getNamespaces() {
+		return new ResponseEntity<> (new SuccessResponse<List<Namespace>> (namespaceRepository.findAll(), "namespace list retrieved"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Get glycan registration status options")
@@ -140,7 +137,7 @@ public class UtilityController {
             @ApiResponse(responseCode="500", description="Internal Server Error")
 	})
     public ResponseEntity<SuccessResponse> getRegistrationStatusList() {
-		return new ResponseEntity<> (new SuccessResponse (RegistrationStatus.values(), "registration status list retrieved"), HttpStatus.OK);
+		return new ResponseEntity<> (new SuccessResponse<> (RegistrationStatus.values(), "registration status list retrieved"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Get glycan related columns for tablemaker")
@@ -149,7 +146,7 @@ public class UtilityController {
 			@ApiResponse(responseCode="200", description="Return available glycan columns"), 
             @ApiResponse(responseCode="500", description="Internal Server Error")
 	})
-    public ResponseEntity<SuccessResponse> getGlycanMetadata() {
+    public ResponseEntity<SuccessResponse<List<Datatype>>> getGlycanMetadata() {
 		List<Datatype> datatypes = new ArrayList<>();
 		Long i = -1L;
 		for (GlycanColumns col: GlycanColumns.values()) {
@@ -160,7 +157,7 @@ public class UtilityController {
 			datatypes.add(type);
 		}
 		
-		return new ResponseEntity<> (new SuccessResponse (datatypes, "glycan metadata list retrieved"), HttpStatus.OK);
+		return new ResponseEntity<> (new SuccessResponse<List<Datatype>> (datatypes, "glycan metadata list retrieved"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Get glycoprotein related columns for tablemaker")
@@ -169,7 +166,7 @@ public class UtilityController {
 			@ApiResponse(responseCode="200", description="Return available glycoprotein columns"), 
             @ApiResponse(responseCode="500", description="Internal Server Error")
 	})
-    public ResponseEntity<SuccessResponse> getGlycoproteinMetadata() {
+    public ResponseEntity<SuccessResponse<List<Datatype>>> getGlycoproteinMetadata() {
 		List<Datatype> datatypes = new ArrayList<>();
 		Long i = -1L;
 		for (GlycoproteinColumns col: GlycoproteinColumns.values()) {
@@ -180,7 +177,7 @@ public class UtilityController {
 			datatypes.add(type);
 		}
 		
-		return new ResponseEntity<> (new SuccessResponse (datatypes, "glycoprotein metadata list retrieved"), HttpStatus.OK);
+		return new ResponseEntity<> (new SuccessResponse<List<Datatype>> (datatypes, "glycoprotein metadata list retrieved"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "Retrieve type ahead suggestions")
@@ -190,7 +187,7 @@ public class UtilityController {
             @ApiResponse(responseCode="400", description="Invalid request, validation error"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> getTypeAheadSuggestions (
+    public ResponseEntity<SuccessResponse<List<String>>> getTypeAheadSuggestions (
             @Parameter(required=true, description="Name of the namespace to retrieve matches ")
             @RequestParam("namespace")
             String namespace, 
@@ -215,7 +212,7 @@ public class UtilityController {
             	logger.warn ("namespace file cannot be located: " + entity.getNamespaceId());
             }
         } 
-        return new ResponseEntity<SuccessResponse>(new SuccessResponse(suggestions, "Suggestion found"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<List<String>>(suggestions, "Suggestion found"), HttpStatus.OK);
     }
 	
 	@Operation(summary = "Retrieve canonical forms for given metadata")
@@ -225,7 +222,7 @@ public class UtilityController {
             @ApiResponse(responseCode="400", description="Invalid request, validation error"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> getCanonicalForm ( 
+    public ResponseEntity<SuccessResponse<List<NamespaceEntry>>> getCanonicalForm ( 
     		@Parameter(required=true, description="Name of the namespace to retrieve matches ")
     		@RequestParam("namespace")
     		String namespace, 
@@ -254,7 +251,7 @@ public class UtilityController {
 			
         }
 		
-		return new ResponseEntity<SuccessResponse>(new SuccessResponse(matches, "Canonical forms are returned, if any"), HttpStatus.OK);
+		return new ResponseEntity<>(new SuccessResponse<List<NamespaceEntry>>(matches, "Canonical forms are returned, if any"), HttpStatus.OK);
 		
 	}
 	
@@ -265,13 +262,11 @@ public class UtilityController {
             @ApiResponse(responseCode="400", description="Invalid request, validation error"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> getAllCanonicalForms ( 
+    public ResponseEntity<SuccessResponse<List<Metadata>>> getAllCanonicalForms ( 
     		@RequestBody List<Metadata> metadata) {
 		getCanonicalForm(namespaceRepository, metadata);
-		return new ResponseEntity<SuccessResponse>(new SuccessResponse(metadata, "Canonical forms are replaced"), HttpStatus.OK);
+		return new ResponseEntity<>(new SuccessResponse<List<Metadata>>(metadata, "Canonical forms are replaced"), HttpStatus.OK);
 	}
-		
-	
 	
     public static void getCanonicalForm (NamespaceRepository namespaceRepository, Collection<Metadata> metadata) {
 		for (Metadata meta: metadata) {
@@ -333,7 +328,7 @@ public class UtilityController {
     
     @Operation(summary = "Check metadata validity")
     @PostMapping("/ismetadatavalid")
-	public ResponseEntity<SuccessResponse> isMetadataValueValid (@Valid @RequestBody Metadata meta) {
+	public ResponseEntity<SuccessResponse<Boolean>> isMetadataValueValid (@Valid @RequestBody Metadata meta) {
 		// check if the metadata value is valid based on its namespace
 		boolean valid = true;
 		String detailMessage = "valid";
@@ -364,7 +359,37 @@ public class UtilityController {
 					String[] parts = meta.getValue().substring (meta.getValue().lastIndexOf(":")+1).split("/");
 					if (parts.length < 2) {
 						valid = false;
-						detailMessage = "Value must be a PMID or a DOI";
+						detailMessage = "DOID is not valid. Example formats are 10.3390/cimb45110575 or doi:10.3390/cimb45110575 or https://doi.org/10.3390/cimb45110575";
+					} else {
+						try {
+							valid = checkDOI(m_strDOIURL + meta.getValue().substring (meta.getValue().lastIndexOf(":")+1));
+							if (!valid) {
+								detailMessage = "DOID is not valid. Example formats are 10.3390/cimb45110575 or doi:10.3390/cimb45110575 or https://doi.org/10.3390/cimb45110575";
+							}
+						} catch (Exception e) {
+							valid = false;
+							detailMessage = "DOI " + meta.getValue() + " cannot be found";
+						}
+					}
+				} else if (meta.getValue().toLowerCase().contains("doi.org")) {
+					try {
+						valid = checkDOI (meta.getValue());
+						if (!valid) {
+							detailMessage = "DOID is not valid. Example formats are 10.3390/cimb45110575 or doi:10.3390/cimb45110575 or https://doi.org/10.3390/cimb45110575";
+						}
+					} catch (Exception e) {
+						valid = false;
+						detailMessage = "DOI " + meta.getValue() + " cannot be found";
+					}
+				} else if (meta.getValue().toLowerCase().contains("/") && Character.isDigit(meta.getValue().charAt(0))) {
+					try {	
+						valid = checkDOI(m_strDOIURL + meta.getValue());
+						if (!valid) {
+							detailMessage = "DOID is not valid. Example formats are 10.3390/cimb45110575 or doi:10.3390/cimb45110575 or https://doi.org/10.3390/cimb45110575";
+						}
+					} catch (Exception e) {
+						valid = false;
+						detailMessage = "DOI " + meta.getValue() + " cannot be found";
 					} 
 				} else {  //PMID
 					try {
@@ -372,11 +397,14 @@ public class UtilityController {
 						// check against pubmed
 						valid = checkPubMed(pmid);
 						if (!valid) {
-							detailMessage = "PMID cannot be found in PubMed";
+							detailMessage = "PMID " + meta.getValue() + " cannot be found in PubMed";
 						}
+					} catch (NumberFormatException e) {
+						valid = false;
+						detailMessage = "PMID must be an integer";
 					} catch (Exception e) {
 						valid = false;
-						detailMessage = "Value must be a PMID or a DOI";
+						detailMessage = "Pubmed check failed. Reason: " + e.getMessage();
 				}
 				}
 			} else if (namespace.getName().equals ("Boolean")) {
@@ -414,7 +442,7 @@ public class UtilityController {
 			}
 		}
 		
-		return new ResponseEntity<>(new SuccessResponse(valid, detailMessage), HttpStatus.OK);
+		return new ResponseEntity<>(new SuccessResponse<Boolean>(valid, detailMessage), HttpStatus.OK);
 	}
 	
 	boolean checkPubMed (Integer pmid) {
@@ -434,7 +462,25 @@ public class UtilityController {
 		} catch (IOException e) {
 			return false;
 		}
-		
+	}
+	
+	boolean checkDOI (String doid) {
+		try {
+			URL pubmedURL = new URL(doid);
+			URLConnection t_connection = pubmedURL.openConnection();
+	        t_connection.setUseCaches(false); 
+
+	        BufferedReader t_reader = new BufferedReader(new InputStreamReader(t_connection.getInputStream()));
+	        int t_count;
+	        StringBuilder t_result = new StringBuilder();
+	        while( (t_count = t_reader.read())!= -1 ) 
+	        {
+	            t_result.appendCodePoint(t_count);
+	        }
+	        return !t_result.isEmpty();
+		} catch (IOException e) {
+			return false;
+		}
 	}
 	
 	@Operation(summary = "Send the feedback about a page to the developers/administrators")
@@ -444,7 +490,7 @@ public class UtilityController {
             @ApiResponse(responseCode="400", description="Invalid request, validation error for arguments"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> saveFeedback (
+    public ResponseEntity<SuccessResponse<FeedbackEntity>> saveFeedback (
             @Parameter(required=true, description="feedback form") 
             @RequestBody @Valid FeedbackEntity feedback) {
         
@@ -469,7 +515,7 @@ public class UtilityController {
         }
         emailManager.sendFeedback(feedback, emails.toArray(new String[0]));
         
-        return new ResponseEntity<>(new SuccessResponse(feedback, "Feedback is sent"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<FeedbackEntity>(feedback, "Feedback is sent"), HttpStatus.OK);
     }
 	
 	@Operation(summary = "Retrieve publication details from Pubmed with the given pubmed id")
@@ -478,17 +524,15 @@ public class UtilityController {
             @ApiResponse(responseCode="404", description="Publication with given id does not exist"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> getPublicationDetails (
+    public ResponseEntity<SuccessResponse<Publication>> getPublicationDetails (
             @Parameter(required=true, description="pubmed id or doi number for the publication", example="111 or doi:10.14454/FXWS-0523") 
             @RequestParam("identifier") String identifier) {
         if (identifier == null) {
             throw new IllegalArgumentException("Invalid Input: Not a valid publication information");
         }
         
-        
-        
         try {
-        	return new ResponseEntity<>(new SuccessResponse(getPublication(identifier, publicationRepository), "Publication retrieved"), HttpStatus.OK);
+        	return new ResponseEntity<>(new SuccessResponse<Publication>(getPublication(identifier, publicationRepository), "Publication retrieved"), HttpStatus.OK);
         } catch (Exception e) {    
             throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Publication identifier is invalid");
         }
@@ -496,25 +540,34 @@ public class UtilityController {
 	
 	public static Publication getPublication (String identifier, PublicationRepository pubRepository) throws Exception {
 		
+		String doiid = null;
+		
 		if (identifier.toLowerCase().startsWith("doi:")) {
         	// retrieve by Doi number
-        	String doiid = identifier.toLowerCase().substring(identifier.toLowerCase().indexOf("doi:")+4);
-        	try {
-        		List<Publication> existing = pubRepository.findByDoiId(doiid);
-        		if (existing != null && existing.size() > 0) {
-        			return existing.get(0);
-        		}
-        		DTOPublication pub = new DOIUtil().getPublication(doiid);
-        		if (pub == null) {
-        			pub = new DTOPublication();
-        			pub.setDoiId(doiid);    // no other details can be retrieved
-        		}
-        		return getPublicationFrom(pub);
-            } catch (Exception e) {    
-            	logger.warn("DOI retrieval failed", e);
-                throw new IllegalArgumentException("Pubmed retrieval with DOI failed. Reason:" + e.getMessage());
-            }
-        } else {
+        	doiid = identifier.toLowerCase().substring(identifier.toLowerCase().indexOf("doi:")+4);	
+        } else if (identifier.toLowerCase().contains("doi.org")) {
+        	doiid = identifier.toLowerCase().substring(identifier.toLowerCase().indexOf("doi.org") + 8);
+        } else if (identifier.toLowerCase().contains("/") && Character.isDigit(identifier.charAt(0))) {
+        	doiid = identifier.toLowerCase();
+        }
+		
+		if (doiid != null) {
+			try {
+	    		List<Publication> existing = pubRepository.findByDoiId(doiid);
+	    		if (existing != null && existing.size() > 0) {
+	    			return existing.get(0);
+	    		}
+	    		DTOPublication pub = new DOIUtil().getPublication(doiid);
+	    		if (pub == null) {
+	    			pub = new DTOPublication();
+	    			pub.setDoiId(doiid);    // no other details can be retrieved
+	    		}
+	    		return getPublicationFrom(pub);
+	        } catch (Exception e) {    
+	        	logger.warn("DOI retrieval failed", e);
+	            throw new IllegalArgumentException("DOI retrieval failed. Reason:" + e.getMessage());
+	        }
+		} else {
         	try {
         		Integer pubmedid = Integer.parseInt(identifier);
         		PubmedUtil util = new PubmedUtil();
@@ -560,9 +613,9 @@ public class UtilityController {
     @RequestMapping(value="/licenses", method=RequestMethod.GET, 
             produces={"application/json"})
     @ApiResponses(value= {@ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> getLicenses(){
+    public ResponseEntity<SuccessResponse<List<License>>> getLicenses(){
         List<License> allLicenses = licenseRepository.findAll();
-		return new ResponseEntity<>(new SuccessResponse(allLicenses, "Licenses retrieved"), HttpStatus.OK);   
+		return new ResponseEntity<>(new SuccessResponse<List<License>>(allLicenses, "Licenses retrieved"), HttpStatus.OK);   
     }
 	
 	@RequestMapping(value="/getstatistics", method=RequestMethod.GET)
@@ -571,7 +624,7 @@ public class UtilityController {
             @Content(mediaType = "application/json", schema = @Schema(implementation = StatisticsView.class))}), 
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> getStatistics () {
+    public ResponseEntity<SuccessResponse<StatisticsView>> getStatistics () {
         StatisticsView stats = new StatisticsView();
         stats.setUserCount(userRepository.count());
         stats.setDatasetCount(datasetRepository.count());
@@ -580,7 +633,7 @@ public class UtilityController {
         stats.setNewGlycanCount(
         		glycanRepository.countByStatus(RegistrationStatus.NEWLY_REGISTERED) + 
         		glycanRepository.countByStatus(RegistrationStatus.NEWLY_SUBMITTED_FOR_REGISTRATION));
-        return new ResponseEntity<>(new SuccessResponse(stats, "Statistics retrieved"), HttpStatus.OK); 
+        return new ResponseEntity<>(new SuccessResponse<StatisticsView>(stats, "Statistics retrieved"), HttpStatus.OK); 
     }
 	
 	@Operation(summary="Retrieving all funding organizations from the repository", security = { @SecurityRequirement(name = "bearer-key") })
@@ -591,7 +644,7 @@ public class UtilityController {
             @ApiResponse(responseCode="403", description="Not enough privileges to retrieve funding organizations"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> getFundingOrganizations(){
+    public ResponseEntity<SuccessResponse<Set<String>>> getFundingOrganizations(){
         Set<String> orgs = new HashSet<String>();
         orgs.add("NIH");
         orgs.add("FDA");
@@ -601,7 +654,7 @@ public class UtilityController {
         if (!orgs.contains("Other")) {
             orgs.add("Other");
         }
-        return new ResponseEntity<>(new SuccessResponse(orgs, "Funding organizations retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<Set<String>>(orgs, "Funding organizations retrieved"), HttpStatus.OK);
     }
 	
 	@Operation(summary = "Retrieve cartoon image for the glycan with the given glytoucan id")
@@ -610,14 +663,14 @@ public class UtilityController {
             @ApiResponse(responseCode="404", description="Image for the given glytoucan id  does not exist"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> getCartoon (
+    public ResponseEntity<SuccessResponse<byte[]>> getCartoon (
             @Parameter(required=true, description="GlyTouCan Id for the glycan") 
             @RequestParam("glytoucanId") String glytoucanId) {
         if (glytoucanId == null) {
             throw new IllegalArgumentException("Invalid Input: Not a valid glytoucan id");
         }
 
-        return new ResponseEntity<>(new SuccessResponse(getCartoon (glytoucanId), "Cartoon retrieved"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<byte[]>(getCartoon (glytoucanId, glycanImageRepository, imageLocation), "Cartoon retrieved"), HttpStatus.OK);
     }
 	
 	public static byte[] getCartoon (String glytoucanId, GlycanImageRepository glycanImageRepository, String imageLocation) {
@@ -671,7 +724,7 @@ public class UtilityController {
             @ApiResponse(responseCode="404", description="Sequence with given id does not exist"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse> getSequenceFromUniProt (
+    public ResponseEntity<SuccessResponse<GlycoproteinView>> getSequenceFromUniProt (
             @Parameter(required=true, description="uniprotid such as P12345") 
             @PathVariable("uniprotid") String uniprotId) {
         if (uniprotId == null || uniprotId.trim().isEmpty()) {
@@ -684,7 +737,7 @@ public class UtilityController {
             }
             protein.setSites(new ArrayList<>());
             protein.setTags(new ArrayList<>());
-            return new ResponseEntity<>(new SuccessResponse(protein, "Protein retrieved"), HttpStatus.OK);
+            return new ResponseEntity<>(new SuccessResponse<GlycoproteinView>(protein, "Protein retrieved"), HttpStatus.OK);
         } catch (Exception e) {
             logger.error("Could not retrieve from uniprot", e);
             throw new EntityNotFoundException("protein with the given UniProt ID " + uniprotId  + " cannot be found", e);
