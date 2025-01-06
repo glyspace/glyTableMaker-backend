@@ -17,6 +17,7 @@ public interface GlycoproteinRepository extends JpaRepository<Glycoprotein, Long
     public Page<Glycoprotein> findAll(Specification<Glycoprotein> spec, Pageable pageable);
     
     public List<Glycoprotein> findAllByUniprotIdAndUser (String uniprotId, UserEntity user);
+    public List<Glycoprotein> findAllByNameAndUser (String name, UserEntity user);
     public Glycoprotein findByIdAndUser (Long id, UserEntity user);
     
     @Query("SELECT DISTINCT g.uniprotId FROM Glycoprotein g")

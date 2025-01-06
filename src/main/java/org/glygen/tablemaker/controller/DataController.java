@@ -1681,6 +1681,14 @@ public class DataController {
     	if (existing.size() > 0) {
     		throw new DuplicateException("A glycoprotein with this uniprot id already exists! ");
     	}*/
+        
+        if (gp.getName() != null && !gp.getName().isEmpty()) {
+        	 // check if duplicate
+        	List<Glycoprotein> existing = glycoproteinRepository.findAllByNameAndUser(gp.getName(), user);
+        	if (existing.size() > 0) {
+        		throw new DuplicateException("A glycoprotein with this name already exists! ");
+        	}
+        }
     	
     	Glycoprotein glycoprotein = new Glycoprotein();
     	glycoprotein.setName(gp.getName());
