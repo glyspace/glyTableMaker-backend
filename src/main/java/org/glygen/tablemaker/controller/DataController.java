@@ -1425,14 +1425,16 @@ public class DataController {
             parseAndRegisterGlycan(glycan, g, glycanRepository, user);
         } else { // composition
             try {
-                Composition compo = CompositionUtils.parse(g.getComposition().trim());
+                
                 String strWURCS = null;
                 switch (compositionType) {
                 case BASE:
+                	Composition compo = CompositionUtils.parse(g.getComposition().trim());
                 	strWURCS = CompositionConverter.toWURCS(compo);
                 	strWURCS = toUnknownForm(strWURCS);
                 	break;
                 case GLYGEN:
+                	compo = CompositionUtils.parse(g.getComposition().trim());
                 	SugarToWURCSGraph t_s2w = new SugarToWURCSGraph();
         			try {
         				Sugar sugar = CompositionConverter.toSugar(compo);
@@ -1455,8 +1457,19 @@ public class DataController {
         			}
                 	break;
                 case DEFINED:
+                	compo = CompositionUtils.parse(g.getComposition().trim());
                 	strWURCS = CompositionConverter.toWURCS(compo);
                 	break;
+				case BYONIC:
+					compo = SequenceUtils.getWurcsCompsitionFromByonic(g.getComposition().trim());
+					strWURCS = CompositionConverter.toWURCS(compo);
+					break;
+				case COMPACT:
+					compo = SequenceUtils.getWurcsCompsitionFromCondensed(g.getComposition().trim());
+					strWURCS = CompositionConverter.toWURCS(compo);
+					break;
+				default:
+					break;
                 }
                 glycan.setWurcs(strWURCS);
                 // recode the sequence
