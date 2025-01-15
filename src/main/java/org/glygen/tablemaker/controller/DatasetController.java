@@ -246,6 +246,38 @@ public class DatasetController {
         return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
     }
 	
+	@SuppressWarnings("unchecked")
+	@Operation(summary = "Get collections for dataset", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getcocs")
+    public ResponseEntity<SuccessResponse> getCoCs(
+            @RequestParam("start")
+            Integer start, 
+            @RequestParam("size")
+            Integer size,
+            @RequestParam("filters")
+            String filters,
+            @RequestParam("globalFilter")
+            String globalFilter,
+            @RequestParam("sorting")
+            String sorting) {
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+      
+        Map<String, Object> response = DataController.getCollectionsoOfCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, sorting);
+        List<CollectionView> collections = (List<CollectionView>) response.get("objects");
+        
+        //populate errors/warnings
+        for (CollectionView col: collections) {
+        	getErrorsForCollection(col);
+        }
+        
+        return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
+    }
+	
 	@Operation(summary = "Publish dataset", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/publishdataset")
     public ResponseEntity<SuccessResponse<DatasetView>> publishDataset(@Valid @RequestBody DatasetInputView d) throws MethodArgumentNotValidException {
@@ -812,8 +844,6 @@ public class DatasetController {
 	}
 
 	public void getErrorsForCollection(CollectionView cv) {
-		List<DatasetError> errorList = new ArrayList<>();
-		List<DatasetError> warningList = new ArrayList<>();
 		
 		Long templateId = cv.getType() == null || cv.getType() == CollectionType.GLYCAN ? 1L : 2L;
 				
@@ -835,6 +865,25 @@ public class DatasetController {
 		Collection collection = collectionHandle.get();
 		TableMakerTemplate template = glygenTemplate.get();
 		DatatypeCategory glygenCategory = glygenCatHandle.get();
+		
+		if (cv.getChildren() == null || cv.getChildren().isEmpty()) {
+			getErrorsForCollection(cv, collection, template, glygenCategory);
+		} else {  //CoC
+			for (CollectionView colV: cv.getChildren()) {
+				for (Collection col: collection.getCollections()) {
+					if (colV.getCollectionId().equals(col.getCollectionId())) {
+						getErrorsForCollection(colV, col, template, glygenCategory);
+						break;
+					}
+				}
+			}
+		}
+	}
+		
+		
+	void getErrorsForCollection (CollectionView cv, Collection collection, TableMakerTemplate template, DatatypeCategory glygenCategory) {
+		List<DatasetError> errorList = new ArrayList<>();
+		List<DatasetError> warningList = new ArrayList<>();
 		for (TableColumn col: template.getColumns()) {
 			if (col.getGlycanColumn() != null) {
 				switch (col.getGlycanColumn()) {
