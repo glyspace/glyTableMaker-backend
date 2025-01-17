@@ -7,6 +7,8 @@ public class SiteView {
 	SitePosition position;
 	GlycoproteinSiteType type;
 	java.util.Collection<GlycanInSiteView> glycans;
+	String glycosylationType;
+	String glycosylationSubType;
 	
 	public SitePosition getPosition() {
 		return position;
@@ -25,6 +27,18 @@ public class SiteView {
 	}
 	public void setGlycans(java.util.Collection<GlycanInSiteView> glycans) {
 		this.glycans = glycans;
+	}
+	public String getGlycosylationType() {
+		return glycosylationType;
+	}
+	public void setGlycosylationType(String glycosylationType) {
+		this.glycosylationType = glycosylationType;
+	}
+	public String getGlycosylationSubType() {
+		return glycosylationSubType;
+	}
+	public void setGlycosylationSubType(String glycosylationSubType) {
+		this.glycosylationSubType = glycosylationSubType;
 	}
 
 }

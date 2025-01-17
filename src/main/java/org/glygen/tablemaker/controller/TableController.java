@@ -349,14 +349,16 @@ public class TableController {
 										}
 										break;
 									case GLYTOUCANID:
-										if (g.getGlycan().getGlytoucanID() == null && col.getDefaultValue() != null) {
-											row[i] = col.getDefaultValue();
-										} else if (g.getGlycan().getGlytoucanID() != null){
-											row[i] = g.getGlycan().getGlytoucanID();
-										} else {
-											// warning
-											report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in protein " + gp.getGlycoprotein().getName() + " in collection " + c.getName() + " does not have a value for GlytoucanID. Column is left empty!");
-											row[i] = "";
+										if (g.getGlycan() != null) {
+											if (g.getGlycan().getGlytoucanID() == null && col.getDefaultValue() != null) {
+												row[i] = col.getDefaultValue();
+											} else if (g.getGlycan().getGlytoucanID() != null){
+												row[i] = g.getGlycan().getGlytoucanID();
+											} else {
+												// warning
+												report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in protein " + gp.getGlycoprotein().getName() + " in collection " + c.getName() + " does not have a value for GlytoucanID. Column is left empty!");
+												row[i] = "";
+											}
 										}
 										break;
 									case SITE:

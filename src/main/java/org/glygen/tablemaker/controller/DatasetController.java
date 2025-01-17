@@ -382,7 +382,7 @@ public class DatasetController {
 		            		dm.setRowId(collection.getCollectionId() + "-"
 		            				+ gp.getGlycoprotein().getId() 
 		            				+ "-" + s.getSiteId() 
-		            				+ "-" + g.getGlycan().getGlycanId());
+		            				+ "-" + g.getGlycan() != null ? "" + g.getGlycan().getGlycanId() : "");
 		            		if (col.getProteinColumn() != null) {
 		            			switch (col.getProteinColumn()) {
 								case AMINOACID:
@@ -399,7 +399,8 @@ public class DatasetController {
 									break;
 								case GLYTOUCANID:
 									dm.setGlycoproteinColumn(col.getProteinColumn());
-		        					dm.setValue(g.getGlycan().getGlytoucanID());
+									if (g.getGlycan() != null)
+										dm.setValue(g.getGlycan().getGlytoucanID());
 									break;
 								case SITE:
 									dm.setGlycoproteinColumn(col.getProteinColumn());
@@ -938,7 +939,7 @@ public class DatasetController {
 					for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
 						for (Site s: gp.getGlycoprotein().getSites()) {
 							for (GlycanInSite g: s.getGlycans()) {
-								if (g.getGlycan().getGlytoucanID() == null) {
+								if (g.getGlycan() != null && g.getGlycan().getGlytoucanID() == null) {
 									// error
 									errorList.add(new DatasetError("Glycan " + g.getGlycan().getGlycanId() + " in a glycoprotein in collection " + col.getName() + " does not have a value for GlytoucanID.", 1));
 								}

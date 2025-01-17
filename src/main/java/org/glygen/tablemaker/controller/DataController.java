@@ -796,14 +796,16 @@ public class DataController {
     			for (Site s: p.getSites()) {
     				for (GlycanInSite gic: s.getGlycans()) {
     	        		Glycan g = gic.getGlycan();
-    	        		g.setGlycanCollections(null);
-    	        		g.setSites(null);
-    	        		try {
-    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-    	                } catch (DataNotFoundException e) {
-    	                    // ignore
-    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
-    	                }
+    	        		if (g != null) {
+	    	        		g.setGlycanCollections(null);
+	    	        		g.setSites(null);
+	    	        		try {
+	    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+	    	                } catch (DataNotFoundException e) {
+	    	                    // ignore
+	    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
+	    	                }
+    	        		}
     	        	}
     			}
     			cv.getGlycoproteins().add(p);
@@ -1728,7 +1730,7 @@ public class DataController {
     			s.setGlycoprotein(glycoprotein);
     			s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
     			s.setGlycans(new ArrayList<>());
-    			if (sv.getGlycans() != null) {
+    			if (sv.getGlycans() != null && !sv.getGlycans().isEmpty()) {
     				for (GlycanInSiteView gv: sv.getGlycans()) {
     					GlycanInSite g = new GlycanInSite();
     					g.setGlycan(gv.getGlycan());
@@ -1738,6 +1740,12 @@ public class DataController {
     					g.setType(gv.getType());
     					s.getGlycans().add(g);
     				}
+    			} else if (sv.getGlycosylationType() != null && !sv.getGlycosylationType().isEmpty()) {
+    				GlycanInSite g = new GlycanInSite();
+    				g.setGlycosylationSubType(sv.getGlycosylationSubType());
+    				g.setGlycosylationType(sv.getGlycosylationType());
+    				g.setSite (s);
+    				s.getGlycans().add(g);
     			}
     			glycoprotein.getSites().add(s);
     		}
