@@ -1754,7 +1754,28 @@ public class DataController {
     	return new ResponseEntity<>(new SuccessResponse<Glycoprotein>(saved, "glycoprotein added"), HttpStatus.OK);
     }
     
-    @Operation(summary = "update collection", security = { @SecurityRequirement(name = "bearer-key") })
+    @Operation(summary = "Get glycorotein by the given id", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getglycoprotein/{glycoproteinId}")
+    public ResponseEntity<SuccessResponse<GlycoproteinView>> getGlycoproteinById(
+    		@Parameter(required=true, description="id of the collection to be retrieved") 
+    		@PathVariable("glycoproteinId") Long glycoproteinId) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        Glycoprotein existing = glycoproteinRepository.findByIdAndUser(glycoproteinId, user);
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given glycoprotein " + glycoproteinId + " for the user");
+        }
+        
+        GlycoproteinView gv = new GlycoproteinView(existing);
+        
+        return new ResponseEntity<>(new SuccessResponse<GlycoproteinView>(gv, "glycoprotein retrieved"), HttpStatus.OK);
+    }
+
+	@Operation(summary = "update collection", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatecollection")
     public ResponseEntity<SuccessResponse<CollectionView>> updateCollection(@Valid @RequestBody CollectionView c) {
     	if (c.getCollectionId() == null) {
@@ -2004,6 +2025,99 @@ public class DataController {
     	Collection saved = collectionRepository.save(existing);
     	CollectionView cv = createCollectionView(saved, imageLocation);
     	return new ResponseEntity<>(new SuccessResponse<CollectionView>(cv, "collection of collections updated"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "update glycoprotein", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/updateglycoprotein")
+    public ResponseEntity<SuccessResponse<GlycoproteinView>> updateGlycoprotein(@Valid @RequestBody GlycoproteinView gv) {
+    	if (gv.getId() == null) {
+    		throw new IllegalArgumentException("collection id should be provided for update");
+    	}
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+    	Glycoprotein existing = glycoproteinRepository.findByIdAndUser(gv.getId(), user);
+    	if (existing == null) {
+    		throw new IllegalArgumentException("Glycoprotein (" + gv.getId() + ") to be updated cannot be found");
+    	}
+    	// check if name is a duplicate
+    	if (existing.getName() != null && gv.getName()!= null && !existing.getName().equalsIgnoreCase(gv.getName())) {   // changing the name
+	    	List<Glycoprotein> duplicate = glycoproteinRepository.findAllByNameAndUser (gv.getName(), user);
+	    	if (!duplicate.isEmpty()) {
+	    		throw new DuplicateException("Glycoprotein with name: " + gv.getName() + " already exists! Pick a different name");
+	    	}
+    	}
+    	existing.setName(gv.getName());
+    	
+    	if (existing.getSites() == null) {
+    		existing.setSites(new ArrayList<>());
+    	}
+    	
+    	if (gv.getSites() == null || gv.getSites().isEmpty()) {
+    		existing.getSites().clear();
+    	} else {
+	    	// remove collections as necessary
+    		List<Site> toBeRemoved = new ArrayList<>();
+	    	for (Site site: existing.getSites()) {
+	    		boolean found = false;
+	    		for (SiteView col: gv.getSites()) {
+	    			if (site.getSiteId().equals(col.getSiteId())) {
+	    				// keep it
+	    				found = true;
+	    			}
+	    		}
+	    		if (!found) {
+	    			toBeRemoved.add(site);
+	    		}
+	    	}
+	    	existing.getSites().removeAll(toBeRemoved);
+    	}
+    	
+    	if (gv.getSites() != null && !gv.getSites().isEmpty()) {
+    		// check if this collection already exists in the collection
+    		for (SiteView sv: gv.getSites()) {
+    			boolean exists = false;
+    			for (Site col: existing.getSites()) {
+        			if (col.getSiteId().equals(sv.getSiteId())) {
+        				exists = true;
+        				break;
+        			}
+        		}
+    			if (!exists) {
+    				Site s = new Site();
+        			s.setType(sv.getType());
+        			s.setGlycoprotein(existing);
+        			s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
+        			s.setGlycans(new ArrayList<>());
+        			if (sv.getGlycans() != null && !sv.getGlycans().isEmpty()) {
+        				for (GlycanInSiteView giv: sv.getGlycans()) {
+        					GlycanInSite g = new GlycanInSite();
+        					g.setGlycan(giv.getGlycan());
+        					g.setSite (s);
+        					g.setGlycosylationSubType(giv.getGlycosylationSubType());
+        					g.setGlycosylationType(giv.getGlycosylationType());
+        					g.setType(giv.getType());
+        					s.getGlycans().add(g);
+        				}
+        			} else if (sv.getGlycosylationType() != null && !sv.getGlycosylationType().isEmpty()) {
+        				GlycanInSite g = new GlycanInSite();
+        				g.setGlycosylationSubType(sv.getGlycosylationSubType());
+        				g.setGlycosylationType(sv.getGlycosylationType());
+        				g.setSite (s);
+        				s.getGlycans().add(g);
+        			}
+    				existing.getSites().add(s);
+    			}
+    		}
+    	}
+    	
+    	Glycoprotein saved = glycoproteinRepository.save(existing);
+    	GlycoproteinView giv = new GlycoproteinView(saved);
+    	return new ResponseEntity<>(new SuccessResponse<GlycoproteinView>(giv, "glycoprotein has been updated"), HttpStatus.OK);
+    	
     }
     
     @Operation(summary = "Add glycans from file", security = { @SecurityRequirement(name = "bearer-key") })

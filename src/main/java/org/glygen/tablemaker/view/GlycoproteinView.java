@@ -35,16 +35,22 @@ public class GlycoproteinView {
 			this.sites = new ArrayList<>();
 			for (Site s: p.getSites()) {
 				SiteView sv = new SiteView();
+				sv.setSiteId(s.getSiteId());
 				sv.setPosition(s.getPosition());
 				sv.setType(s.getType());
 				sv.setGlycans(new ArrayList<>());
 				for (GlycanInSite gc: s.getGlycans()) {
 					GlycanInSiteView gis = new GlycanInSiteView();
-					gis.setGlycan(gc.getGlycan());
-					gis.setGlycosylationSubType(gc.getGlycosylationSubType());
-					gis.setGlycosylationType(gc.getGlycosylationType());
-					gis.setType(gc.getType());
-					sv.getGlycans().add(gis);
+					if (gc.getGlycan() == null) {  // no glycans, only glycosylation types
+						sv.setGlycosylationType(gc.getGlycosylationType());
+						sv.setGlycosylationSubType(gc.getGlycosylationSubType());
+					} else {
+						gis.setGlycan(gc.getGlycan());
+						gis.setGlycosylationSubType(gc.getGlycosylationSubType());
+						gis.setGlycosylationType(gc.getGlycosylationType());
+						gis.setType(gc.getType());
+						sv.getGlycans().add(gis);
+					}
 				}
 				this.sites.add(sv);
 			}

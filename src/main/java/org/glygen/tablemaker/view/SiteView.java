@@ -4,6 +4,7 @@ import org.glygen.tablemaker.persistence.protein.GlycoproteinSiteType;
 import org.glygen.tablemaker.persistence.protein.SitePosition;
 
 public class SiteView {
+	Long siteId;
 	SitePosition position;
 	GlycoproteinSiteType type;
 	java.util.Collection<GlycanInSiteView> glycans;
@@ -39,6 +40,12 @@ public class SiteView {
 	}
 	public void setGlycosylationSubType(String glycosylationSubType) {
 		this.glycosylationSubType = glycosylationSubType;
+	}
+	public Long getSiteId() {
+		return siteId;
+	}
+	public void setSiteId(Long siteId) {
+		this.siteId = siteId;
 	}
 
 }
