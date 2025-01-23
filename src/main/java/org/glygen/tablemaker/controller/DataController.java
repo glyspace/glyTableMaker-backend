@@ -657,7 +657,7 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
         
-        Map<String, Object> response = getCollectionsoOfCollections(user, collectionRepository, sorting, start, size, filters, globalFilter, sorting);
+        Map<String, Object> response = getCollectionsoOfCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, sorting);
         
         return new ResponseEntity<>(new SuccessResponse(response, "collections of collections retrieved"), HttpStatus.OK);
     }
@@ -1385,8 +1385,13 @@ public class DataController {
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given collection of collections (" + collectionId + ") for the user");
         }
-        collectionRepository.deleteById(collectionId);
-        return new ResponseEntity<>(new SuccessResponse<Long>(collectionId, "Collection deleted successfully"), HttpStatus.OK);
+        
+        for (Collection child: existing.getCollections()) {
+        	collectionRepository.delete(child);
+        }
+        existing.getCollections().clear();
+        collectionRepository.delete(existing);
+        return new ResponseEntity<>(new SuccessResponse<Long>(collectionId, "Collection of collections deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Add glycan", security = { @SecurityRequirement(name = "bearer-key") })
