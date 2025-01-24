@@ -506,8 +506,6 @@ public class DataController {
         
         List<GlycoproteinView> glycoproteins = new ArrayList<>();
         for (Glycoprotein p: glycoproteinsInPage.getContent()) {
-        	GlycoproteinView view = new GlycoproteinView (p);
-        	glycoproteins.add(view);
         	if (p.getSites() != null) {
         		for (Site s: p.getSites()) {
         			if (s.getPositionString() != null) {
@@ -518,8 +516,24 @@ public class DataController {
 							logger.warn ("Position string is invalid: " + s.getPositionString());
 						}
         			}
+        			
+    				for (GlycanInSite gic: s.getGlycans()) {
+    	        		Glycan g = gic.getGlycan();
+    	        		if (g != null) {
+	    	        		g.setGlycanCollections(null);
+	    	        		g.setSites(null);
+	    	        		try {
+	    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+	    	                } catch (DataNotFoundException e) {
+	    	                    // ignore
+	    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
+	    	                }
+    	        		}
+    	        	}
         		}
         	}
+        	GlycoproteinView view = new GlycoproteinView (p);
+        	glycoproteins.add(view);
         }
         
         Map<String, Object> response = new HashMap<>();
@@ -1774,7 +1788,33 @@ public class DataController {
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given glycoprotein " + glycoproteinId + " for the user");
         }
-        
+         
+        if (existing.getSites() != null) {
+    		for (Site s: existing.getSites()) {
+    			if (s.getPositionString() != null) {
+    				ObjectMapper om = new ObjectMapper();
+    				try {
+						s.setPosition(om.readValue(s.getPositionString(), SitePosition.class));
+					} catch (JsonProcessingException e) {
+						logger.warn ("Position string is invalid: " + s.getPositionString());
+					}
+    			}
+    			
+				for (GlycanInSite gic: s.getGlycans()) {
+	        		Glycan g = gic.getGlycan();
+	        		if (g != null) {
+    	        		g.setGlycanCollections(null);
+    	        		g.setSites(null);
+    	        		try {
+    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+    	                } catch (DataNotFoundException e) {
+    	                    // ignore
+    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
+    	                }
+	        		}
+	        	}
+    		}
+    	}
         GlycoproteinView gv = new GlycoproteinView(existing);
         
         return new ResponseEntity<>(new SuccessResponse<GlycoproteinView>(gv, "glycoprotein retrieved"), HttpStatus.OK);
@@ -1803,6 +1843,9 @@ public class DataController {
 	    		throw new DuplicateException("Collection with name: " + c.getName() + " already exists! Pick a different name");
 	    	}
     	}
+    	
+    	if (existing.getType() == null)    // legacy data
+    		existing.setType(CollectionType.GLYCAN);
     	existing.setName(c.getName());
     	existing.setDescription(c.getDescription());
     	
