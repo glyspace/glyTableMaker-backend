@@ -1644,19 +1644,31 @@ public class DataController {
     	Collection saved = collectionRepository.save(collection);
     	
     	if (c.getMetadata() != null) {
+    		List<Metadata> metadataList = new ArrayList<>();
     		for (Metadata m: c.getMetadata()) {
-    			m.setCollection(saved);
-    			if (m.getValueUri() != null) {
+    			Metadata newMetadata = null;
+    			if (m.getMetadataId() != null) { // need to copy
+    				newMetadata = new Metadata();
+    				newMetadata.setType(m.getType());
+    				newMetadata.setValue(m.getValue());
+    				newMetadata.setValueId(m.getValueId());
+    				newMetadata.setValueUri(m.getValueUri());
+    			} else {
+    				newMetadata = m;
+    			}
+    			newMetadata.setCollection(saved);
+    			if (newMetadata.getValueUri() != null) {
 					// last part of the uri is the id, either ../../<id> or ../../id=<id>
-					if (m.getValueUri().contains("id=")) {
-						m.setValueId (m.getValueUri().substring(m.getValueUri().indexOf("id=")+3));
+					if (newMetadata.getValueUri().contains("id=")) {
+						newMetadata.setValueId (newMetadata.getValueUri().substring(newMetadata.getValueUri().indexOf("id=")+3));
 					} else {
-						m.setValueId (m.getValueUri().substring(m.getValueUri().lastIndexOf("/")+1));
+						newMetadata.setValueId (newMetadata.getValueUri().substring(newMetadata.getValueUri().lastIndexOf("/")+1));
 					}
 				}
+    			metadataList.add(newMetadata);
     			
     		}
-    		saved.setMetadata(c.getMetadata());
+    		saved.setMetadata(metadataList);
     		saved = collectionManager.saveCollectionWithMetadata(saved);
     	}
     	CollectionView sv = createCollectionView(saved, imageLocation);
