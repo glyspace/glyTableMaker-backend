@@ -247,13 +247,13 @@ public class DataController {
     public ResponseEntity<SuccessResponse> getGlycans(
             @RequestParam("start")
             Integer start, 
-            @RequestParam("size")
+            @RequestParam(required=false, value="size")
             Integer size,
-            @RequestParam("filters")
+            @RequestParam(required=false, value="filters")
             String filters,
-            @RequestParam("globalFilter")
+            @RequestParam(required=false, value="globalFilter")
             String globalFilter,
-            @RequestParam("sorting")
+            @RequestParam(required=false, value="sorting")
             String sorting) {
         // get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -262,6 +262,9 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
       
+        if (size == null) {   // get all
+        	size = Integer.MAX_VALUE;
+        }
         // parse filters and sorting
         ObjectMapper mapper = new ObjectMapper();
         List<Filter> filterList = null;
@@ -404,19 +407,23 @@ public class DataController {
     public ResponseEntity<SuccessResponse> getGlycoproteins(
             @RequestParam("start")
             Integer start, 
-            @RequestParam("size")
+            @RequestParam(required=false, value="size")
             Integer size,
-            @RequestParam("filters")
+            @RequestParam(required=false, value="filters")
             String filters,
-            @RequestParam("globalFilter")
+            @RequestParam(required=false, value="globalFilter")
             String globalFilter,
-            @RequestParam("sorting")
+            @RequestParam(required=false, value="sorting")
             String sorting) {
         // get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
         if (auth != null) { 
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        if (size == null) {   // get all
+        	size = Integer.MAX_VALUE;
         }
       
         // parse filters and sorting
