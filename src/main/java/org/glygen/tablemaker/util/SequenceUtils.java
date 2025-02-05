@@ -38,6 +38,7 @@ public class SequenceUtils {
 	static org.slf4j.Logger logger = LoggerFactory.getLogger(SequenceUtils.class);
 	
 	static Map<String, String> singleLetterMapping = new HashMap<>();
+	static Map<String, String> singleLetterExportMapping = new HashMap<>();
 	static List<SearchQueryItem> queryList = new ArrayList<>();	
 	
 	static {
@@ -61,6 +62,17 @@ public class SequenceUtils {
 		singleLetterMapping.put("Gd", "Fuc");
 		singleLetterMapping.put("Ge", "Fuc");
 		singleLetterMapping.put("HexAe", "Fuc");*/
+		
+		singleLetterExportMapping.put("Phosphate", "P");
+		singleLetterExportMapping.put("Pent", "X");
+		singleLetterExportMapping.put("Fuc", "F");
+		singleLetterExportMapping.put("dHex", "F");
+		singleLetterExportMapping.put("Hex", "H");
+		singleLetterExportMapping.put("HexA", "HexA");
+		singleLetterExportMapping.put("HexNAc", "N");
+		singleLetterExportMapping.put("NeuAC", "S");
+		singleLetterExportMapping.put("NeuGC", "G");
+		singleLetterExportMapping.put("KDN", "Kdn");
 		
 			
 		queryList.add(new SearchQueryItem("HexNAc", "RES\n"
@@ -338,7 +350,7 @@ public class SequenceUtils {
 						int count = counts.get(component);
 						if (count == 0)  // no need to report
 							continue;
-						String letter = findSingleLetterMapping(component);
+						String letter = singleLetterExportMapping.get(component);
 						if (letter == null) {
 							logger.warn("Cannot generate condensed string for sequence " +  glycan.getWurcs() + " . There is no mapping for " + component);
 							return "";
@@ -361,6 +373,8 @@ public class SequenceUtils {
     		if (entry.getValue().equalsIgnoreCase(component)) {
     			return entry.getKey();
     		}
+    		else if (component.equalsIgnoreCase("dHex"))
+    			return "F";
     	}
     	return null;
     }
