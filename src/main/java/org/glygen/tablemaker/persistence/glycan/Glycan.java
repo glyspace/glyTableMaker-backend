@@ -49,8 +49,10 @@ public class Glycan {
     java.util.Collection<GlycanInCollection> glycanCollections;
     java.util.Collection<GlycanInSite> sites;
     java.util.Collection<GlycanTag> tags;
-    byte[] cartoon;
     java.util.Collection<GlycanInFile> uploadFiles;
+    byte[] cartoon;
+    String condensedString;
+    String byonicString;
     
     /**
      * @return the glycanId
@@ -301,5 +303,21 @@ public class Glycan {
 	}
 	public void setSites(java.util.Collection<GlycanInSite> sites) {
 		this.sites = sites;
+	}
+	
+	@Transient
+	public String getCondensedString() {
+		return condensedString;
+	}
+	public void setCondensedString(String condensedString) {
+		this.condensedString = condensedString;
+	}
+	
+	@Transient
+	public String getByonicString() {
+		return byonicString;
+	}
+	public void setByonicString(String byonicString) {
+		this.byonicString = byonicString;
 	}
 }

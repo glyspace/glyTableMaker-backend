@@ -351,6 +351,9 @@ public class DataController {
         
         // retrieve cartoon images
         for (Glycan g: glycansInPage.getContent()) {
+        	// generate optional byonic and condensed composition strings
+        	g.setByonicString(SequenceUtils.generateByonicString(g));
+        	g.setCondensedString(SequenceUtils.generateCondensedString(g));
         	Optional<GlycanImageEntity> imageHandle = glycanImageRepository.findByGlycanId(g.getGlycanId());
         	if (!imageHandle.isPresent()) {
         		// create entry
@@ -529,6 +532,8 @@ public class DataController {
     	        		if (g != null) {
 	    	        		g.setGlycanCollections(null);
 	    	        		g.setSites(null);
+	    	        		g.setByonicString(SequenceUtils.generateByonicString(g));
+	    	            	g.setCondensedString(SequenceUtils.generateCondensedString(g));
 	    	        		try {
 	    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 	    	                } catch (DataNotFoundException e) {
@@ -801,6 +806,8 @@ public class DataController {
 		    		Glycan g = gic.getGlycan();
 		    		g.setGlycanCollections(null);
 		    		g.setSites(null);
+		    		g.setByonicString(SequenceUtils.generateByonicString(g));
+		        	g.setCondensedString(SequenceUtils.generateCondensedString(g));
 		    		try {
 		                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 		            } catch (DataNotFoundException e) {
@@ -820,6 +827,8 @@ public class DataController {
     	        		if (g != null) {
 	    	        		g.setGlycanCollections(null);
 	    	        		g.setSites(null);
+	    	        		g.setByonicString(SequenceUtils.generateByonicString(g));
+	    	            	g.setCondensedString(SequenceUtils.generateCondensedString(g));
 	    	        		try {
 	    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 	    	                } catch (DataNotFoundException e) {
@@ -1497,11 +1506,11 @@ public class DataController {
                 	strWURCS = CompositionConverter.toWURCS(compo);
                 	break;
 				case BYONIC:
-					compo = SequenceUtils.getWurcsCompsitionFromByonic(g.getComposition().trim());
+					compo = SequenceUtils.getWurcsCompositionFromByonic(g.getComposition().trim());
 					strWURCS = CompositionConverter.toWURCS(compo);
 					break;
 				case COMPACT:
-					compo = SequenceUtils.getWurcsCompsitionFromCondensed(g.getComposition().trim());
+					compo = SequenceUtils.getWurcsCompositionFromCondensed(g.getComposition().trim());
 					strWURCS = CompositionConverter.toWURCS(compo);
 					break;
 				default:
@@ -1824,6 +1833,8 @@ public class DataController {
 	        		if (g != null) {
     	        		g.setGlycanCollections(null);
     	        		g.setSites(null);
+    	        		g.setByonicString(SequenceUtils.generateByonicString(g));
+    	            	g.setCondensedString(SequenceUtils.generateCondensedString(g));
     	        		try {
     	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
     	                } catch (DataNotFoundException e) {
