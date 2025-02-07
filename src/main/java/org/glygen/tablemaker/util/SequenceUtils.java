@@ -42,17 +42,18 @@ public class SequenceUtils {
 	static List<SearchQueryItem> queryList = new ArrayList<>();	
 	
 	static {
-		singleLetterMapping.put("P", "P");
-		singleLetterMapping.put("X", "Pen");
+		// values should match WURCS composition list here: https://gitlab.com/glycoinfo/glycompconverter
+		singleLetterMapping.put("p", "P");
+		singleLetterMapping.put("P", "Pen");
 		singleLetterMapping.put("F", "Fuc");
 		singleLetterMapping.put("H", "Hex");
-		singleLetterMapping.put("HexA", "HexA");
-		singleLetterMapping.put("GlcA", "GlcA");
+		singleLetterMapping.put("A", "HexA");
 		singleLetterMapping.put("N", "HexNAc");
 		singleLetterMapping.put("G", "Neu5Gc");
 		singleLetterMapping.put("S", "Neu5Ac");
-		singleLetterMapping.put("Kdn", "Kdn");
+		singleLetterMapping.put("K", "Kdn");
 		singleLetterMapping.put("Sl", "NeuAcLac");
+		singleLetterMapping.put("s", "S");
 		
 		/*singleLetterMapping.put("Sa", "Fuc");
 		singleLetterMapping.put("Sm", "Fuc");
@@ -63,16 +64,20 @@ public class SequenceUtils {
 		singleLetterMapping.put("Ge", "Fuc");
 		singleLetterMapping.put("HexAe", "Fuc");*/
 		
-		singleLetterExportMapping.put("Phosphate", "P");
-		singleLetterExportMapping.put("Pent", "X");
+		// keys should match the the byonic queryList below, values should match the singleLetterMapping above
+		singleLetterExportMapping.put("Pent", "P");
 		singleLetterExportMapping.put("Fuc", "F");
 		singleLetterExportMapping.put("dHex", "F");
 		singleLetterExportMapping.put("Hex", "H");
-		singleLetterExportMapping.put("HexA", "HexA");
+		singleLetterExportMapping.put("HexA", "A");
 		singleLetterExportMapping.put("HexNAc", "N");
-		singleLetterExportMapping.put("NeuAC", "S");
-		singleLetterExportMapping.put("NeuGC", "G");
-		singleLetterExportMapping.put("KDN", "Kdn");
+		singleLetterExportMapping.put("NeuAc", "S");
+		singleLetterExportMapping.put("NeuGc", "G");
+		singleLetterExportMapping.put("Kdn", "K");
+		singleLetterExportMapping.put("Me", "m");
+		singleLetterExportMapping.put("Acetyl", "a");
+		singleLetterExportMapping.put("Phospo", "p");
+		singleLetterExportMapping.put("Sulfo", "s");
 		
 			
 		queryList.add(new SearchQueryItem("HexNAc", "RES\n"
@@ -85,17 +90,17 @@ public class SequenceUtils {
 				+ "2s:amino\n"
 				+ "LIN\n"
 				+ "1:1d(2+1)2n"));
-		queryList.add(new SearchQueryItem("NeuAC", "RES\n"
+		queryList.add(new SearchQueryItem("NeuAc", "RES\n"
 				+ "1b:x-dgro-dgal-NON-x:x|1:a|2:keto|3:d\n"
 				+ "2s:n-acetyl\n"
 				+ "LIN\n"
 				+ "1:1d(5+1)2n"));
-		queryList.add(new SearchQueryItem("NeuGC", "RES\n"
+		queryList.add(new SearchQueryItem("NeuGc", "RES\n"
 				+ "1b:x-dgro-dgal-NON-x:x|1:a|2:keto|3:d\n"
 				+ "2s:n-glycolyl\n"
 				+ "LIN\n"
 				+ "1:1d(5+1)2n"));
-		queryList.add(new SearchQueryItem("KDN", "RES\n"
+		queryList.add(new SearchQueryItem("Kdn", "RES\n"
 				+ "1b:x-dgro-dgal-NON-x:x|1:a|2:keto|3:d"));
 		queryList.add(new SearchQueryItem("dHex", "RES\n"
 				+ "1b:x-HEX-x:x|6:d"));
@@ -103,14 +108,15 @@ public class SequenceUtils {
 				+ "1b:x-HEX-x:x"));
 		queryList.add(new SearchQueryItem("Pent", "RES\n"
 				+ "1b:x-PEN-x:x"));
-		queryList.add(new SearchQueryItem("Methyl", "RES\n1s:methyl"));
+		queryList.add(new SearchQueryItem("Me", "RES\n1s:methyl"));
 		queryList.add(new SearchQueryItem("HexA", "RES\n" 
                 +  "1b:x-HEX-x:x|6:a"));
 		/*queryList.add(new SearchQueryItem("GlcA", "RES\n" 
                    +  "1b:x-dglc-HEX-1:5|6:a"));	
 	    queryList.add(new SearchQueryItem("IdoA", "RES\n1b:x-lido-HEX-1:5|6:a"));*/
-		queryList.add(new SearchQueryItem("Phosphate", "RES\n1s:phosphate"));
-		queryList.add(new SearchQueryItem("Sulfate", "RES\n1s:sulfate"));
+		queryList.add(new SearchQueryItem("Phospho", "RES\n1s:phosphate"));
+		queryList.add(new SearchQueryItem("Sulfo", "RES\n1s:sulfate"));
+		queryList.add(new SearchQueryItem("Acetyl", "RES\n1s:n-acetyl"));
 	}
 	
 /**	
@@ -319,7 +325,7 @@ public class SequenceUtils {
 							continue;
 						output += component +"("+ counts.get(component) + ")";
 					}
-					output += " % " + glycan.getMass();
+					//output += " % " + glycan.getMass();
 				} else {
 					logger.warn("Cannot generate byonic string for sequence " +  glycan.getWurcs() + ". Reason: no matches with the given compositions");
 				}
@@ -367,17 +373,7 @@ public class SequenceUtils {
 		return output;
     	
     }
-    
-    static String findSingleLetterMapping (String component) {
-    	for (Entry<String, String> entry: singleLetterMapping.entrySet()) {
-    		if (entry.getValue().equalsIgnoreCase(component)) {
-    			return entry.getKey();
-    		}
-    		else if (component.equalsIgnoreCase("dHex"))
-    			return "F";
-    	}
-    	return null;
-    }
+
     
     public static void main(String[] args) {
 		// test byonic export

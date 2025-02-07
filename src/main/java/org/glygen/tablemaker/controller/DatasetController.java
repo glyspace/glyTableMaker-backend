@@ -29,6 +29,7 @@ import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
+import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.protein.GlycanInSite;
@@ -41,6 +42,7 @@ import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.service.DatasetManager;
+import org.glygen.tablemaker.util.SequenceUtils;
 import org.glygen.tablemaker.view.CollectionView;
 import org.glygen.tablemaker.view.DatasetError;
 import org.glygen.tablemaker.view.DatasetInputView;
@@ -783,6 +785,10 @@ public class DatasetController {
     							try {
     								byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), imageRepository, imageLocation);
     								row.setCartoon(cartoon);
+    								Glycan g = new Glycan();
+    								g.setWurcs(SequenceUtils.getSequenceFromGlytoucan(col.getValue().trim()));
+    								row.setByonicString(SequenceUtils.generateByonicString(g));
+    								row.setCondensedString(SequenceUtils.generateCondensedString(g));
     							} catch (Exception e) {
     								logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
     							}
@@ -811,6 +817,10 @@ public class DatasetController {
     							try {
     								byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), imageRepository, imageLocation);
     								row.setCartoon(cartoon);
+    								Glycan g = new Glycan();
+    								g.setWurcs(SequenceUtils.getSequenceFromGlytoucan(col.getValue().trim()));
+    								row.setByonicString(SequenceUtils.generateByonicString(g));
+    								row.setCondensedString(SequenceUtils.generateCondensedString(g));
     							} catch (Exception e) {
     								logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
     							}
