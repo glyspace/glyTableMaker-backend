@@ -785,10 +785,10 @@ public class DatasetController {
     							try {
     								byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), imageRepository, imageLocation);
     								row.setCartoon(cartoon);
-    								Glycan g = new Glycan();
-    								g.setWurcs(SequenceUtils.getSequenceFromGlytoucan(col.getValue().trim()));
-    								row.setByonicString(SequenceUtils.generateByonicString(g));
-    								row.setCondensedString(SequenceUtils.generateCondensedString(g));
+    								//Glycan g = new Glycan();
+    								//g.setWurcs(SequenceUtils.getSequenceFromGlytoucan(col.getValue().trim()));
+    								//row.setByonicString(SequenceUtils.generateByonicString(g));
+    								//row.setCondensedString(SequenceUtils.generateCondensedString(g));
     							} catch (Exception e) {
     								logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
     							}
@@ -817,10 +817,10 @@ public class DatasetController {
     							try {
     								byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), imageRepository, imageLocation);
     								row.setCartoon(cartoon);
-    								Glycan g = new Glycan();
-    								g.setWurcs(SequenceUtils.getSequenceFromGlytoucan(col.getValue().trim()));
-    								row.setByonicString(SequenceUtils.generateByonicString(g));
-    								row.setCondensedString(SequenceUtils.generateCondensedString(g));
+    								//Glycan g = new Glycan();
+    								//g.setWurcs(SequenceUtils.getSequenceFromGlytoucan(col.getValue().trim()));
+    								//row.setByonicString(SequenceUtils.generateByonicString(g));
+    								//row.setCondensedString(SequenceUtils.generateCondensedString(g));
     							} catch (Exception e) {
     								logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
     							}
