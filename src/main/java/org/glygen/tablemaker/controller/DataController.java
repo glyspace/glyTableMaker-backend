@@ -352,8 +352,9 @@ public class DataController {
         // retrieve cartoon images
         for (Glycan g: glycansInPage.getContent()) {
         	// generate optional byonic and condensed composition strings
-        	g.setByonicString(SequenceUtils.generateByonicString(g));
-        	g.setCondensedString(SequenceUtils.generateCondensedString(g));
+        	SequenceUtils.addCompositionInformation(g);
+        	//g.setByonicString(SequenceUtils.generateByonicString(g));
+        	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
         	Optional<GlycanImageEntity> imageHandle = glycanImageRepository.findByGlycanId(g.getGlycanId());
         	if (!imageHandle.isPresent()) {
         		// create entry
@@ -532,8 +533,9 @@ public class DataController {
     	        		if (g != null) {
 	    	        		g.setGlycanCollections(null);
 	    	        		g.setSites(null);
-	    	        		g.setByonicString(SequenceUtils.generateByonicString(g));
-	    	            	g.setCondensedString(SequenceUtils.generateCondensedString(g));
+	    	        		SequenceUtils.addCompositionInformation(g);
+	    	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
+	    	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
 	    	        		try {
 	    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 	    	                } catch (DataNotFoundException e) {
@@ -806,8 +808,9 @@ public class DataController {
 		    		Glycan g = gic.getGlycan();
 		    		g.setGlycanCollections(null);
 		    		g.setSites(null);
-		    		g.setByonicString(SequenceUtils.generateByonicString(g));
-		        	g.setCondensedString(SequenceUtils.generateCondensedString(g));
+		    		SequenceUtils.addCompositionInformation(g);
+		    		//g.setByonicString(SequenceUtils.generateByonicString(g));
+		        	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
 		    		try {
 		                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 		            } catch (DataNotFoundException e) {
@@ -827,8 +830,9 @@ public class DataController {
     	        		if (g != null) {
 	    	        		g.setGlycanCollections(null);
 	    	        		g.setSites(null);
-	    	        		g.setByonicString(SequenceUtils.generateByonicString(g));
-	    	            	g.setCondensedString(SequenceUtils.generateCondensedString(g));
+	    	        		SequenceUtils.addCompositionInformation(g);
+	    	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
+	    	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
 	    	        		try {
 	    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 	    	                } catch (DataNotFoundException e) {
@@ -860,6 +864,7 @@ public class DataController {
 			        		Glycan g = gic.getGlycan();
 			        		g.setGlycanCollections(null);
 			        		g.setSites(null);
+			        		SequenceUtils.addCompositionInformation(g);
 			        		try {
 			                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 			                } catch (DataNotFoundException e) {
@@ -878,6 +883,7 @@ public class DataController {
 	        	        		Glycan g = gic.getGlycan();
 	        	        		g.setGlycanCollections(null);
 	        	        		g.setSites(null);
+	        	        		SequenceUtils.addCompositionInformation(g);
 	        	        		try {
 	        	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 	        	                } catch (DataNotFoundException e) {
@@ -1833,8 +1839,9 @@ public class DataController {
 	        		if (g != null) {
     	        		g.setGlycanCollections(null);
     	        		g.setSites(null);
-    	        		g.setByonicString(SequenceUtils.generateByonicString(g));
-    	            	g.setCondensedString(SequenceUtils.generateCondensedString(g));
+    	        		SequenceUtils.addCompositionInformation(g);
+    	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
+    	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
     	        		try {
     	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
     	                } catch (DataNotFoundException e) {
@@ -2006,6 +2013,17 @@ public class DataController {
     			for (Metadata metadata: existing.getMetadata()) {
         			if (metadata.getMetadataId() != null && metadata.getMetadataId().equals(m.getMetadataId())) {
         				exists = true;
+        				// update the value
+        				metadata.setValue(m.getValue());
+        				metadata.setValueUri(m.getValueUri());
+        				if (m.getValueUri() != null) {
+        					// last part of the uri is the id, either ../../<id> or ../../id=<id>
+        					if (m.getValueUri().contains("id=")) {
+        						metadata.setValueId (m.getValueUri().substring(m.getValueUri().indexOf("id=")+3));
+        					} else {
+        						metadata.setValueId (m.getValueUri().substring(m.getValueUri().lastIndexOf("/")+1));
+        					}
+        				}
         				break;
         			}
         		}

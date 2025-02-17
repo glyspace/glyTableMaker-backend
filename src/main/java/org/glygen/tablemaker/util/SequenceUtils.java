@@ -304,6 +304,52 @@ public class SequenceUtils {
     	return null;
     }
     
+    public static void addCompositionInformation (Glycan glycan) {
+    	String output = "";
+    	SugarImporterGlycoCTCondensed importer = new SugarImporterGlycoCTCondensed();
+		try {
+			Sugar sugar = null;
+			if (glycan.getWurcs() != null && !glycan.getWurcs().isEmpty()) {
+				sugar = GlytoucanUtil.getSugarFromWURCS(glycan.getWurcs());
+			}
+			else if (glycan.getGlycoCT() != null && !glycan.getGlycoCT().isEmpty()) {
+				sugar = importer.parse(glycan.getGlycoCT());
+			}
+			if (sugar != null) {
+				LinkedHashMap<String, Integer> counts = new LinkedHashMap<>();
+				boolean match = GlycanCompositionCountOperator.matchAndCountComposition(sugar, queryList, counts);
+				if (match) {
+					for (String component : counts.keySet()) {
+						int count = counts.get(component);
+						if (count == 0)  // no need to report
+							continue;
+						output += component +"("+ counts.get(component) + ")";
+					}
+					//output += " % " + glycan.getMass();
+					glycan.setByonicString(output);
+					
+					output = "";
+					for (String component : counts.keySet()) {
+						int count = counts.get(component);
+						if (count == 0)  // no need to report
+							continue;
+						String letter = singleLetterExportMapping.get(component);
+						if (letter == null) {
+							logger.warn("Cannot generate condensed string for sequence " +  glycan.getWurcs() + " . There is no mapping for " + component);
+						}
+						output += letter + counts.get(component);
+					}
+					glycan.setCondensedString(output);
+					
+				} else {
+					logger.warn("Cannot generate composition strings for sequence " +  glycan.getWurcs() + ". Reason: did not find a match for each component of the glycan with defined compositions in the system");
+				}
+			}
+		} catch (GlycanFilterException | IOException | SugarImporterException e) {
+			logger.warn("Cannot generate conmposition string for sequence " +  glycan.getWurcs() + ". Reason:" + e.getMessage());
+		}
+    }
+    
     public static String generateByonicString (Glycan glycan) {
     	String output = "";
     	SugarImporterGlycoCTCondensed importer = new SugarImporterGlycoCTCondensed();

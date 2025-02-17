@@ -8,8 +8,6 @@ public class GlygenProteinMetadataRow {
 	String rowId;
 	List<DatasetGlycoproteinMetadata> columns;
 	byte[] cartoon;
-	String byonicString;
-	String condensedString;
 	
 	public String getRowId() {
 		return rowId;
@@ -30,17 +28,5 @@ public class GlygenProteinMetadataRow {
 	
 	public void setCartoon(byte[] cartoon) {
 		this.cartoon = cartoon;
-	}
-	public String getByonicString() {
-		return byonicString;
-	}
-	public void setByonicString(String byonicString) {
-		this.byonicString = byonicString;
-	}
-	public String getCondensedString() {
-		return condensedString;
-	}
-	public void setCondensedString(String condensedString) {
-		this.condensedString = condensedString;
 	}
 }
