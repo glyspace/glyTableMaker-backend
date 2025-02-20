@@ -1,6 +1,7 @@
 package org.glygen.tablemaker.persistence.dao;
 
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 import org.glygen.tablemaker.view.Filter;
@@ -9,6 +10,7 @@ import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
@@ -41,5 +43,23 @@ public class GlycoproteinSpecification implements Specification<Glycoprotein> {
 	        return criteriaBuilder.like(gTags.get("label"), "%" + label + "%");
 	    };
 	}
+	
+	public static Specification<Glycoprotein> orderByTags(boolean asc) {
+        return new Specification<Glycoprotein>() {
+            @Override
+            public Predicate toPredicate(Root<Glycoprotein> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
+                // Join Glycan with GlycanTag
+                Join<Glycoprotein, GlycanTag> tagsJoin = root.join("tags", JoinType.LEFT);
+                
+                // Order by tag label
+                if (asc)
+                	query.orderBy(criteriaBuilder.asc(tagsJoin.get("label")));
+                else 
+                	query.orderBy(criteriaBuilder.desc(tagsJoin.get("label")));
+                
+                return criteriaBuilder.conjunction();
+            }
+        };
+    }
 
 }

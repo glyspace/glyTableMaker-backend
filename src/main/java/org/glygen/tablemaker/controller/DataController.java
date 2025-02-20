@@ -452,12 +452,19 @@ public class DataController {
         }
         List<Sorting> sortingList = null;
         List<Order> sortOrders = new ArrayList<>();
+        boolean orderByTags = false;
+        boolean asc = false;
         if (sorting != null && !sorting.equals("[]")) {
             try {
                 sortingList = mapper.readValue(sorting, 
                     new TypeReference<ArrayList<Sorting>>() {});
                 for (Sorting s: sortingList) {
-                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                	if (s.getId().equalsIgnoreCase("tags")) {
+                		orderByTags = true;
+                		asc = s.getDesc() ? false : true;
+                	} else {
+                		sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                	}
                 }
             } catch (JsonProcessingException e) {
                 throw new InternalError("sorting parameter is invalid " + sorting, e);
@@ -497,6 +504,7 @@ public class DataController {
         Specification<Glycoprotein> spec = null;
         if (globalSpec != null && specificationList.isEmpty()) { // no more filters, add the user filter
         	spec = Specification.where(globalSpec).and(GlycoproteinSpecification.hasUserWithId(user.getUserId()));
+        	if (orderByTags) spec = Specification.where (spec).and(GlycoproteinSpecification.orderByTags(asc));
         } else {
 	        if (!specificationList.isEmpty()) {
 	        	spec = specificationList.get(0);
@@ -510,6 +518,7 @@ public class DataController {
 	        		spec = Specification.where(spec).and(globalSpec);
 	        	}
 	        }
+	        if (orderByTags) spec = Specification.where (spec).and(GlycoproteinSpecification.orderByTags(asc));
         }
         
         Page<Glycoprotein> glycoproteinsInPage = null;
