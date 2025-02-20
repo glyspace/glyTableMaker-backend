@@ -9,6 +9,7 @@ import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
@@ -41,4 +42,22 @@ public class GlycanSpecifications implements Specification<Glycan> {
 	        return criteriaBuilder.like(glycanTags.get("label"), "%" + label + "%");
 	    };
 	}
+	
+	public static Specification<Glycan> orderByTags(boolean asc) {
+        return new Specification<Glycan>() {
+            @Override
+            public Predicate toPredicate(Root<Glycan> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
+                // Join Glycan with GlycanTag
+                Join<Glycan, GlycanTag> tagsJoin = root.join("tags", JoinType.LEFT);
+                
+                // Order by tag label
+                if (asc)
+                	query.orderBy(criteriaBuilder.asc(tagsJoin.get("label")));
+                else 
+                	query.orderBy(criteriaBuilder.desc(tagsJoin.get("label")));
+                
+                return criteriaBuilder.conjunction();
+            }
+        };
+    }
 }
