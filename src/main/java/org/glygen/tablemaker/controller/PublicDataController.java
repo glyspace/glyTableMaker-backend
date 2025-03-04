@@ -48,8 +48,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
@@ -229,7 +227,10 @@ public class PublicDataController {
 										col.getDatatype().getName().equals (c.getDatatype().getName())) {
 									switch (col.getType()) {
 									case ID:
-										row[col.getOrder()-1] = c.getValueId();
+										String value = c.getValueId();
+										if (c.getValueId().startsWith("UBERON"))
+											value = value.replace("_", ":");
+										row[col.getOrder()-1] = value;
 										break;
 									case URI:
 										row[col.getOrder()-1] = c.getValueUri();
@@ -273,7 +274,10 @@ public class PublicDataController {
 										col.getDatatype().getName().equals (c.getDatatype().getName())) {
 									switch (col.getType()) {
 									case ID:
-										row[col.getOrder()-1] = c.getValueId();
+										String value = c.getValueId();
+										if (c.getValueId().startsWith("UBERON"))
+											value = value.replace("_", ":");
+										row[col.getOrder()-1] = value;
 										break;
 									case URI:
 										row[col.getOrder()-1] = c.getValueUri();
