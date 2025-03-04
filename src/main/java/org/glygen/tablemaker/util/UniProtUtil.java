@@ -45,11 +45,21 @@ public class UniProtUtil {
             JSONObject obj = new JSONObject(details);
             JSONObject description = obj.getJSONObject("proteinDescription");
             if (description != null) {
-            	JSONObject rec = description.getJSONObject("recommendedName");
-            	if (rec != null) {
-            		JSONObject fullName = rec.getJSONObject("fullName");
-            		protein.setProteinName(fullName.getString("value"));
+            	if (description.has("recommendedName")) {
+	            	JSONObject rec = description.getJSONObject("recommendedName");
+	            	if (rec != null) {
+	            		JSONObject fullName = rec.getJSONObject("fullName");
+	            		protein.setProteinName(fullName.getString("value"));
+	            	}
+            	} else if (description.has("submissionNames")) {
+            		JSONArray names = description.getJSONArray("submissionNames");
+            		JSONObject name = names.getJSONObject(0);
+            		if (name != null) {
+            			JSONObject fullName = name.getJSONObject("fullName");
+	            		protein.setProteinName(fullName.getString("value"));
+            		}
             	}
+            		
             }
             
     		JSONArray arr = obj.getJSONArray("genes"); 
