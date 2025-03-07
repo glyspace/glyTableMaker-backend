@@ -13,4 +13,5 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 	public List<UserEntity> findAllByFirstNameIgnoreCase (String firstName);
 	public List<UserEntity> findAllByGroupNameIgnoreCase (String groupName);
 	public List<UserEntity> findAllByAffiliationIgnoreCase (String affiliation);
+	public List<UserEntity> findAllByDepartmentIgnoreCase (String department);
 }

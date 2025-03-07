@@ -85,6 +85,7 @@ public class SecurityConfig {
                 new AntPathRequestMatcher("/api/account/recover"),
                 new AntPathRequestMatcher("/api/util/**"),
                 new AntPathRequestMatcher("/api/public/**"),
+                new AntPathRequestMatcher("/api/search/**"),
                 new AntPathRequestMatcher("/api/account/**/password", HttpMethod.GET.name()),
                 new AntPathRequestMatcher("/api/account/registrationConfirm"));
         // @formatter:off

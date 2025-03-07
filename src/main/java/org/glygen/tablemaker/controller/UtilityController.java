@@ -23,6 +23,7 @@ import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.glygen.tablemaker.config.NamespaceHandler;
 import org.glygen.tablemaker.persistence.FeedbackEntity;
 import org.glygen.tablemaker.persistence.GlycanImageEntity;
+import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.FeedbackRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
@@ -199,19 +200,70 @@ public class UtilityController {
             Integer limit) {
         
         namespace = namespace.trim();
-        // find the file identifier associated with the given namespace
-        Namespace entity = namespaceRepository.findByNameIgnoreCase(namespace);  
         PatriciaTrie<List<NamespaceEntry>> trie = null;
-        List<String> suggestions = new ArrayList<>();
-        if (entity.getFileIdentifier() != null) {
-        	// find the exact match if exists and put it as the first proposal
-            trie = NamespaceHandler.getTrieForNamespace(entity.getFileIdentifier());
-            if (trie != null) {
-            	suggestions = UtilityController.getSuggestions(trie, key, limit);
-            } else {
-            	logger.warn ("namespace file cannot be located: " + entity.getNamespaceId());
+        
+        if (namespace.equalsIgnoreCase("dataset")) {
+            List<String> datasetNames = datasetRepository.getAllDatasetNames();
+            trie = NamespaceHandler.createNamespaceFromList(datasetNames);
+        } else if (namespace.equalsIgnoreCase("funding")) {
+            List<String> fundingOrganizations = datasetRepository.getAllFundingOrganizations();
+            trie = NamespaceHandler.createNamespaceFromList(fundingOrganizations);
+        } else if (namespace.equalsIgnoreCase("organization")) {
+            List<UserEntity> userList = userRepository.findAll();
+            List<String> organizationNames = new ArrayList<String>();
+            for (UserEntity user: userList) {
+                if (user.getAffiliation() != null && !user.getAffiliation().isEmpty())
+                    organizationNames.add(user.getAffiliation());
             }
-        } 
+            trie = NamespaceHandler.createNamespaceFromList(organizationNames);
+        } else if (namespace.equalsIgnoreCase("group")) {
+            List<UserEntity> userList = userRepository.findAll();
+            List<String> groupNames = new ArrayList<String>();
+            for (UserEntity user: userList) {
+                if (user.getGroupName() != null && !user.getGroupName().isEmpty())
+                    groupNames.add(user.getGroupName());
+            }
+            trie = NamespaceHandler.createNamespaceFromList(groupNames);
+        } else if (namespace.equalsIgnoreCase("department")) {
+            List<UserEntity> userList = userRepository.findAll();
+            List<String> departments = new ArrayList<String>();
+            for (UserEntity user: userList) {
+                if (user.getDepartment() != null && !user.getDepartment().isEmpty())
+                    departments.add(user.getGroupName());
+            }
+            trie = NamespaceHandler.createNamespaceFromList(departments);
+        }else if (namespace.equalsIgnoreCase("lastname")) {
+            List<UserEntity> userList = userRepository.findAll();
+            List<String> lastNames = new ArrayList<String>();
+            for (UserEntity user: userList) {
+                if (user.getLastName() != null && !user.getLastName().isEmpty())
+                    lastNames.add(user.getLastName());
+            }
+            trie = NamespaceHandler.createNamespaceFromList(lastNames);
+        } else if (namespace.equalsIgnoreCase("firstname")) {
+            List<UserEntity> userList = userRepository.findAll();
+            List<String> firstNames = new ArrayList<String>();
+            for (UserEntity user: userList) {
+                if (user.getFirstName() != null && !user.getFirstName().isEmpty())
+                    firstNames.add(user.getFirstName());
+            }
+            trie = NamespaceHandler.createNamespaceFromList(firstNames);
+        } else {
+            // find the file identifier associated with the given namespace
+	        Namespace entity = namespaceRepository.findByNameIgnoreCase(namespace);  
+	        if (entity.getFileIdentifier() != null) {
+	        	// find the exact match if exists and put it as the first proposal
+	            trie = NamespaceHandler.getTrieForNamespace(entity.getFileIdentifier());
+	        } 
+        }
+        
+        List<String> suggestions = new ArrayList<>();
+        if (trie != null) {
+        	suggestions = UtilityController.getSuggestions(trie, key, limit);
+        } else {
+        	logger.warn ("namespace file cannot be located for namespace: " + namespace);
+        }
+        
         return new ResponseEntity<>(new SuccessResponse<List<String>>(suggestions, "Suggestion found"), HttpStatus.OK);
     }
 	
