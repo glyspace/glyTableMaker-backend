@@ -228,7 +228,7 @@ public class PublicDataController {
 									switch (col.getType()) {
 									case ID:
 										String value = c.getValueId();
-										if (c.getValueId().startsWith("UBERON"))
+										if (c.getValueId()!= null && c.getValueId().startsWith("UBERON"))
 											value = value.replace("_", ":");
 										row[col.getOrder()-1] = value;
 										break;
@@ -275,7 +275,7 @@ public class PublicDataController {
 									switch (col.getType()) {
 									case ID:
 										String value = c.getValueId();
-										if (c.getValueId().startsWith("UBERON"))
+										if (c.getValueId()!= null && c.getValueId().startsWith("UBERON"))
 											value = value.replace("_", ":");
 										row[col.getOrder()-1] = value;
 										break;
