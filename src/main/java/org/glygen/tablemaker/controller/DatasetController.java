@@ -347,8 +347,10 @@ public class DatasetController {
         
         if (type == CollectionType.GLYCAN) {
         	version.setData(generateData(version, d.getCollections()));
+        	version.setType(type);
         } else {
         	version.setGlycoproteinData(generateGlycoproteinData(version, d.getCollections()));
+        	version.setType(type);
         }
         version.setDataset(newDataset);
         
@@ -645,6 +647,7 @@ public class DatasetController {
     		version.setVersionDate(new Date());
     		version.setComment(d.getChangeComment());
     		version.setGlygenExportVersion(exportVersion);
+    		version.setType(head.getType());
     		head.setHead(false);
     		if (d.getLicense() != null) {
     			version.setLicense(d.getLicense());

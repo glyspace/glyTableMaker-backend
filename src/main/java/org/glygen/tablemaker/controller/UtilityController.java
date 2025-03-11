@@ -229,7 +229,7 @@ public class UtilityController {
             List<String> departments = new ArrayList<String>();
             for (UserEntity user: userList) {
                 if (user.getDepartment() != null && !user.getDepartment().isEmpty())
-                    departments.add(user.getGroupName());
+                    departments.add(user.getDepartment());
             }
             trie = NamespaceHandler.createNamespaceFromList(departments);
         }else if (namespace.equalsIgnoreCase("lastname")) {
