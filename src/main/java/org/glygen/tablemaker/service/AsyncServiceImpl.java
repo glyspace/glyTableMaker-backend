@@ -27,6 +27,7 @@ import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
+import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.view.ExcelFileWrapper;
 import org.glygen.tablemaker.view.GlycanView;
@@ -183,6 +184,7 @@ public class AsyncServiceImpl implements AsyncService {
 	                	g.setSequence(sequence);
 	                	Glycan glycan = new Glycan();
 	                	glycan.setGlytoucanID(glytoucanIdCell.getStringCellValue().trim());
+	                	glycan.setStatus(RegistrationStatus.ALREADY_IN_GLYTOUCAN);
 	                	DataController.parseAndRegisterGlycan(glycan, g, glycanRepository, user);
 	                	// save the glycan
 	                    glycan.setDateCreated(new Date());
