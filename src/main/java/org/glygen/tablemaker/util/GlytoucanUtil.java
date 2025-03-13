@@ -1,13 +1,22 @@
 package org.glygen.tablemaker.util;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.eurocarbdb.MolecularFramework.io.SugarImporterException;
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarExporterGlycoCTCondensed;
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarImporterGlycoCTCondensed;
@@ -45,11 +54,15 @@ public class GlytoucanUtil {
 	
 	static String glycanURL = "https://sparqlist.glycosmos.org/sparqlist/api/gtc_wurcs_by_accession?accNum=";
 	static String retrieveURL ="api/WURCS2GlyTouCan";
+	static String alternativeRetrieveURL = "sparqlist/wurcs2gtcids";
 	static String registerURL = "https://api.glytoucan.org/glycan/register";
 	static String validateURL = "wurcsframework/wurcsvalidator/1.0.1/";
 	static String apiURL = "https://api.glycosmos.org/";
 	static String retrieveAPIURL ="https://sparqlist.glyconavi.org/";
 	static String statusURL = "https://sparqlist.glycosmos.org/sparqlist/api/check_batch_processing_by_hashkey?hashKey=";
+	
+	
+	//https://api.glycosmos.org/sparqlist/wurcs2gtcids?wurcs=
 	
 	private static RestTemplate restTemplate = new RestTemplate();
 	
@@ -149,14 +162,17 @@ public class GlytoucanUtil {
 	public String getAccessionNumber (String wurcsSequence) {
 		String accessionNumber = null;
         
-        UriComponents uriComponents = UriComponentsBuilder.fromHttpUrl(retrieveAPIURL)
-                .path(retrieveURL)
-                .queryParam("WURCS", wurcsSequence)
-                .build();
+		//HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(createHeaders(userId, apiKey));
 		
-		HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(createHeaders(userId, apiKey));
-		try {
-			ResponseEntity<GlytoucanResponse[]> response = restTemplate.exchange(uriComponents.toUri(), HttpMethod.GET, requestEntity, GlytoucanResponse[].class);
+		String url = UriComponentsBuilder.fromHttpUrl(apiURL + alternativeRetrieveURL)
+                .queryParam("wurcs", wurcsSequence)
+                .toUriString();
+
+		//String url = apiURL + alternativeRetrieveURL + "?wurcs=" + wurcsSequence;
+		/*try {
+			//ResponseEntity<GlytoucanResponse[]> response = restTemplate.exchange(uriComponents.toUri(), HttpMethod.GET, requestEntity, GlytoucanResponse[].class);
+			ResponseEntity<GlytoucanResponse[]>  response = restTemplate.getForEntity(url, GlytoucanResponse[].class);
+			
 			if (response.getBody().length == 0) {
 			    logger.info ("No accession number is found! " + wurcsSequence);
 			    return null;
@@ -170,6 +186,29 @@ public class GlytoucanUtil {
 		} catch (HttpServerErrorException e) {
 			logger.info("Exception retrieving glycan " + ((HttpServerErrorException) e).getResponseBodyAsString());
 		}
+		*/
+		try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            HttpGet request = new HttpGet(url);
+            logger.debug("Executing request: " + request.getRequestLine());
+            HttpResponse response = httpClient.execute(request);
+            if (response.getStatusLine().getStatusCode() != 200) {
+            	logger.error("Glytoucan retrieval API is not working. Status code: " + response.getStatusLine());
+            	return null;
+            }
+            String responseBody = EntityUtils.toString(response.getEntity());
+            ObjectMapper objectMapper = new ObjectMapper();
+            GlytoucanResponse[] resp = objectMapper.readValue(responseBody, GlytoucanResponse[].class);
+            if (resp.length == 0) {
+			    logger.info ("No accession number is found! " + wurcsSequence);
+			    return null;
+			}
+			if (resp[0].message  != null) {
+			    logger.info("Error retrieving glycan " + resp[0].message);
+			}
+			return resp[0].id;
+        } catch (Exception e) {
+        	logger.info("Exception retrieving glycan " + ((HttpServerErrorException) e).getResponseBodyAsString());
+        }
 		
 		return accessionNumber;
 	}
@@ -493,12 +532,11 @@ class GlytoucanResponse {
 	String wurcs;
 	String message; // in case of error
 	
-	@JsonProperty("GlyTouCan")
+	
 	public String getId() {
 		return id;
 	}
 	
-	@JsonProperty("WURCS")
 	public String getWurcs() {
 		return wurcs;
 	}

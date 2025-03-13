@@ -2673,7 +2673,9 @@ public class DataController {
                 }    
             }
             // check if the glycan has an accession number in Glytoucan
-            SequenceUtils.getWurcsAndGlytoucanID(glycan, sugar);
+            if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().trim().isEmpty()) {
+            	SequenceUtils.getWurcsAndGlytoucanID(glycan, sugar);
+            }
         } catch (GlycoVisitorException e) {
             throw new IllegalArgumentException(e.getMessage());
         }

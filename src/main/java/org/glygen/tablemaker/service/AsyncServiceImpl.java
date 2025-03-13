@@ -182,6 +182,7 @@ public class AsyncServiceImpl implements AsyncService {
 	                	g.setFormat(SequenceFormat.WURCS);
 	                	g.setSequence(sequence);
 	                	Glycan glycan = new Glycan();
+	                	glycan.setGlytoucanID(glytoucanIdCell.getStringCellValue().trim());
 	                	DataController.parseAndRegisterGlycan(glycan, g, glycanRepository, user);
 	                	// save the glycan
 	                    glycan.setDateCreated(new Date());
