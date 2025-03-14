@@ -343,7 +343,12 @@ public class DataController {
 	        		spec = Specification.where(spec).and(globalSpec);
 	        	}
 	        }
-	        if (orderByTags) spec = Specification.where (spec).and(GlycanSpecifications.orderByTags(asc));
+	        if (orderByTags) {
+	        	if (specificationList.isEmpty()) {
+	        		spec = Specification.where(spec).and(GlycanSpecifications.hasUserWithId(user.getUserId()));
+	        	}
+	        	spec = Specification.where (spec).and(GlycanSpecifications.orderByTags(asc));
+	        }
         }
         
         Page<Glycan> glycansInPage = null;
