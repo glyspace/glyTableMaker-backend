@@ -157,8 +157,8 @@ public class AsyncServiceImpl implements AsyncService {
 			}
 			
 			if (sheetNo == -1) {
-				errors.add(new UploadErrorEntity("-1", "Sheet name is invalid", null));
-				return CompletableFuture.failedFuture(new BatchUploadException("Sheet name is invalid.", errors));
+				errors.add(new UploadErrorEntity("-1", "Sheet name " + excelParameters.getSheetName() + " is invalid", null));
+				return CompletableFuture.failedFuture(new BatchUploadException("Sheet name " + excelParameters.getSheetName() + " is invalid.", errors));
 			}
 			Sheet sheet = workbook.getSheetAt(sheetNo);
 			Iterator<Row> rowIterator = sheet.iterator();
@@ -175,7 +175,8 @@ public class AsyncServiceImpl implements AsyncService {
 	            	Cell glytoucanIdCell = row.getCell(columnNo);
 	            	String sequence = glytoucanUtil.retrieveGlycan(glytoucanIdCell.getStringCellValue().trim());
 	            	if (sequence == null) {
-	            		errors.add(new UploadErrorEntity(count+"", "GlyTouCanId " + glytoucanIdCell.getStringCellValue() + " is not valid!", null));
+	            		errors.add(new UploadErrorEntity(count+"", "GlyTouCan Id " + glytoucanIdCell.getStringCellValue() + " is not valid!", null));
+	            		continue;
 	            	}
 	                try {
 	                	//  parse and add glycan

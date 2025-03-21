@@ -61,6 +61,7 @@ import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.BatchUploadException;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
+import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.GlycanImageEntity;
@@ -385,8 +386,12 @@ public class DataController {
                 		// registered, try to get the accession number
                 		g.setGlytoucanID(GlytoucanUtil.getInstance().getAccessionNumber(g.getWurcs()));
                 		if (g.getGlytoucanID() == null) {
-                			GlytoucanUtil.getInstance().checkBatchStatus(g.getGlytoucanHash());
-                		} else {
+                			String accession = GlytoucanUtil.getInstance().checkBatchStatus(g.getGlytoucanHash());
+                			if (accession != null && accession.startsWith("G")) {
+                				g.setGlytoucanID(accession);
+                			}
+                		}
+                		if (g.getGlytoucanID() != null) {
                 			//update glycan's status to NEWLY_REGISTERED
                 			g.setStatus(RegistrationStatus.NEWLY_REGISTERED);
                 			// update glycan image table
@@ -401,6 +406,9 @@ public class DataController {
                 		g.setError("Error registering. No additional information received from GlyTouCan.");
                 		g.setStatus(RegistrationStatus.ERROR);
                 		g.setErrorJson(e.getErrorJson());
+                	} catch (GlytoucanAPIFailedException e) {
+                		// API failure
+                		logger.error(e.getMessage());
                 	}
                 	// save glycan with the updated information
                 	glycanRepository.save(g);
@@ -1312,6 +1320,7 @@ public class DataController {
 	        Glycan existing = glycanRepository.findByGlycanIdAndUser(glycanId.longValue(), user);
 	        if (existing == null) {
 	            errorMessage.append("Could not find the given glycan " + glycanId + " for the user\n");
+	            continue;
 	        }
 	        //need to check if the glycan appears in any collection and give an error message
 	        if (existing.getGlycanCollections() != null && !existing.getGlycanCollections().isEmpty()) {
@@ -1480,9 +1489,9 @@ public class DataController {
             glycan.setGlytoucanID(g.getGlytoucanID());
             // check for duplicates
             // error if there is already a glycan in the system
-            Glycan existing = glycanRepository.findByGlytoucanIDIgnoreCaseAndUser(g.getGlytoucanID().trim(), user);
-            if (existing != null) {
-                throw new DuplicateException ("There is already a glycan with GlyTouCan ID " + g.getGlytoucanID(), null, existing);
+            List<Glycan> existing = glycanRepository.findByGlytoucanIDIgnoreCaseAndUser(g.getGlytoucanID().trim(), user);
+            if (existing != null && existing.size() > 0) {
+                throw new DuplicateException ("There is already a glycan with GlyTouCan ID " + g.getGlytoucanID(), null, existing.get(0));
             }
             // check glytoucan to see if the id is correct!
             String sequence = SequenceUtils.getSequenceFromGlytoucan(g.getGlytoucanID().trim());
@@ -1565,19 +1574,26 @@ public class DataController {
                         glycan.setError("Could not calculate mass. Reason: " + e.getMessage());
                     }
                 }
-                Glycan existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
-                if (existing != null) {
-                    throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs(), null, existing);
+                List<Glycan> existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
+                if (existing != null && existing.size() > 0) {
+                    throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs(), null, existing.get(0));
                 }
-                SequenceUtils.getWurcsAndGlytoucanID(glycan, null);
-                if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
-                	SequenceUtils.registerGlycan(glycan);
+                try {
+                	SequenceUtils.getWurcsAndGlytoucanID(glycan, null);
+                	if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
+                    	SequenceUtils.registerGlycan(glycan);
+                    }
+                } catch (GlytoucanAPIFailedException e) {
+                	glycan.setStatus(RegistrationStatus.NOT_SUBMITTED_YET);
+                	//glycan.setError("Cannot retrieve glytoucan id. Reason: " + e.getMessage());
+                	//TODO report the error through email
                 }
+                
             } catch (DictionaryException | CompositionParseException | ConversionException | WURCSException e1) {
                 throw new IllegalArgumentException ("Composition parsing/conversion failed. Reason " + e1.getMessage());
             } catch (GlycoVisitorException e1) {
                 throw new IllegalArgumentException (e1);
-            } 
+            }
         }
         // save the glycan
         glycan.setDateCreated(new Date());
@@ -2292,6 +2308,9 @@ public class DataController {
                 result.setFilename(fileWrapper.getOriginalName());
                 result.setFormat(format.name());
                 result.setType(CollectionType.GLYCAN);
+                result.setErrors(new ArrayList<>());
+                result.setGlycans(new ArrayList<>());
+                result.setGlycoproteins(new ArrayList<>());
                 BatchUploadEntity saved = uploadRepository.save(result);
                 // keep the original file in the uploads directory
                 File uploadFolder = new File (uploadDir + File.separator + saved.getId());
@@ -2332,6 +2351,12 @@ public class DataController {
                     			result.setErrors(new ArrayList<>());
                     			result.getErrors().add(new UploadErrorEntity(null, e.getCause().getMessage(), null));
                     		}
+                            if (result.getGlycans() == null) {
+                            	result.setGlycans(new ArrayList<>());
+                            }
+                            if (result.getGlycoproteins() == null) {
+                            	result.setGlycoproteins(new ArrayList<>());
+                            }
                             uploadRepository.save(result);
                             
                         } else {
@@ -2345,6 +2370,9 @@ public class DataController {
                         	result.setExistingCount(count);
                             result.setStatus(UploadStatus.DONE);    
                             result.setErrors(new ArrayList<>());
+                            if (result.getGlycoproteins() == null) {
+                            	result.setGlycoproteins(new ArrayList<>());
+                            }
                             uploadRepository.save(result);
                         }                       
                     });
@@ -2354,6 +2382,12 @@ public class DataController {
                         if (result.getErrors() != null && !result.getErrors().isEmpty()) {
                             result.setStatus(UploadStatus.ERROR);
                         } 
+                        if (result.getGlycans() == null) {
+                        	result.setGlycans(new ArrayList<>());
+                        }
+                        if (result.getGlycoproteins() == null) {
+                        	result.setGlycoproteins(new ArrayList<>());
+                        }
                         uploadRepository.save(result);
                     }
                 } catch (InterruptedException e1) {
@@ -2614,16 +2648,16 @@ public class DataController {
                     }
                 }
                 
-                Glycan existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
-                if (existing != null) {
-                    throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs(), null, existing);
+                List<Glycan> existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
+                if (existing != null && existing.size() > 0) {
+                    throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs(), null, existing.get(0));
                 }
                 break;
             case GWS:
                 glycan.setGws(g.getSequence().trim());
                 existing = glycanRepository.findByGwsIgnoreCaseAndUser(glycan.getGws(), user);
-                if (existing != null) {
-                    throw new DuplicateException ("There is already a glycan with glycoworkbench sequence " + glycan.getGws(), null, existing);
+                if (existing != null && existing.size() > 0) {
+                    throw new DuplicateException ("There is already a glycan with glycoworkbench sequence " + glycan.getGws(), null, existing.get(0));
                 }
                 try {
                     // parse and convert to GlycoCT
@@ -2673,21 +2707,24 @@ public class DataController {
                     }
                 }
                 existing = glycanRepository.findByGlycoCTIgnoreCaseAndUser(glycan.getGlycoCT(), user);
-                if (existing != null) {
-                    throw new DuplicateException ("There is already a glycan with GlycoCT " + glycan.getGlycoCT(), null, existing);
+                if (existing != null && existing.size() > 0) {
+                    throw new DuplicateException ("There is already a glycan with GlycoCT " + glycan.getGlycoCT(), null, existing.get(0));
                 }    
             }
             // check if the glycan has an accession number in Glytoucan
             if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().trim().isEmpty()) {
             	SequenceUtils.getWurcsAndGlytoucanID(glycan, sugar);
             }
+            if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
+            	SequenceUtils.registerGlycan(glycan);
+            } 
         } catch (GlycoVisitorException e) {
             throw new IllegalArgumentException(e.getMessage());
-        }
-        
-        if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
-        	SequenceUtils.registerGlycan(glycan);
-        }   
+        } catch (GlytoucanAPIFailedException e) {
+        	glycan.setStatus(RegistrationStatus.NOT_SUBMITTED_YET);
+        	//glycan.setError("Cannot retrieve glytoucan id. Reason: " + e.getMessage());
+        	//TODO report the error through email
+        }          
     }
     
     public static BufferedImage createImageForGlycan(Glycan glycan) {

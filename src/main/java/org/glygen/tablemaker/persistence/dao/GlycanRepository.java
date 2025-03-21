@@ -14,14 +14,16 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface GlycanRepository extends JpaRepository<Glycan, Long>,  JpaSpecificationExecutor<Glycan>{
     
-    public Glycan findByGlytoucanIDIgnoreCaseAndUser(String glytoucanID, UserEntity user);
-    public Glycan findByWurcsIgnoreCaseAndUser(String wurcs, UserEntity user);
-    public Glycan findByGwsIgnoreCaseAndUser(String gws, UserEntity user);
-    public Glycan findByGlycoCTIgnoreCaseAndUser(String glycoCT, UserEntity user);
-    public Glycan findByGlycanIdAndUser (Long id, UserEntity user);
-    public Page<Glycan> findAllByUser(UserEntity user, Pageable pageable);
-    public Page<Glycan> findAll(Specification<Glycan> spec, Pageable pageable);
+	public Glycan findByGlycanIdAndUser (Long id, UserEntity user);
+	
+    public List<Glycan> findByGlytoucanIDIgnoreCaseAndUser(String glytoucanID, UserEntity user);
+    public List<Glycan> findByWurcsIgnoreCaseAndUser(String wurcs, UserEntity user);
+    public List<Glycan> findByGwsIgnoreCaseAndUser(String gws, UserEntity user);
+    public List<Glycan> findByGlycoCTIgnoreCaseAndUser(String glycoCT, UserEntity user);
     public List<Glycan> findByUserAndUploadFiles_Id (UserEntity user, Long uploadId);
+    
+    public Page<Glycan> findAllByUser(UserEntity user, Pageable pageable);
+    public Page<Glycan> findAll(Specification<Glycan> spec, Pageable pageable); 
 	
     public Long countByStatus(RegistrationStatus newlyRegistered);
     

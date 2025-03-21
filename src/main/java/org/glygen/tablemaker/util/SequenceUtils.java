@@ -26,6 +26,7 @@ import org.glycoinfo.WURCSFramework.util.WURCSException;
 import org.glycoinfo.WURCSFramework.util.validation.WURCSValidator;
 import org.glycoinfo.application.glycanbuilder.converterWURCS2.WURCS2Parser;
 import org.glygen.tablemaker.exception.DataNotFoundException;
+import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
@@ -188,11 +189,12 @@ public class SequenceUtils {
         return null;
     }
     
-    public static void getWurcsAndGlytoucanID (Glycan glycan, Sugar sugar) throws GlycoVisitorException { 
+    public static void getWurcsAndGlytoucanID (Glycan glycan, Sugar sugar) throws GlycoVisitorException, GlytoucanAPIFailedException { 
         String wurcs = glycan.getWurcs();
         if (wurcs == null) {
             try {
                 WURCSExporterGlycoCT exporter = new WURCSExporterGlycoCT();
+                logger.debug("GlycoCT before WURS exporter: " + glycan.getGlycoCT());
                 exporter.start(glycan.getGlycoCT());
                 wurcs = exporter.getWURCS();
                 // validate first
@@ -222,16 +224,12 @@ public class SequenceUtils {
             }
             glycan.setWurcs(wurcs);
         } 
-        try {
-	        String glyToucanId = GlytoucanUtil.getInstance().getAccessionNumber(wurcs);
-	        if (glyToucanId != null) {
-	            glycan.setGlytoucanID(glyToucanId);
-	            glycan.setStatus(RegistrationStatus.ALREADY_IN_GLYTOUCAN);
-	        }
-        } catch (Exception e) {
-        	logger.error("failed to check glytoucan for accession number", e);
-        	throw new IllegalArgumentException ("Failed to access glytoucan ID for " + wurcs + "\n. Reason: " + e.getMessage());
-        }
+        
+        String glyToucanId = GlytoucanUtil.getInstance().getAccessionNumber(wurcs);
+        if (glyToucanId != null) {
+            glycan.setGlytoucanID(glyToucanId);
+            glycan.setStatus(RegistrationStatus.ALREADY_IN_GLYTOUCAN);
+        } 
     }
     
     public static String getSequenceFromGlytoucan (String glytoucanId) {
