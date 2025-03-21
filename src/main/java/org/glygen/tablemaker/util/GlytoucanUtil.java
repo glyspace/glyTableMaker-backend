@@ -63,6 +63,7 @@ public class GlytoucanUtil {
 	static String apiURL = "https://api.glycosmos.org/";
 	static String retrieveAPIURL ="https://sparqlist.glyconavi.org/";
 	static String statusURL = "https://sparqlist.glycosmos.org/sparqlist/api/check_batch_processing_by_hashkey?hashKey=";
+	//static String hashToAccessionURL = "https://sparqlist.glycosmos.org/sparqlist/gtc_select_acc_by_hashkey?hashKey=";
 	
 	
 	//https://api.glycosmos.org/sparqlist/wurcs2gtcids?wurcs=

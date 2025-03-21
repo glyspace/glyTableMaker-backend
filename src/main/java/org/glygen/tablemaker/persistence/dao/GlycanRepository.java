@@ -21,12 +21,15 @@ public interface GlycanRepository extends JpaRepository<Glycan, Long>,  JpaSpeci
     public List<Glycan> findByGwsIgnoreCaseAndUser(String gws, UserEntity user);
     public List<Glycan> findByGlycoCTIgnoreCaseAndUser(String glycoCT, UserEntity user);
     public List<Glycan> findByUserAndUploadFiles_Id (UserEntity user, Long uploadId);
+    public List<Glycan> findByStatus (RegistrationStatus status);
     
     public Page<Glycan> findAllByUser(UserEntity user, Pageable pageable);
     public Page<Glycan> findAll(Specification<Glycan> spec, Pageable pageable); 
-	
+    
     public Long countByStatus(RegistrationStatus newlyRegistered);
     
 	@Query("SELECT DISTINCT g.glytoucanID FROM Glycan g")
-    List<String> findDistinctGlytoucanId();
+    public List<String> findDistinctGlytoucanId();
+	
+	
 }

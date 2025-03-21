@@ -10,10 +10,12 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.ulisesbocchio.jasyptspringboot.environment.StandardEncryptableEnvironment;
 
 @SpringBootApplication
+@EnableScheduling
 public class TablemakerApplication {
 
     @Autowired
