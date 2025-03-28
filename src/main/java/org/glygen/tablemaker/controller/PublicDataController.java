@@ -14,6 +14,7 @@ import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
+import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.view.DatasetTableDownloadView;
@@ -126,7 +127,7 @@ public class PublicDataController {
         	specificationList.add(new DatasetSpecification(new Filter ("dateCreated", globalFilter)));
         }
         
-        Specification<Dataset> spec = null;
+        Specification<DatasetProjection> spec = null;
         if (!specificationList.isEmpty()) {
         	spec = specificationList.get(0);
         	for (int i=1; i < specificationList.size(); i++) {
@@ -137,7 +138,7 @@ public class PublicDataController {
         	}
         }
         
-        Page<Dataset> datasetsInPage = null;
+        Page<DatasetProjection> datasetsInPage = null;
         if (spec != null) {
         	try {
         		datasetsInPage = datasetRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
@@ -146,12 +147,18 @@ public class PublicDataController {
         		throw e;
         	}
         } else {
-        	datasetsInPage = datasetRepository.findAll(PageRequest.of(start, size, Sort.by(sortOrders)));
+        	datasetsInPage = datasetRepository.findAllWithProjection(PageRequest.of(start, size, Sort.by(sortOrders)));
         }
         
         List<DatasetView> datasets = new ArrayList<>();
-        for (Dataset d: datasetsInPage.getContent()) {
-        	DatasetView dv = DatasetController.createDatasetView (d, null, glycanImageRepository, imageLocation);
+        for (DatasetProjection d: datasetsInPage.getContent()) {
+        	DatasetView dv = new DatasetView();
+        	dv.setId(d.getDatasetId());
+        	dv.setName(d.getName());
+        	dv.setDatasetIdentifier(d.getDatasetIdentifier());
+        	dv.setDateCreated(d.getDateCreated());
+        	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
+        	dv.setUser (d.getUser());
         	datasets.add(dv);
         }
         
