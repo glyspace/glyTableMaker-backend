@@ -212,6 +212,8 @@ public class DatasetController {
         	dv.setDateCreated(d.getDateCreated());
         	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
         	dv.setUser (d.getUser());
+        	dv.setNoGlycans(datasetRepository.getGlycanCount(d.getDatasetId()));
+        	dv.setNoProteins(datasetRepository.getProteinCount(d.getDatasetId()));
         	datasets.add(dv);
         }
         

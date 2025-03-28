@@ -30,6 +30,12 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	public List<Dataset> findAllByNameAndUser (String name, UserEntity user);
 	public List<Dataset> findByNameContainingIgnoreCase (String name);
 	
+	@Query ("select count(distinct(element(dv.glycoproteinData).value)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true and element(dv.glycoproteinData).glycoproteinColumn='UNIPROTID'")
+	public int getProteinCount (@Param("datasetId")Long datasetId);
+	
+	@Query ("select count(distinct(element(dv.data).value)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true and element(dv.data).glycanColumn='GLYTOUCANID'")
+	public int getGlycanCount (@Param("datasetId")Long datasetId);
+	
 	@Query("Select DISTINCT d.datasetId FROM Dataset d WHERE d.user = :user")
 	public List<Long> getAllDatasetIdsByUser (@Param("user") UserEntity user);
 	
