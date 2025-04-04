@@ -41,6 +41,7 @@ public class SequenceUtils {
 	static Map<String, String> singleLetterMapping = new HashMap<>();
 	static Map<String, String> singleLetterExportMapping = new HashMap<>();
 	static List<SearchQueryItem> queryList = new ArrayList<>();	
+	static Map<String, String> byonicMapping = new HashMap<>();
 	
 	static {
 		// values should match WURCS composition list here: https://gitlab.com/glycoinfo/glycompconverter
@@ -80,7 +81,14 @@ public class SequenceUtils {
 		singleLetterExportMapping.put("Phospo", "p");
 		singleLetterExportMapping.put("Sulfo", "s");
 		
-			
+		// byonic to WURCS composition mapping, only differences are listed here
+		byonicMapping.put("Pent", "Pen");
+		byonicMapping.put("NeuAc", "Neu5Ac");
+		byonicMapping.put("NeuGc", "Neu5Gc");
+		byonicMapping.put("Acetyl", "Ac");
+		byonicMapping.put("Phospo", "p");
+		byonicMapping.put("Sulfo", "S");
+		
 		queryList.add(new SearchQueryItem("HexNAc", "RES\n"
 				+ "1b:x-HEX-1:5\n"
 				+ "2s:n-acetyl\n"
@@ -112,9 +120,9 @@ public class SequenceUtils {
 		queryList.add(new SearchQueryItem("Me", "RES\n1s:methyl"));
 		queryList.add(new SearchQueryItem("HexA", "RES\n" 
                 +  "1b:x-HEX-x:x|6:a"));
-		/*queryList.add(new SearchQueryItem("GlcA", "RES\n" 
+		queryList.add(new SearchQueryItem("GlcA", "RES\n" 
                    +  "1b:x-dglc-HEX-1:5|6:a"));	
-	    queryList.add(new SearchQueryItem("IdoA", "RES\n1b:x-lido-HEX-1:5|6:a"));*/
+	    queryList.add(new SearchQueryItem("IdoA", "RES\n1b:x-lido-HEX-1:5|6:a"));
 		queryList.add(new SearchQueryItem("Phospho", "RES\n1s:phosphate"));
 		queryList.add(new SearchQueryItem("Sulfo", "RES\n1s:sulfate"));
 		queryList.add(new SearchQueryItem("Acetyl", "RES\n1s:n-acetyl"));
@@ -252,13 +260,8 @@ public class SequenceUtils {
     		for (String monoWithCount: monoWithCountList) {
     			String mono = monoWithCount.substring(0, monoWithCount.indexOf("("));
     			String count = monoWithCount.substring(monoWithCount.indexOf("(")+1);
-    			if (mono.equalsIgnoreCase("methyl")) {
-    				mono = "Me";
-    			}
-    			if (mono.equalsIgnoreCase("phospho")) {
-    				mono = "P";
-    			}
-    			composition += mono + ":" + count + "|";
+    			String mapped = byonicMapping.get(mono);
+    			composition += (mapped != null ? mapped : mono) + ":" + count + "|";
     		}
     		if (composition.endsWith("|"))
     			composition = composition.substring(0, composition.length()-1);
