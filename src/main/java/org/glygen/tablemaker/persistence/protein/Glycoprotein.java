@@ -114,6 +114,17 @@ public class Glycoprotein {
 		tags.add(tag);
 	}
 	
+	public boolean hasTag(String tag) {
+		if (this.getTags() != null) {
+			for (GlycanTag t: tags) {
+				if (t.getLabel().equalsIgnoreCase(tag)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
 	@OneToMany(mappedBy = "glycoprotein", fetch=FetchType.EAGER, cascade=CascadeType.ALL, orphanRemoval=true)	
 	public java.util.Collection<GlycoproteinInFile> getUploadFiles() {
 		return uploadFiles;

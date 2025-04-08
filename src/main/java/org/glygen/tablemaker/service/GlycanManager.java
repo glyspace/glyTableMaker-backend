@@ -17,4 +17,6 @@ public interface GlycanManager {
 	void setGlycoproteinTags (Glycoprotein glycoprotein, List<String> tags, UserEntity user);
 	void deleteBatchUpload(BatchUploadEntity upload);
 	Glycoprotein saveGlycoProtein(Glycoprotein p);
+	void addTagToGlycoproteins(Collection<Glycoprotein> allGlycoproteins, String tag, UserEntity user);
+	Glycoprotein addUploadToGlycoprotein(Glycoprotein gp, BatchUploadEntity upload, Boolean isNew, UserEntity user);
 }

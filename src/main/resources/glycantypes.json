@@ -1,0 +1,11 @@
+{
+	"accepted": [
+		"NGlycan",
+		"OGlycan"
+	],
+	"ignored" : 
+	[
+		"Oxidation",
+		"Deamidated"
+	]
+}

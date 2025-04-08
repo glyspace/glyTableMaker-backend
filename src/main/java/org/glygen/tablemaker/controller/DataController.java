@@ -64,9 +64,11 @@ import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
+import org.glygen.tablemaker.persistence.BatchUploadJob;
 import org.glygen.tablemaker.persistence.GlycanImageEntity;
 import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.dao.BatchUploadJobRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
@@ -95,6 +97,8 @@ import org.glygen.tablemaker.persistence.glycan.UploadStatus;
 import org.glygen.tablemaker.persistence.protein.GlycanInSite;
 import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinInFile;
+import org.glygen.tablemaker.persistence.protein.MultipleGlycanOrder;
 import org.glygen.tablemaker.persistence.protein.Site;
 import org.glygen.tablemaker.persistence.protein.SitePosition;
 import org.glygen.tablemaker.persistence.table.TableReport;
@@ -107,7 +111,6 @@ import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.SequenceUtils;
 import org.glygen.tablemaker.view.CollectionView;
-import org.glygen.tablemaker.view.ExcelFileWrapper;
 import org.glygen.tablemaker.view.FileWrapper;
 import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.GlycanInSiteView;
@@ -191,6 +194,7 @@ public class DataController {
     final private GlycanImageRepository glycanImageRepository;
     final private DatasetRepository datasetRepository;
     final private GlycoproteinRepository glycoproteinRepository;
+    final private BatchUploadJobRepository batchUploadJobRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -204,7 +208,7 @@ public class DataController {
     		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, 
     		TableReportRepository reportRepository, NamespaceRepository namespaceRepository, 
     		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
-    		GlycoproteinRepository glycoproteinRepository) {
+    		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
@@ -219,11 +223,12 @@ public class DataController {
 		this.glycanImageRepository = glycanImageRepository;
 		this.datasetRepository = datasetRepository;
 		this.glycoproteinRepository = glycoproteinRepository;
+		this.batchUploadJobRepository = batchUploadJobRepository;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/statistics")
-    public ResponseEntity<SuccessResponse> getStatistics() {
+    public ResponseEntity<SuccessResponse<UserStatisticsView>> getStatistics() {
         UserStatisticsView stats = new UserStatisticsView();
      // get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -240,7 +245,7 @@ public class DataController {
     	spec = Specification.where(spec).and(CollectionSpecification.hasChildren());
     	stats.setCocCount(collectionRepository.count(spec));
     	stats.setGlycoproteinCount(glycoproteinRepository.count(GlycoproteinSpecification.hasUserWithId(user.getUserId())));
-        return new ResponseEntity<>(new SuccessResponse(stats, "statistics gathered"), HttpStatus.OK);
+        return new ResponseEntity<>(new SuccessResponse<UserStatisticsView>(stats, "statistics gathered"), HttpStatus.OK);
     }
     
     @Operation(summary = "Get glycans", security = { @SecurityRequirement(name = "bearer-key") })
@@ -961,13 +966,18 @@ public class DataController {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
             @ApiResponse(responseCode="415", description= "Media type is not supported"),
             @ApiResponse(responseCode="500", description= "Internal Server Error") })
-    public ResponseEntity<SuccessResponse<List<BatchUploadEntity>>> getActiveBatchUpload () {
+    public ResponseEntity<SuccessResponse<List<BatchUploadEntity>>> getActiveBatchUpload (
+    		@Parameter(required=true, description="type of the batch upload", schema = @Schema(type = "string",
+    	    		allowableValues={"GLYCOPROTEIN", "GLYCAN"}))
+            @RequestParam("type")
+    		String type) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
         if (auth != null) { 
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
+        CollectionType colType = CollectionType.valueOf(type);
         if (user != null) {
         	List<BatchUploadEntity> uploads = uploadRepository.findByUserOrderByStartDateDesc(user);	
         	List<BatchUploadEntity> filtered = new ArrayList<>();
@@ -976,46 +986,11 @@ public class DataController {
         	} else {
         		for (BatchUploadEntity upload: uploads) {
         			// check the type
-        			if (upload.getType() == null || upload.getType() == CollectionType.GLYCAN) {
+        			if (upload.getType() == null || upload.getType() == colType) {
         				filtered.add(upload);
         			}
         		}
         		
-        	}
-        	if (filtered.isEmpty()) {
-    			throw new DataNotFoundException("No active batch upload");
-    		}
-        	return new ResponseEntity<>(new SuccessResponse<List<BatchUploadEntity>>(filtered, "Batch uploads retrieved"), HttpStatus.OK);
-        } else {
-        	throw new BadRequestException("user cannot be found");
-        }
-    }
-    
-    @Operation(summary = "Get glycoprotein batch uploads", security = { @SecurityRequirement(name = "bearer-key") })
-    @GetMapping("/checkglycoproteinbatchupload")
-    @ApiResponses(value = { @ApiResponse(responseCode="200", description= "Check performed successfully", content = {
-            @Content( schema = @Schema(implementation = SuccessResponse.class))}),
-            @ApiResponse(responseCode="415", description= "Media type is not supported"),
-            @ApiResponse(responseCode="500", description= "Internal Server Error") })
-    public ResponseEntity<SuccessResponse<List<BatchUploadEntity>>> getActiveGlycoproteinBatchUpload () {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
-        if (user != null) {
-        	List<BatchUploadEntity> uploads = uploadRepository.findByUserOrderByStartDateDesc(user);	
-        	List<BatchUploadEntity> filtered = new ArrayList<>();
-        	if (uploads.isEmpty()) {
-        		throw new DataNotFoundException("No active batch upload");
-        	} else {
-        		for (BatchUploadEntity upload: uploads) {
-        			// check the type
-        			if (upload.getType() != null && upload.getType() == CollectionType.GLYCOPROTEIN) {
-        				filtered.add(upload);
-        			}
-        		}
         	}
         	if (filtered.isEmpty()) {
     			throw new DataNotFoundException("No active batch upload");
@@ -1462,6 +1437,40 @@ public class DataController {
         return new ResponseEntity<>(new SuccessResponse<Long>(collectionId, "Collection of collections deleted successfully"), HttpStatus.OK);
     }
     
+    @Operation(summary = "Add given glycans", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/addglycanfromlist")
+    public ResponseEntity<SuccessResponse<List<Glycan>>> addGlycansFromList (@RequestBody List<GlycanView> gList,
+    		@Parameter(required=false, description="composition type")
+			@RequestParam (required=false, defaultValue="BASE")
+			CompositionType compositionType,
+			@Parameter(required=false, description="tag for the glycans")
+			@RequestParam (required=false)
+			String tag) {
+    	
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+    	List<Glycan> allAdded = new ArrayList<>();
+    	for (GlycanView g: gList) {
+    		try {
+	    		ResponseEntity<SuccessResponse<Glycan>> response = addGlycan (g, compositionType);
+	    		Glycan added = response.getBody().getData();
+	    		allAdded.add(added);
+    		} catch (DuplicateException e) {
+    			allAdded.add ((Glycan)e.getDuplicate());
+    		}
+    	}
+    	
+    	glycanManager.addTagToGlycans(allAdded, tag, user);
+    	
+    	return new ResponseEntity<>(new SuccessResponse<List<Glycan>>(allAdded, "glycans added"), HttpStatus.OK);
+    }
+
+    
     @Operation(summary = "Add glycan", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addglycan")
     public ResponseEntity<SuccessResponse<Glycan>> addGlycan(@Valid @RequestBody GlycanView g,
@@ -1791,59 +1800,58 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
         
-     /*   // check if duplicate
-    	List<Glycoprotein> existing = glycoproteinRepository.findAllByUniprotIdAndUser(gp.getUniprotId(), user);
-    	if (existing.size() > 0) {
-    		throw new DuplicateException("A glycoprotein with this uniprot id already exists! ");
-    	}*/
-        
-        if (gp.getName() != null && !gp.getName().isEmpty()) {
-        	 // check if duplicate
-        	List<Glycoprotein> existing = glycoproteinRepository.findAllByNameAndUser(gp.getName(), user);
-        	if (existing.size() > 0) {
-        		throw new DuplicateException("A glycoprotein with this name already exists! ");
-        	}
-        }
-    	
-    	Glycoprotein glycoprotein = new Glycoprotein();
-    	glycoprotein.setName(gp.getName());
-    	glycoprotein.setProteinName(gp.getProteinName());
-    	glycoprotein.setGeneSymbol(gp.getGeneSymbol());
-    	glycoprotein.setUniprotId(gp.getUniprotId());
-    	glycoprotein.setSequence(gp.getSequence());
-    	glycoprotein.setTags(gp.getTags());
-    	glycoprotein.setUser(user);
-    	glycoprotein.setDateCreated(new Date());
-    	glycoprotein.setSites(new ArrayList<>());
-    	if (gp.getSites() != null) {
-    		for (SiteView sv: gp.getSites()) {
-    			Site s = new Site();
-    			s.setType(sv.getType());
-    			s.setGlycoprotein(glycoprotein);
-    			s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
-    			s.setGlycans(new ArrayList<>());
-    			if (sv.getGlycans() != null && !sv.getGlycans().isEmpty()) {
-    				for (GlycanInSiteView gv: sv.getGlycans()) {
-    					GlycanInSite g = new GlycanInSite();
-    					g.setGlycan(gv.getGlycan());
-    					g.setSite (s);
-    					g.setGlycosylationSubType(gv.getGlycosylationSubType());
-    					g.setGlycosylationType(gv.getGlycosylationType());
-    					g.setType(gv.getType());
-    					s.getGlycans().add(g);
-    				}
-    			} else if (sv.getGlycosylationType() != null && !sv.getGlycosylationType().isEmpty()) {
-    				GlycanInSite g = new GlycanInSite();
-    				g.setGlycosylationSubType(sv.getGlycosylationSubType());
-    				g.setGlycosylationType(sv.getGlycosylationType());
-    				g.setSite (s);
-    				s.getGlycans().add(g);
-    			}
-    			glycoprotein.getSites().add(s);
-    		}
-    	}
-    	Glycoprotein saved = glycoproteinRepository.save(glycoprotein);
+        Glycoprotein saved = addGlycoprotein(gp, user, glycoproteinRepository);
     	return new ResponseEntity<>(new SuccessResponse<Glycoprotein>(saved, "glycoprotein added"), HttpStatus.OK);
+    }
+    
+    public static Glycoprotein addGlycoprotein (GlycoproteinView gp, UserEntity user, GlycoproteinRepository glycoproteinRepository) {
+    	if (gp.getName() != null && !gp.getName().isEmpty()) {
+	       	 // check if duplicate
+	       	List<Glycoprotein> existing = glycoproteinRepository.findAllByNameAndUser(gp.getName(), user);
+	       	if (existing.size() > 0) {
+	       		throw new DuplicateException("A glycoprotein with this name already exists! ");
+	       	}
+    	}
+   	
+	   	Glycoprotein glycoprotein = new Glycoprotein();
+	   	glycoprotein.setName(gp.getName());
+	   	glycoprotein.setProteinName(gp.getProteinName());
+	   	glycoprotein.setGeneSymbol(gp.getGeneSymbol());
+	   	glycoprotein.setUniprotId(gp.getUniprotId());
+	   	glycoprotein.setSequence(gp.getSequence());
+	   	glycoprotein.setTags(gp.getTags());
+	   	glycoprotein.setUser(user);
+	   	glycoprotein.setDateCreated(new Date());
+	   	glycoprotein.setSites(new ArrayList<>());
+	   	if (gp.getSites() != null) {
+	   		for (SiteView sv: gp.getSites()) {
+	   			Site s = new Site();
+	   			s.setType(sv.getType());
+	   			s.setGlycoprotein(glycoprotein);
+	   			s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
+	   			s.setGlycans(new ArrayList<>());
+	   			if (sv.getGlycans() != null && !sv.getGlycans().isEmpty()) {
+	   				for (GlycanInSiteView gv: sv.getGlycans()) {
+	   					GlycanInSite g = new GlycanInSite();
+	   					g.setGlycan(gv.getGlycan());
+	   					g.setSite (s);
+	   					g.setGlycosylationSubType(gv.getGlycosylationSubType());
+	   					g.setGlycosylationType(gv.getGlycosylationType());
+	   					g.setType(gv.getType());
+	   					s.getGlycans().add(g);
+	   				}
+	   			} else if (sv.getGlycosylationType() != null && !sv.getGlycosylationType().isEmpty()) {
+	   				GlycanInSite g = new GlycanInSite();
+	   				g.setGlycosylationSubType(sv.getGlycosylationSubType());
+	   				g.setGlycosylationType(sv.getGlycosylationType());
+	   				g.setSite (s);
+	   				s.getGlycans().add(g);
+	   			}
+	   			glycoprotein.getSites().add(s);
+	   		}
+	   	}
+	   	Glycoprotein saved = glycoproteinRepository.save(glycoprotein);
+	   	return saved;
     }
     
     @Operation(summary = "Get glycorotein by the given id", security = { @SecurityRequirement(name = "bearer-key") })
@@ -2373,6 +2381,9 @@ public class DataController {
                             if (result.getGlycoproteins() == null) {
                             	result.setGlycoproteins(new ArrayList<>());
                             }
+                            if (result.getGlycans() == null) {
+                            	result.setGlycans(new ArrayList<>());
+                            }
                             uploadRepository.save(result);
                         }                       
                     });
@@ -2381,7 +2392,9 @@ public class DataController {
                 	synchronized (this) {
                         if (result.getErrors() != null && !result.getErrors().isEmpty()) {
                             result.setStatus(UploadStatus.ERROR);
-                        } 
+                        } else {
+                        	result.setErrors(new ArrayList<>());
+                        }
                         if (result.getGlycans() == null) {
                         	result.setGlycans(new ArrayList<>());
                         }
@@ -2402,6 +2415,158 @@ public class DataController {
     	    
         }
     	return new ResponseEntity<>(new SuccessResponse<Boolean>(true, "glycan added"), HttpStatus.OK); 
+    }
+    
+    @Operation(summary = "Add glycoproteins from file", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/addglycoproteinfromfile")
+    public ResponseEntity<SuccessResponse<Boolean>> addGlycoproteinsFromFile(
+    		@Parameter(required=true, name="file", description="details of the uploded file") 
+	        @RequestBody
+    		FileWrapper fileWrapper, 
+    		@Parameter(required=true, name="filetype", description="type of the file", schema = @Schema(type = "string",
+    		allowableValues= {"BYONIC"})) 
+	        @RequestParam(required=true, value="filetype") String fileType,
+	        @RequestParam(required=false, value="tag") String tag,
+	        @Parameter(required=false, description="way to handle multiple glycans")
+			@RequestParam (required=false, value="glycanorder", defaultValue="ALTERNATIVE")
+			MultipleGlycanOrder multipleGlycanOrder) {
+    	
+    	
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        // check if there is an ongoing upload
+    	List<BatchUploadEntity> batchList = uploadRepository.findByUser(user);
+    	for (BatchUploadEntity b: batchList) {
+    		if (b.getStatus() == UploadStatus.PROCESSING) {
+    			throw new BadRequestException ("There is an ongoing glycan upload process. Please wait for that to finish before uploading a new file");
+    		}
+    	}
+    	
+    	String fileFolder = uploadDir;
+        if (fileWrapper.getFileFolder() != null && !fileWrapper.getFileFolder().isEmpty())
+            fileFolder = fileWrapper.getFileFolder();
+        File file = new File (fileFolder, fileWrapper.getIdentifier());
+        if (!file.exists()) {
+            throw new IllegalArgumentException("File is not acceptable");
+        }
+        else {
+            BatchUploadEntity result = new BatchUploadEntity();
+            result.setStartDate(new Date());
+            result.setStatus(UploadStatus.PROCESSING);
+            result.setUser(user);
+            result.setFilename(fileWrapper.getOriginalName());
+            result.setFormat(fileType);
+            result.setType(CollectionType.GLYCOPROTEIN);
+            result.setErrors(new ArrayList<>());
+            result.setGlycans(new ArrayList<>());
+            result.setGlycoproteins(new ArrayList<>());
+            BatchUploadEntity saved = uploadRepository.save(result);
+            // keep the original file in the uploads directory
+            File uploadFolder = new File (uploadDir + File.separator + saved.getId());
+            if (!uploadFolder.exists()) {
+            	uploadFolder.mkdirs();
+            }
+            File newFile = new File (uploadFolder + File.separator + fileWrapper.getOriginalName());
+            boolean success = file.renameTo(newFile);
+            if (!success) {
+            	logger.error("Could not store the original file");
+            }
+            addGlycoproteinsFromFile(this, newFile, saved, fileType, tag, multipleGlycanOrder, 
+    			user, uploadRepository, batchUploadJobRepository, batchUploadService);
+            return new ResponseEntity<>(new SuccessResponse<Boolean>(true, "batch upload finished"), HttpStatus.OK); 
+        }
+    }
+    
+    public static void addGlycoproteinsFromFile (Object instance, File newFile, BatchUploadEntity result, String fileType, 
+    		String tag, MultipleGlycanOrder multipleGlycanOrder,
+    		UserEntity user, BatchUploadRepository uploadRepository, 
+    		BatchUploadJobRepository batchUploadJobRepository, AsyncService batchUploadService) {
+    	
+        try {    
+            CompletableFuture<SuccessResponse<BatchUploadEntity>> response = 
+            		batchUploadService.addGlycoproteinFromByonicFile(newFile, result, user, ",", tag, multipleGlycanOrder);
+            
+            response.whenComplete((resp, e) -> {
+            	if (e != null) {
+                    logger.error(e.getMessage(), e);
+                    result.setStatus(UploadStatus.ERROR);
+                    if (e.getCause() instanceof BatchUploadException) {
+                    	result.setErrors(((BatchUploadException)e.getCause()).getErrors());
+            		} else if (result.getErrors() == null) {
+            			result.setErrors(new ArrayList<>());
+            			result.getErrors().add(new UploadErrorEntity(null, e.getCause().getMessage(), null));
+            		}
+                    if (result.getGlycans() == null) {
+                    	result.setGlycans(new ArrayList<>());
+                    }
+                    if (result.getGlycoproteins() == null) {
+                    	result.setGlycoproteins(new ArrayList<>());
+                    }
+                    uploadRepository.save(result);
+                    
+                } else {
+                	BatchUploadEntity upload = (BatchUploadEntity) resp.getData();
+                	if (upload.getStatus() == UploadStatus.WAITING) {
+                		// save the job and return
+                		result.setErrors(new ArrayList<>());
+                        if (result.getGlycans() == null) {
+                        	result.setGlycans(new ArrayList<>());
+                        }
+                        if (result.getGlycoproteins() == null) {
+                        	result.setGlycoproteins(new ArrayList<>());
+                        }
+                		uploadRepository.save(result);
+                		BatchUploadJob job = new BatchUploadJob();
+                		job.setUpload(upload);
+                		job.setTag(tag);
+                		job.setOrderParam(multipleGlycanOrder);
+                		batchUploadJobRepository.save(job);                    		
+                	} else {
+                    	int count = 0;
+                    	for (GlycoproteinInFile g: upload.getGlycoproteins()) {
+                    		if (!g.getIsNew()) {
+                    			count++;
+                    		}
+                    	}
+                    	result.setExistingCount(count);
+                        result.setStatus(UploadStatus.DONE);    
+                        result.setErrors(new ArrayList<>());
+                        if (result.getGlycans() == null) {
+                        	result.setGlycans(new ArrayList<>());
+                        }
+                        if (result.getGlycoproteins() == null) {
+                        	result.setGlycoproteins(new ArrayList<>());
+                        }
+                        uploadRepository.save(result);
+                	}
+                }                       
+            });
+            response.get(1000, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+        	synchronized (instance) {
+                if (result.getErrors() != null && !result.getErrors().isEmpty()) {
+                    result.setStatus(UploadStatus.ERROR);
+                } else {
+                	result.setErrors(new ArrayList<>());
+                }
+                if (result.getGlycans() == null) {
+                	result.setGlycans(new ArrayList<>());
+                }
+                if (result.getGlycoproteins() == null) {
+                	result.setGlycoproteins(new ArrayList<>());
+                }
+                uploadRepository.save(result);
+            }
+        } catch (InterruptedException e1) {
+			logger.error("batch upload is interrupted", e1);
+		} catch (ExecutionException e1) {
+			logger.error("batch upload is interrupted", e1);
+		}
     }
     
     @Operation(summary = "Download glycans", security = { @SecurityRequirement(name = "bearer-key") })

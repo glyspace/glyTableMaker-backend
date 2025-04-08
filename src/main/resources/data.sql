@@ -63,7 +63,7 @@ insert into table_column (columnid, name, datatypeid, valuetype, column_order) v
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (3, 'Species', 3, 'ID', 3) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (4, 'Strain', 4, 'VALUE', 4) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (5, 'Tissue', 5, 'ID', 5) ON CONFLICT DO NOTHING;
-insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (6, 'Cell line ID', 6, 'ID', 5) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (6, 'Cell line ID', 6, 'ID', 6) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (7, 'Disease', 7, 'ID', 7) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (8, 'Glycan dictionary term ID', 8, 'VALUE', 8) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (9, 'has_abundance', 9, 'VALUE', 9) ON CONFLICT DO NOTHING;
