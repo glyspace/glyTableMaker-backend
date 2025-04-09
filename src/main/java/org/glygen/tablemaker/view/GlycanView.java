@@ -1,10 +1,13 @@
 package org.glygen.tablemaker.view;
 
+import org.glygen.tablemaker.persistence.glycan.CompositionType;
+
 public class GlycanView {
     String sequence;
     SequenceFormat format;
     String glytoucanID;
     String composition;
+    CompositionType type;
     
     /**
      * @return the sequence
@@ -54,4 +57,10 @@ public class GlycanView {
     public void setComposition(String composition) {
         this.composition = composition;
     }
+	public CompositionType getType() {
+		return type;
+	}
+	public void setType(CompositionType type) {
+		this.type = type;
+	}
 }

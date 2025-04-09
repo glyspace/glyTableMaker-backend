@@ -1457,7 +1457,7 @@ public class DataController {
     	List<Glycan> allAdded = new ArrayList<>();
     	for (GlycanView g: gList) {
     		try {
-	    		ResponseEntity<SuccessResponse<Glycan>> response = addGlycan (g, compositionType);
+	    		ResponseEntity<SuccessResponse<Glycan>> response = addGlycan (g, g.getType() != null ? g.getType() : compositionType);
 	    		Glycan added = response.getBody().getData();
 	    		allAdded.add(added);
     		} catch (DuplicateException e) {
