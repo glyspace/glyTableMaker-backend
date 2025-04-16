@@ -7,7 +7,9 @@ import java.util.List;
 import org.glygen.tablemaker.controller.DataController;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
+import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.BatchUploadJob;
+import org.glygen.tablemaker.persistence.ErrorReportEntity;
 import org.glygen.tablemaker.persistence.dao.BatchUploadJobRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
@@ -34,15 +36,17 @@ public class ScheduledTasksService {
 	final private AsyncService batchUploadService;
 	final private BatchUploadRepository uploadRepository;
 	final private GlycanRepository glycanRepository;
+	final private ErrorReportingService errorReportingService;
 	
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
 	
-	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository) {
+	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, ErrorReportingService errorReportingService) {
 		this.batchUploadJobRepository = batchUploadJobRepository;
 		this.batchUploadService = batchUploadService;
 		this.uploadRepository = uploadRepository;
 		this.glycanRepository = glycanRepository;
+		this.errorReportingService = errorReportingService;
 	}
 	
     @Scheduled(fixedDelay = 86400000, initialDelay=1000)
@@ -62,8 +66,14 @@ public class ScheduledTasksService {
     					modified = true;
     				}	
     			} catch (GlytoucanAPIFailedException e) {
-    				//TODO report the issue
     				logger.error (e.getMessage(), e);
+    				// report the issue
+    				ErrorReportEntity error = new ErrorReportEntity();
+    				error.setMessage(e.getMessage());
+    				error.setDetails("Error occurred during retrieval of glytoucan ids for the newly registered glycans tasks");
+    				error.setDateReported(new Date());
+    				error.setTicketLabel("GlytoucanAPI");
+    				errorReportingService.reportError(error);
     				// try to check another way
     				try {
     					String glytoucanId = GlytoucanUtil.getInstance().checkBatchStatus(glycan.getGlytoucanHash());
@@ -120,8 +130,14 @@ public class ScheduledTasksService {
                 }
     	        glycanRepository.save(glycan);
     		} catch (GlytoucanAPIFailedException e) {
-    			//TODO report the issue
+    			// report the issue
 				logger.error (e.getMessage(), e);
+				ErrorReportEntity error = new ErrorReportEntity();
+				error.setMessage(e.getMessage());
+				error.setDetails("Error occurred during retrieval of glytoucan ids for \"not submitted\" glycans tasks");
+				error.setDateReported(new Date());
+				error.setTicketLabel("GlytoucanAPI");
+				errorReportingService.reportError(error);
 				break;
     		}
     	}
@@ -134,6 +150,11 @@ public class ScheduledTasksService {
     			File uploadFolder = new File (uploadDir + File.separator + job.getUpload().getId());
     			File newFile = new File (uploadFolder + File.separator + job.getUpload().getFilename());
     			try {
+    				/*BatchUploadEntity upload = new BatchUploadEntity();
+    				upload.setFilename(job.getUpload().getFilename());
+    				upload.setFormat(job.getUpload().getFilename());
+    				upload.setStartDate(new Date());
+    				upload.setType(job.getUpload().getType());*/
 	    			DataController.addGlycoproteinsFromFile(this, newFile, job.getUpload(), job.getFileType(), 
 	    					job.getTag(), job.getOrderParam(), job.getUser(), 
 	    					uploadRepository, batchUploadJobRepository, batchUploadService);

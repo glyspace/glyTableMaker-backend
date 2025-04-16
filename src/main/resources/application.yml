@@ -36,6 +36,11 @@ glytoucan:
   api-key: ENC(xxC0coU6Fo/mu1WTYjVA9IWdPerjRD0XPBEgmXgW8mdI6n7Jk5/bA3nFD48QKPxWpEVU9ICMXxlugIwk+DZSe65whHuRX8NhH0MwyeO2Xsc=)
   user-id: ff2dda587eb4597ab1dfb995b520e99b7ef68d7786af0f3ea626555e2c609c3d
   
+github:
+  token: ENC(0sa2VQ56p4vaj/IR39XUdq36LBs+qRBCHveywFoFz4e5+Y/+Pd4bymOtFD8oT6EHtCTjfclh3eY3WrVicOpIryY7koLGyhDNxBrnS7K3AJ+bG3HGLbxZMFngt5JW0SerwQz1is9RYEw=)
+  issuesUrl: https://api.github.com/repos/glyspace/glyTableMaker-backend/issues
+  assignee: senaarpinar, ReneRanzinger
+  
 glygen:
   oauth2:
      redirectUri: http://localhost:3000/oauth2/redirect

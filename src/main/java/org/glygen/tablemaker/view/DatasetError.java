@@ -6,7 +6,6 @@ public class DatasetError {
 	Integer errorLevel = 1; // 0: warning, 1: error
 	
 	public DatasetError() {
-		// TODO Auto-generated constructor stub
 	}
 	
 	public DatasetError (String message, int errorLevel) {

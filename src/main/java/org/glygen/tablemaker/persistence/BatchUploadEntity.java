@@ -24,7 +24,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name="file_upload")
-public class BatchUploadEntity {
+public class BatchUploadEntity extends UserError {
 	Long id;
 	UploadStatus status;
 	Date startDate;

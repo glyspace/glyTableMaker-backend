@@ -61,18 +61,23 @@ public class UniProtUtil {
             	}
             		
             }
-            
-    		JSONArray arr = obj.getJSONArray("genes"); 
-    		JSONObject gene = arr.getJSONObject(0);
-    		JSONObject geneName = gene.getJSONObject("geneName");
-    		if (geneName != null) {
-    			protein.setGeneSymbol (geneName.getString("value"));
-    		}
+            if (obj.has("genes")) {
+            	JSONArray arr = obj.getJSONArray("genes"); 
+            	JSONObject gene = arr.getJSONObject(0);
+            	if (gene.has("geneName")) {
+            		JSONObject geneName = gene.getJSONObject("geneName");
+            		if (geneName != null) {
+            			protein.setGeneSymbol (geneName.getString("value"));
+            		}
+            	}
+            }
     		
-    		JSONObject seq = obj.getJSONObject("sequence");
-    		if (seq != null) {
-    			protein.setSequence (seq.getString("value"));
-    		}
+            if (obj.has("sequence")) {
+	    		JSONObject seq = obj.getJSONObject("sequence");
+	    		if (seq != null) {
+	    			protein.setSequence (seq.getString("value"));
+	    		}
+            }
             
             return protein;
         } catch (Exception e) {

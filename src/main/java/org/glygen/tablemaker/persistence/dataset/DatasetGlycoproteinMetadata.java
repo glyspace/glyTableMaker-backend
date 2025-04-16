@@ -31,7 +31,6 @@ public class DatasetGlycoproteinMetadata {
  	DatasetVersion dataset;
  	
  	public DatasetGlycoproteinMetadata() {
-		// TODO Auto-generated constructor stub
 	}
 
  	public DatasetGlycoproteinMetadata(DatasetGlycoproteinMetadata m) {

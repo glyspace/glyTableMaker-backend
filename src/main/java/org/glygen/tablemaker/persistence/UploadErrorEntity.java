@@ -13,7 +13,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name="file_errors")
-public class UploadErrorEntity {
+public class UploadErrorEntity extends UserError {
 	Long id;
 	String position; // row id etc.
 	String message;
@@ -21,7 +21,6 @@ public class UploadErrorEntity {
 	BatchUploadEntity upload;
 	
 	public UploadErrorEntity() {
-		// TODO Auto-generated constructor stub
 	}
 	
 	public UploadErrorEntity (String position, String message, String sequence) {

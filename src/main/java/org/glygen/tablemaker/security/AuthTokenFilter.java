@@ -1,10 +1,13 @@
 package org.glygen.tablemaker.security;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.util.Optional;
+
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,14 +18,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import io.jsonwebtoken.JwtException;
-
-import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
-import java.util.Optional;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Component
 public class AuthTokenFilter extends OncePerRequestFilter {
+	final static Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
     
     public AuthTokenFilter(TokenProvider tokenProvider, UserDetailsService userService) {
         this.tokenProvider = tokenProvider;
@@ -48,8 +51,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             }
         } catch (UsernameNotFoundException | JwtException | IllegalArgumentException | NoSuchAlgorithmException
                 | InvalidKeySpecException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            logger.error("Authorization Error", e);
         }
 
         filterChain.doFilter(request, response);

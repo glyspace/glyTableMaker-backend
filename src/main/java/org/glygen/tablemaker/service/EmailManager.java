@@ -1,9 +1,9 @@
 package org.glygen.tablemaker.service;
 
-import org.glygen.tablemaker.persistence.BatchUploadEntity;
+import org.glygen.tablemaker.persistence.ErrorReportEntity;
 import org.glygen.tablemaker.persistence.FeedbackEntity;
-import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.UserError;
 
 public interface EmailManager {
 	void sendPasswordReminder (UserEntity user);
@@ -12,6 +12,6 @@ public interface EmailManager {
 	void sendEmailChangeNotification (UserEntity user);
 	void sendFeedbackNotice (FeedbackEntity feedback);
     void sendFeedback(FeedbackEntity feedback, String... emails);
-	void sendErrorReport(UploadErrorEntity uploadErrorEntity, String...emails);
-	void sendErrorReport(BatchUploadEntity batchUploadEntity, String...emails);
+	void sendErrorReport(UserError error, String...emails);
+	void sendErrorReport(ErrorReportEntity error, String ... emails);
 }

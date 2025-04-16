@@ -313,7 +313,7 @@ public class TableController {
 							rows.add(row);
 							int i=0;
 							for (TableColumn col: table.getColumns()) {
-								if (col.getProteinColumn() != null) { //TODO fill in these columns
+								if (col.getProteinColumn() != null) { 
 									switch (col.getProteinColumn()) {
 									case AMINOACID:
 										if ( s.getAminoAcidString().isBlank() && col.getDefaultValue() != null) {

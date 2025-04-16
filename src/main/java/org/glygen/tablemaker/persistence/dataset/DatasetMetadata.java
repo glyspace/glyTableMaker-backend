@@ -31,7 +31,6 @@ public class DatasetMetadata {
  	DatasetVersion dataset;
  	
  	public DatasetMetadata() {
-		// TODO Auto-generated constructor stub
 	}
 
  	public DatasetMetadata(DatasetMetadata m) {

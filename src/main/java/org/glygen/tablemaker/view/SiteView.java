@@ -47,5 +47,27 @@ public class SiteView {
 	public void setSiteId(Long siteId) {
 		this.siteId = siteId;
 	}
-
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof SiteView) {
+			if (((SiteView) obj).getGlycans() != null && this.getGlycans() != null &&
+				((SiteView) obj).getGlycans().size() == this.getGlycans().size()) {
+				boolean allFound = true;
+				for (GlycanInSiteView gis: glycans) {
+					if (!((SiteView) obj).getGlycans().contains(gis)) {
+						allFound = false;
+					}
+				}	
+				if (allFound) {
+					// check the positions
+					if (this.position != null && this.position.equals(((SiteView) obj).getPosition()) &&
+							this.type != null && this.type == ((SiteView) obj).type) {
+						return true;
+					}
+				}
+			}
+		}
+		return super.equals(obj);
+	}
 }

@@ -65,9 +65,11 @@ import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.BatchUploadJob;
+import org.glygen.tablemaker.persistence.ErrorReportEntity;
 import org.glygen.tablemaker.persistence.GlycanImageEntity;
 import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.UserError;
 import org.glygen.tablemaker.persistence.dao.BatchUploadJobRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
@@ -106,6 +108,7 @@ import org.glygen.tablemaker.persistence.table.TableReportDetail;
 import org.glygen.tablemaker.service.AsyncService;
 import org.glygen.tablemaker.service.CollectionManager;
 import org.glygen.tablemaker.service.EmailManager;
+import org.glygen.tablemaker.service.ErrorReportingService;
 import org.glygen.tablemaker.service.GlycanManagerImpl;
 import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
@@ -187,7 +190,7 @@ public class DataController {
     final private AsyncService batchUploadService;
     final private GlycanManagerImpl glycanManager;
     final private UploadErrorRepository uploadErrorRepository;
-    private final EmailManager emailManager;
+    final private EmailManager emailManager;
     final private CollectionManager collectionManager;
     final private TableReportRepository reportRepository;
     final private NamespaceRepository namespaceRepository;
@@ -195,6 +198,7 @@ public class DataController {
     final private DatasetRepository datasetRepository;
     final private GlycoproteinRepository glycoproteinRepository;
     final private BatchUploadJobRepository batchUploadJobRepository;
+    final private ErrorReportingService errorReportingService;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -208,7 +212,7 @@ public class DataController {
     		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, 
     		TableReportRepository reportRepository, NamespaceRepository namespaceRepository, 
     		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
-    		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository) {
+    		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository, ErrorReportingService errorReportingService) {
         this.glycanRepository = glycanRepository;
 		this.collectionRepository = collectionRepository;
         this.userRepository = userRepository;
@@ -224,6 +228,7 @@ public class DataController {
 		this.datasetRepository = datasetRepository;
 		this.glycoproteinRepository = glycoproteinRepository;
 		this.batchUploadJobRepository = batchUploadJobRepository;
+		this.errorReportingService = errorReportingService;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1060,7 +1065,7 @@ public class DataController {
             @Content( schema = @Schema(implementation = SuccessResponse.class))}),
             @ApiResponse(responseCode="415", description= "Media type is not supported"),
             @ApiResponse(responseCode="500", description= "Internal Server Error") })
-    public ResponseEntity<SuccessResponse> sendErrorReport(
+    public ResponseEntity<SuccessResponse<UserError>> sendErrorReport(
     		@Parameter(required=true, description="internal id of the file upload") 
             @PathVariable("errorId")
     		Long errorId,
@@ -1068,33 +1073,18 @@ public class DataController {
     		@RequestParam (defaultValue="false")
     		Boolean isUpload) {
     	
-    	// email error to admins
-		List<String> emails = new ArrayList<String>();
-        try {
-            Resource classificationNamespace = new ClassPathResource("adminemails.txt");
-            final InputStream inputStream = classificationNamespace.getInputStream();
-            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                emails.add(line.trim());
-            }
-        } catch (Exception e) {
-            logger.error("Cannot locate admin emails", e);
-            throw new IllegalArgumentException("Error report not sent! Cannot locate admin emails");
-        }
-        
         if (isUpload) {
         	Optional<BatchUploadEntity> upload = uploadRepository.findById(errorId);
         	if (upload != null) {
-        		emailManager.sendErrorReport(upload.get(), emails.toArray(new String[0]));
-        		return new ResponseEntity<>(new SuccessResponse<BatchUploadEntity>(upload.get(), "file upload report is sent"), HttpStatus.OK);
+        		errorReportingService.reportUserError(upload.get());
+        		return new ResponseEntity<>(new SuccessResponse<UserError>(upload.get(), "file upload report is sent"), HttpStatus.OK);
         	}
         	
         } else {
 	    	Optional<UploadErrorEntity> upload = uploadErrorRepository.findById(errorId);
 	    	if (upload != null) {
-	    		emailManager.sendErrorReport(upload.get(), emails.toArray(new String[0]));
-	            return new ResponseEntity<>(new SuccessResponse<UploadErrorEntity>(upload.get(), "file upload report is sent"), HttpStatus.OK);
+	    		errorReportingService.reportUserError(upload.get());
+	            return new ResponseEntity<>(new SuccessResponse<UserError>(upload.get(), "file upload report is sent"), HttpStatus.OK);
 	        }
         }
 	
@@ -1514,7 +1504,7 @@ public class DataController {
             glycan.setStatus(RegistrationStatus.ALREADY_IN_GLYTOUCAN);
             
         } else if (g.getSequence() != null && !g.getSequence().trim().isEmpty()){ 
-            parseAndRegisterGlycan(glycan, g, glycanRepository, user);
+            parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user);
         } else { // composition
             try {
                 
@@ -1595,7 +1585,13 @@ public class DataController {
                 } catch (GlytoucanAPIFailedException e) {
                 	glycan.setStatus(RegistrationStatus.NOT_SUBMITTED_YET);
                 	//glycan.setError("Cannot retrieve glytoucan id. Reason: " + e.getMessage());
-                	//TODO report the error through email
+                	// report the error through email
+                	ErrorReportEntity error = new ErrorReportEntity();
+    				error.setMessage(e.getMessage());
+    				error.setDetails("Error occurred in AddGlycan");
+    				error.setDateReported(new Date());
+    				error.setTicketLabel("GlytoucanAPI");
+    				errorReportingService.reportError(error);
                 }
                 
             } catch (DictionaryException | CompositionParseException | ConversionException | WURCSException e1) {
@@ -2352,20 +2348,31 @@ public class DataController {
                     response.whenComplete((resp, e) -> {
                     	if (e != null) {
                             logger.error(e.getMessage(), e);
-                            result.setStatus(UploadStatus.ERROR);
+                            saved.setStatus(UploadStatus.ERROR);
                             if (e.getCause() instanceof BatchUploadException) {
-                            	result.setErrors(((BatchUploadException)e.getCause()).getErrors());
-                    		} else if (result.getErrors() == null) {
-                    			result.setErrors(new ArrayList<>());
-                    			result.getErrors().add(new UploadErrorEntity(null, e.getCause().getMessage(), null));
+                            	if (saved.getErrors() == null) {
+                        			saved.setErrors(new ArrayList<>());
+                            	}
+                            	for (UploadErrorEntity error: ((BatchUploadException)e.getCause()).getErrors()) {
+                            		saved.getErrors().add(error);
+                            		error.setUpload(saved);
+                            	}
+                            //	result.setErrors(((BatchUploadException)e.getCause()).getErrors());
+                    		} else {
+                    			if (saved.getErrors() == null) {
+                    				saved.setErrors(new ArrayList<>());
+                    			}
+                    			UploadErrorEntity error = new UploadErrorEntity(null, e.getCause().getMessage(), null);
+                    			error.setUpload(saved);
+                    			saved.getErrors().add(error);
                     		}
-                            if (result.getGlycans() == null) {
-                            	result.setGlycans(new ArrayList<>());
+                            if (saved.getGlycans() == null) {
+                            	saved.setGlycans(new ArrayList<>());
                             }
-                            if (result.getGlycoproteins() == null) {
-                            	result.setGlycoproteins(new ArrayList<>());
+                            if (saved.getGlycoproteins() == null) {
+                            	saved.setGlycoproteins(new ArrayList<>());
                             }
-                            uploadRepository.save(result);
+                            uploadRepository.save(saved);
                             
                         } else {
                         	BatchUploadEntity upload = (BatchUploadEntity) resp.getData();
@@ -2375,33 +2382,33 @@ public class DataController {
                         			count++;
                         		}
                         	}
-                        	result.setExistingCount(count);
-                            result.setStatus(UploadStatus.DONE);    
-                            result.setErrors(new ArrayList<>());
-                            if (result.getGlycoproteins() == null) {
-                            	result.setGlycoproteins(new ArrayList<>());
+                        	saved.setExistingCount(count);
+                            saved.setStatus(UploadStatus.DONE);    
+                            if (saved.getErrors() == null) saved.setErrors(new ArrayList<>());
+                            if (saved.getGlycoproteins() == null) {
+                            	saved.setGlycoproteins(new ArrayList<>());
                             }
-                            if (result.getGlycans() == null) {
-                            	result.setGlycans(new ArrayList<>());
+                            if (saved.getGlycans() == null) {
+                            	saved.setGlycans(new ArrayList<>());
                             }
-                            uploadRepository.save(result);
+                            uploadRepository.save(saved);
                         }                       
                     });
                     response.get(1000, TimeUnit.MILLISECONDS);
                 } catch (TimeoutException e) {
                 	synchronized (this) {
-                        if (result.getErrors() != null && !result.getErrors().isEmpty()) {
-                            result.setStatus(UploadStatus.ERROR);
-                        } else {
-                        	result.setErrors(new ArrayList<>());
+                        if (saved.getErrors() != null && !saved.getErrors().isEmpty()) {
+                        	saved.setStatus(UploadStatus.ERROR);
+                        } else if (saved.getErrors() == null) {
+                        	saved.setErrors(new ArrayList<>());
                         }
-                        if (result.getGlycans() == null) {
-                        	result.setGlycans(new ArrayList<>());
+                        if (saved.getGlycans() == null) {
+                        	saved.setGlycans(new ArrayList<>());
                         }
-                        if (result.getGlycoproteins() == null) {
-                        	result.setGlycoproteins(new ArrayList<>());
+                        if (saved.getGlycoproteins() == null) {
+                        	saved.setGlycoproteins(new ArrayList<>());
                         }
-                        uploadRepository.save(result);
+                        uploadRepository.save(saved);
                     }
                 } catch (InterruptedException e1) {
 					logger.error("batch upload is interrupted", e1);
@@ -2496,10 +2503,21 @@ public class DataController {
                     logger.error(e.getMessage(), e);
                     result.setStatus(UploadStatus.ERROR);
                     if (e.getCause() instanceof BatchUploadException) {
-                    	result.setErrors(((BatchUploadException)e.getCause()).getErrors());
-            		} else if (result.getErrors() == null) {
-            			result.setErrors(new ArrayList<>());
-            			result.getErrors().add(new UploadErrorEntity(null, e.getCause().getMessage(), null));
+                    	if (result.getErrors() == null) {
+                			result.setErrors(new ArrayList<>());
+                    	}
+                    	for (UploadErrorEntity error: ((BatchUploadException)e.getCause()).getErrors()) {
+                    		result.getErrors().add(error);
+                    		error.setUpload(result);
+                    	}
+                    	//result.setErrors(((BatchUploadException)e.getCause()).getErrors());
+            		} else {
+            			if (result.getErrors() == null) {
+            				result.setErrors(new ArrayList<>());
+            			}
+            			UploadErrorEntity error = new UploadErrorEntity(null, e.getCause().getMessage(), null);
+            			error.setUpload(result);
+            			result.getErrors().add(error);
             		}
                     if (result.getGlycans() == null) {
                     	result.setGlycans(new ArrayList<>());
@@ -2513,7 +2531,9 @@ public class DataController {
                 	BatchUploadEntity upload = (BatchUploadEntity) resp.getData();
                 	if (upload.getStatus() == UploadStatus.WAITING) {
                 		// save the job and return
-                		result.setErrors(new ArrayList<>());
+                		if (result.getErrors() == null) {
+                			result.setErrors(new ArrayList<>());
+                		}
                         if (result.getGlycans() == null) {
                         	result.setGlycans(new ArrayList<>());
                         }
@@ -2535,7 +2555,7 @@ public class DataController {
                     	}
                     	result.setExistingCount(count);
                         result.setStatus(UploadStatus.DONE);    
-                        result.setErrors(new ArrayList<>());
+                        if (result.getErrors() == null) result.setErrors(new ArrayList<>());
                         if (result.getGlycans() == null) {
                         	result.setGlycans(new ArrayList<>());
                         }
@@ -2551,7 +2571,7 @@ public class DataController {
         	synchronized (instance) {
                 if (result.getErrors() != null && !result.getErrors().isEmpty()) {
                     result.setStatus(UploadStatus.ERROR);
-                } else {
+                } else if (result.getErrors() == null){
                 	result.setErrors(new ArrayList<>());
                 }
                 if (result.getGlycans() == null) {
@@ -2785,7 +2805,7 @@ public class DataController {
 		}
     }
     
-    public static void parseAndRegisterGlycan (Glycan glycan, GlycanView g, GlycanRepository glycanRepository, UserEntity user) {
+    public static void parseAndRegisterGlycan (Glycan glycan, GlycanView g, GlycanRepository glycanRepository, ErrorReportingService errorReportingService, UserEntity user) {
     	org.eurocarbdb.application.glycanbuilder.Glycan glycanObject= null;
         FixGlycoCtUtil fixGlycoCT = new FixGlycoCtUtil();
         Sugar sugar = null;
@@ -2888,7 +2908,13 @@ public class DataController {
         } catch (GlytoucanAPIFailedException e) {
         	glycan.setStatus(RegistrationStatus.NOT_SUBMITTED_YET);
         	//glycan.setError("Cannot retrieve glytoucan id. Reason: " + e.getMessage());
-        	//TODO report the error through email
+        	// report the error through email
+        	ErrorReportEntity error = new ErrorReportEntity();
+			error.setMessage(e.getMessage());
+			error.setDetails("Error occurred in parse and register glycan");
+			error.setDateReported(new Date());
+			error.setTicketLabel("GlytoucanAPI");
+			errorReportingService.reportError(error);
         }          
     }
     

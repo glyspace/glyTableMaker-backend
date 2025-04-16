@@ -2,12 +2,15 @@ package org.glygen.tablemaker.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
+import org.glygen.tablemaker.persistence.ErrorReportEntity;
 import org.glygen.tablemaker.persistence.FeedbackEntity;
 import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.UserError;
 import org.glygen.tablemaker.persistence.dao.VerificationTokenRepository;
 import org.glygen.tablemaker.util.RandomPasswordGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -125,29 +128,26 @@ public class MailService implements EmailManager {
     }
 
 	@Override
-	public void sendErrorReport(UploadErrorEntity uploadErrorEntity, String... emails) {
+	public void sendErrorReport(UserError error, String... emails) {
 		if (emails == null) {
             throw new IllegalArgumentException("email list cannot be null");
         }
-        String subject = "GlyTableMaker Upload Error: ErrorId [" + uploadErrorEntity.getId() + "]";
-        String message = "Error message: " + uploadErrorEntity.getMessage() + "\nPosition: " + 
-        		(uploadErrorEntity.getPosition() !=null ? uploadErrorEntity.getPosition() : "unknown")+ 
-        		"\nSequence: " + uploadErrorEntity.getSequence() + "\nFile: " + 
-        		uploadDir + File.separator + uploadErrorEntity.getUpload().getId() + File.separator + uploadErrorEntity.getUpload().getFilename() +
-        		"\nUser: " + uploadErrorEntity.getUpload().getUser().getUsername();
-        for (String email: emails) {
-           sendMessage(email, subject, message);
-        }
-	}
-
-	@Override
-	public void sendErrorReport(BatchUploadEntity batchUploadEntity, String... emails) {
-		if (emails == null) {
-            throw new IllegalArgumentException("email list cannot be null");
-        }
-        String subject = "GlyTableMaker Upload Error: UploadId [" + batchUploadEntity.getId() + "]";
-        String message = "Upload process [" + batchUploadEntity.getId() + "] that started at " + 
+		String subject="";
+		String message="";
+		if (error instanceof BatchUploadEntity) {
+			BatchUploadEntity batchUploadEntity = (BatchUploadEntity) error;
+			subject = "GlyTableMaker Upload Error: UploadId [" + batchUploadEntity.getId() + "]";
+			message = "Upload process [" + batchUploadEntity.getId() + "] that started at " + 
         		batchUploadEntity.getStartDate() + " is still processing!";
+		} else if (error instanceof UploadErrorEntity) {
+			UploadErrorEntity uploadErrorEntity = (UploadErrorEntity) error;
+			subject = "GlyTableMaker Upload Error: ErrorId [" + uploadErrorEntity.getId() + "]";
+	        message = "Error message: " + uploadErrorEntity.getMessage() + "\nPosition: " + 
+	        		(uploadErrorEntity.getPosition() !=null ? uploadErrorEntity.getPosition() : "unknown")+ 
+	        		"\nSequence: " + uploadErrorEntity.getSequence() + "\nFile: " + 
+	        		uploadDir + File.separator + uploadErrorEntity.getUpload().getId() + File.separator + uploadErrorEntity.getUpload().getFilename() +
+	        		"\nUser: " + uploadErrorEntity.getUpload().getUser().getUsername();
+		}
         
         for (String email: emails) {
             sendMessage(email, subject, message);
@@ -179,5 +179,20 @@ public class MailService implements EmailManager {
        
         sendMessage(feedback.getEmail(), subject, message);
     }
+
+	@Override
+	public void sendErrorReport(ErrorReportEntity error, String... emails) {
+		if (emails == null) {
+            throw new IllegalArgumentException("email list cannot be null");
+        }
+        String subject = "GlyTableMaker System Error";
+        String message = "A system error occurred on " + error.getDateReported() + " with the following message " 
+        		+ error.getMessage() + "\nDetails (if any) " + error.getDetails() + "\nGithub ticket created (if any): " 
+        		+ error.getTicketUrl(); 
+        
+        for (String email: emails) {
+            sendMessage(email, subject, message);
+         }
+	}
 
 }

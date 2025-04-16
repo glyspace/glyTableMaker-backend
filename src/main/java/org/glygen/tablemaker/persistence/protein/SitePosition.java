@@ -25,4 +25,20 @@ public class SitePosition {
 			return super.toString();
 		}
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof SitePosition) {
+			if (((SitePosition) obj).getPositionList() != null && positionList != null && 
+					((SitePosition) obj).getPositionList().size() == positionList.size()) {
+				boolean allFound = true;
+				for (Position p: positionList) {
+					if (!((SitePosition) obj).getPositionList().contains(p))
+						allFound = false;
+				}
+				return allFound;
+			}
+		}
+		return super.equals(obj);
+	}
 }
