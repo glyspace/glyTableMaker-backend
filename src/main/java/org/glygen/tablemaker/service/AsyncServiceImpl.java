@@ -291,6 +291,7 @@ public class AsyncServiceImpl implements AsyncService {
             String line;
             List<Glycan> allGlycans = new ArrayList<>();
             Map<GlycoproteinView, List<ByonicRow>> proteinMap = new HashMap<>();
+            Map<String, GlycoproteinView> uniprotMap = new HashMap<>();
             Map<String, Glycan> glycanSequenceMap = new HashMap<>();
             int posCol = -1;
             int glycanCol = -1;
@@ -392,23 +393,29 @@ public class AsyncServiceImpl implements AsyncService {
         	                }
                     	}
                     	
-	                    	// extract info for glycoprotein
-	                    	String proteinData = data[proteinCol];
-	                    	String uniProtId = proteinData.substring(proteinData.indexOf("|")+1, proteinData.lastIndexOf("|"));
-	                    	// check if it is valid
-	                    	try {
-	                    		GlycoproteinView protein = UniProtUtil.getProteinFromUniProt(uniProtId);
-	                    		if (!proteinMap.containsKey(protein)) {
-	                        		proteinMap.put(protein, new ArrayList<ByonicRow>());
-	                        	}
-	                        	ByonicRow row = new ByonicRow();
-	                        	row.setRow(data);
-	                        	row.setRowNo(count);
-	                        	proteinMap.get(protein).add(row);
-	                    	} catch (Exception e) {
-	                    		// cannot find the protein in UniProt
-	                    		errors.add(new UploadErrorEntity(count+"", "Could not find protein " + uniProtId + " in UniProt database. Reason: " + e.getMessage(), null));
-	                    	}
+                    	// extract info for glycoprotein
+                    	String proteinData = data[proteinCol];
+                    	String uniProtId = proteinData.substring(proteinData.indexOf("|")+1, proteinData.lastIndexOf("|"));
+                    	// check if it is valid
+                    	try {
+                        	GlycoproteinView protein = null;
+                    		if (!uniprotMap.containsKey(uniProtId)) {
+	                    		protein = UniProtUtil.getProteinFromUniProt(uniProtId);
+	                        	uniprotMap.put(uniProtId, protein);
+                    		} else {
+                    			protein = uniprotMap.get(uniProtId);
+                    		}
+                    		if (!proteinMap.containsKey(protein)) {
+                        		proteinMap.put(protein, new ArrayList<ByonicRow>());
+                        	}
+                    		ByonicRow row = new ByonicRow();
+                        	row.setRow(data);
+                        	row.setRowNo(count);
+                        	proteinMap.get(protein).add(row);
+                    	} catch (Exception e) {
+                    		// cannot find the protein in UniProt
+                    		errors.add(new UploadErrorEntity(count+"", "Could not find protein " + uniProtId + " in UniProt database. Reason: " + e.getMessage(), null));
+                    	}
                     	
                     }
                     if (dataStart) count++;
@@ -477,7 +484,7 @@ public class AsyncServiceImpl implements AsyncService {
 						String sub = protein.getSequence().substring(position-1);   // position starts from 1
 						if (!sub.contains(sequence)) {
 							// ERROR
-							errors.add(new UploadErrorEntity(br.getRowNo()+"", "Unable to find peptide " + sequence + " at position " + pos + " in Protein " + protein.getUniprotId(), row[seqCol]));
+							errors.add(new UploadErrorEntity((br.getRowNo()+1)+"", "Unable to find peptide " + sequence + " at position " + pos + " in Protein " + protein.getUniprotId(), row[seqCol]));
 							continue;
 						}
 						String glycanColumn = row[glycanCol];
@@ -487,7 +494,7 @@ public class AsyncServiceImpl implements AsyncService {
 						for (String m: modList) {
 							String t = m.substring(m.indexOf("(")+1, m.indexOf("/")).trim();
 							if (glycanTypeList != null && glycanTypeList.accepted.contains(t)) {
-								acceptedList.add(m);
+								acceptedList.add(m.trim());
 							}
 							// check if glycanType is in the dictionary
 							if (glycanTypeList != null && !glycanTypeList.accepted.contains(t) && !glycanTypeList.ignored.contains(t)) {
@@ -505,7 +512,7 @@ public class AsyncServiceImpl implements AsyncService {
 						}
 						if (glycanList.length != modList.length) {
 							// ERROR
-							errors.add(new UploadErrorEntity(br.getRowNo()+"", "Number of glycans in Glycans column does not match the number given in mods column", null));
+							errors.add(new UploadErrorEntity((br.getRowNo()+1)+"", "Number of glycans in Glycans column does not match the number given in mods column", null));
 							continue;
 						}
 						int i=0;
@@ -537,7 +544,7 @@ public class AsyncServiceImpl implements AsyncService {
 										int offset = Integer.parseInt(offsetStr.substring(1));
 										if (sequence.charAt(offset-1) != amino) {
 											// ERROR
-											errors.add(new UploadErrorEntity(br.getRowNo()+"", "Aminoacid " + amino + " is not found in the given position " + offset, null));
+											errors.add(new UploadErrorEntity((br.getRowNo()+1)+"", "Aminoacid " + amino + " is not found in the given position " + offset, null));
 											break;
 										} else {
 											Position p = new Position();
@@ -560,15 +567,14 @@ public class AsyncServiceImpl implements AsyncService {
 										}
 									} catch (NumberFormatException e) {
 										// ERROR
-										errors.add(new UploadErrorEntity(br.getRowNo()+"", "Position given cannot be converted: " + offsetStr, null));
+										errors.add(new UploadErrorEntity((br.getRowNo()+1)+"", "Position given cannot be converted: " + offsetStr, null));
 										break;
 									}
 								}
-								if (errors.isEmpty()) {
-									if (!protein.getSites().contains(site)) {
-										protein.getSites().add(site);
-									}
+								if (!protein.getSites().contains(site)) {
+									protein.getSites().add(site);
 								}
+						
 								break;
 							case BYONICORDER:
 								String offsetStr = modList[i].substring(0, modList[i].indexOf("("));
@@ -578,7 +584,7 @@ public class AsyncServiceImpl implements AsyncService {
 									int offset = Integer.parseInt(offsetStr.substring(1));
 									if (sequence.charAt(offset-1) != amino) {
 										// ERROR
-										errors.add(new UploadErrorEntity(br.getRowNo()+"", "Aminoacid " + amino + " is not found in the given position " + offset, null));
+										errors.add(new UploadErrorEntity((br.getRowNo()+1)+"", "Aminoacid " + amino + " is not found in the given position " + offset, null));
 									} else {
 										// create a new Site
 										site = new SiteView();
@@ -607,7 +613,7 @@ public class AsyncServiceImpl implements AsyncService {
 									}
 								} catch (NumberFormatException e) {
 									// ERROR
-									errors.add(new UploadErrorEntity(br.getRowNo()+"", "Position given cannot be converted: " + offsetStr, null));
+									errors.add(new UploadErrorEntity((br.getRowNo()+1)+"", "Position given cannot be converted: " + offsetStr, null));
 								}
 								break;
 							case RANGE:
@@ -645,25 +651,22 @@ public class AsyncServiceImpl implements AsyncService {
 										gsv.setGlycosylationType("N-linked");
 									}
 								}
-								if (errors.isEmpty()) {
-									if (!protein.getSites().contains(site)) {
-										protein.getSites().add(site);
-									}
+								if (!protein.getSites().contains(site)) {
+									protein.getSites().add(site);
 								}
+								
 								break;
 							}
 							i++;
-							if (!errors.isEmpty()) {  // skip this row
-								continue;
-							}
 						}
 					} catch (NumberFormatException | IndexOutOfBoundsException e) {
 						errors.add(new UploadErrorEntity(null, "Unable to find peptide " + row[seqCol] + " at position " + pos + " in Protein " + protein.getUniprotId() + " Error occured: " + e.getMessage(), row[seqCol]));
 						continue;
 					}
 				}
-				DataController.addGlycoprotein(protein, user, glycoproteinRepository);
-				
+				Glycoprotein saved = DataController.addGlycoprotein(protein, user, glycoproteinRepository);
+				Glycoprotein updated = glycanManager.addUploadToGlycoprotein(saved, upload, true, user);
+				allGlycoproteins.add(updated);
 			} catch (DuplicateException e) {
 				if (e.getDuplicate() != null && e.getDuplicate() instanceof Glycoprotein) {
             		Glycoprotein existing = (Glycoprotein) e.getDuplicate();

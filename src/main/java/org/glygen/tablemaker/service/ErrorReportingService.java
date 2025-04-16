@@ -152,10 +152,6 @@ public class ErrorReportingService {
 			// already reported this error on this date, ignoring
 			logger.info ("Already Reported the error, ignoring for now: " + error.getMessage() + " Date: " + error.getDateReported());
 		} else {
-			// send emails and create a ticket in Github
-			if (!emails.isEmpty()) {
-				emailManager.sendErrorReport(error, emails.toArray(new String[0]));
-			}
 			// create ticket in Github
 			try {
 				String issueUrl = createIssue (error.getMessage(), error.getDetails(), error.getTicketLabel());
@@ -164,6 +160,10 @@ public class ErrorReportingService {
 				}
 			} catch (Exception e) {
 				logger.error("could not create the issue in Github. Reason " + e.getMessage(), e);
+			}
+			// send emails and create a ticket in Github
+			if (!emails.isEmpty()) {
+				emailManager.sendErrorReport(error, emails.toArray(new String[0]));
 			}
 			errorReportRepository.save(error);
 		}
