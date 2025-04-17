@@ -8,6 +8,7 @@ import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
@@ -43,5 +44,19 @@ public class CollectionSpecification implements Specification<Collection> {
 		return (root, query, criteriaBuilder) -> {
 	        return criteriaBuilder.isNotEmpty(root.get("collections"));
 	    };
+	}
+	
+	public static Specification<Collection> orderBySize(boolean ascending, String collection) {
+		return (root, query, criteriaBuilder) -> {
+			
+			query.orderBy(ascending ? 
+	            criteriaBuilder.asc(criteriaBuilder.size(root.get(collection))) : 
+	            criteriaBuilder.desc(criteriaBuilder.size(root.get(collection))));
+			return criteriaBuilder.conjunction();
+		};
+	}	
+
+	public static Specification<Collection> hasSizeEqualTo(int size, String collection) {
+		return (root, query, criteriaBuilder) -> criteriaBuilder.equal(criteriaBuilder.size(root.get(collection)), size);
 	}
 }

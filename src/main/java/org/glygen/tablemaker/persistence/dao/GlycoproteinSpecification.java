@@ -1,6 +1,7 @@
 package org.glygen.tablemaker.persistence.dao;
 
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.protein.Glycoprotein;
@@ -42,6 +43,15 @@ public class GlycoproteinSpecification implements Specification<Glycoprotein> {
 	        Join<GlycanTag, Glycoprotein> gTags = root.join("tags");
 	        return criteriaBuilder.like(gTags.get("label"), "%" + label + "%");
 	    };
+	}
+	
+	public static Specification<Glycoprotein> orderBySites(boolean ascending) {
+		return (root, query, criteriaBuilder) -> {
+			query.orderBy(ascending ? 
+	            criteriaBuilder.asc(criteriaBuilder.size(root.get("sites"))) : 
+	            criteriaBuilder.desc(criteriaBuilder.size(root.get("sites"))));
+			return criteriaBuilder.conjunction();
+		};
 	}
 	
 	public static Specification<Glycoprotein> orderByTags(boolean asc) {

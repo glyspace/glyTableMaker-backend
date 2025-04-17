@@ -476,6 +476,7 @@ public class DataController {
         List<Sorting> sortingList = null;
         List<Order> sortOrders = new ArrayList<>();
         boolean orderByTags = false;
+        boolean orderBySites = false;
         boolean asc = false;
         if (sorting != null && !sorting.equals("[]")) {
             try {
@@ -484,6 +485,9 @@ public class DataController {
                 for (Sorting s: sortingList) {
                 	if (s.getId().equalsIgnoreCase("tags")) {
                 		orderByTags = true;
+                		asc = s.getDesc() ? false : true;
+                	} else if (s.getId().equalsIgnoreCase("siteNo")) {
+                		orderBySites = true;
                 		asc = s.getDesc() ? false : true;
                 	} else {
                 		sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
@@ -528,6 +532,7 @@ public class DataController {
         if (globalSpec != null && specificationList.isEmpty()) { // no more filters, add the user filter
         	spec = Specification.where(globalSpec).and(GlycoproteinSpecification.hasUserWithId(user.getUserId()));
         	if (orderByTags) spec = Specification.where (spec).and(GlycoproteinSpecification.orderByTags(asc));
+        	if (orderBySites) spec = Specification.where (spec).and(GlycoproteinSpecification.orderBySites(asc));
         } else {
 	        if (!specificationList.isEmpty()) {
 	        	spec = specificationList.get(0);
@@ -542,6 +547,7 @@ public class DataController {
 	        	}
 	        }
 	        if (orderByTags) spec = Specification.where (spec).and(GlycoproteinSpecification.orderByTags(asc));
+	        if (orderBySites) spec = Specification.where (spec).and(GlycoproteinSpecification.orderBySites(asc));
         }
         
         Page<Glycoprotein> glycoproteinsInPage = null;
@@ -640,12 +646,27 @@ public class DataController {
         }
         List<Sorting> sortingList = null;
         List<Order> sortOrders = new ArrayList<>();
+        boolean sortByGlycanNo = false;
+        boolean sortByGlycoproteinNo = false;
+        boolean sortByMetadataNo = false;
+        boolean asc = false;
         if (sorting != null && !sorting.equals("[]")) {
             try {
                 sortingList = mapper.readValue(sorting, 
                     new TypeReference<ArrayList<Sorting>>() {});
                 for (Sorting s: sortingList) {
-                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                	if (s.getId().equalsIgnoreCase("glycanNo")) {
+                		sortByGlycanNo = true;
+                		asc = s.getDesc() ? false : true;
+                	} else if (s.getId().equalsIgnoreCase("proteinNo")) {
+                		sortByGlycoproteinNo = true;
+                		asc = s.getDesc() ? false : true;
+                	} else if (s.getId().equalsIgnoreCase("metadata")) {
+                		sortByMetadataNo = true;
+                		asc = s.getDesc() ? false : true;
+                	} else {
+                		sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                	}
                 }
             } catch (JsonProcessingException e) {
                 throw new InternalError("sorting parameter is invalid " + sorting, e);
@@ -653,7 +674,9 @@ public class DataController {
         }
         
         // apply filters
-        List<CollectionSpecification> specificationList = new ArrayList<>();
+        List<Specification<Collection>> specificationList = new ArrayList<>();
+        List<Specification<Collection>> globalSpecificationList = new ArrayList<>();
+        
         if (filterList != null) {
 	        for (Filter f: filterList) {
 	        	CollectionSpecification spec = new CollectionSpecification(f);
@@ -662,19 +685,49 @@ public class DataController {
         }
         
         if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
-        	specificationList.add(new CollectionSpecification(new Filter ("name", globalFilter)));
-        	specificationList.add(new CollectionSpecification(new Filter ("description", globalFilter)));
+        	globalSpecificationList.add(new CollectionSpecification(new Filter ("name", globalFilter)));
+        	globalSpecificationList.add(new CollectionSpecification(new Filter ("description", globalFilter)));
         }
         
-        Specification<Collection> spec = null;
-        if (!specificationList.isEmpty()) {
-        	spec = specificationList.get(0);
-        	for (int i=1; i < specificationList.size(); i++) {
-        		spec = Specification.where(spec).or(specificationList.get(i)); 
+        Specification<Collection> globalSpec = null;
+        if (!globalSpecificationList.isEmpty()) {
+        	globalSpec = globalSpecificationList.get(0);
+        	for (int i=1; i < globalSpecificationList.size(); i++) {
+        		globalSpec = Specification.where(globalSpec).or(globalSpecificationList.get(i)); 
         	}
-        	
-        	spec = Specification.where(spec).and(CollectionSpecification.hasUserWithId(user.getUserId()));
-        	spec = Specification.where(spec).and(CollectionSpecification.hasNoChildren());
+        }
+        
+        
+        Specification<Collection> spec = null;
+        if (globalSpec != null && specificationList.isEmpty()) { // no more filters, add the user filter
+        	spec = Specification.where(globalSpec).and(CollectionSpecification.hasUserWithId(user.getUserId()));
+        	if (sortByGlycanNo) spec = Specification.where (spec).and(CollectionSpecification.orderBySize(asc, "glycans"));
+        	if (sortByGlycoproteinNo) spec = Specification.where (spec).and(CollectionSpecification.orderBySize(asc, "glycoproteins"));
+        	if (sortByMetadataNo) spec = Specification.where (spec).and(CollectionSpecification.orderBySize(asc, "metadata"));
+        } else {
+	        if (!specificationList.isEmpty()) {
+	        	spec = specificationList.get(0);
+	        	for (int i=1; i < specificationList.size(); i++) {
+	        		spec = Specification.where(spec).and(specificationList.get(i)); 
+	        	}
+	        	
+	        	spec = Specification.where(spec).and(CollectionSpecification.hasUserWithId(user.getUserId()));
+	        	spec = Specification.where(spec).and(CollectionSpecification.hasNoChildren());
+	        	
+	        	if (globalSpec != null) {
+	        		spec = Specification.where(spec).and(globalSpec);
+	        	}
+	        }
+	        if (sortByGlycanNo || sortByGlycoproteinNo || sortByMetadataNo) {
+	        	if (specificationList.isEmpty()) {
+	        		spec = Specification.where(spec).and(CollectionSpecification.hasUserWithId(user.getUserId()));
+	        		spec = Specification.where(spec).and(CollectionSpecification.hasNoChildren());
+	        	}
+	        	spec = Specification.where (spec).and(
+	        			CollectionSpecification.orderBySize(asc, 
+	        					sortByGlycanNo ? "glycans" : sortByGlycoproteinNo ? "glycoproteins" : "metadata")); 
+	        				
+	        }
         }
         
         Page<Collection> collectionsInPage = null;
@@ -747,20 +800,29 @@ public class DataController {
         }
         List<Sorting> sortingList = null;
         List<Order> sortOrders = new ArrayList<>();
+        boolean sortByChildren = false;
+        boolean asc = false;
         if (sorting != null && !sorting.equals("[]")) {
             try {
                 sortingList = mapper.readValue(sorting, 
                     new TypeReference<ArrayList<Sorting>>() {});
                 for (Sorting s: sortingList) {
-                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                	if (s.getId().equalsIgnoreCase("children")) {
+                		sortByChildren = true;
+                		asc = s.getDesc() ? false : true;
+                	} else {
+                		sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                	}
                 }
             } catch (JsonProcessingException e) {
                 throw new InternalError("sorting parameter is invalid " + sorting, e);
             }
         }
         
-        // apply filters
-        List<CollectionSpecification> specificationList = new ArrayList<>();
+     // apply filters
+        List<Specification<Collection>> specificationList = new ArrayList<>();
+        List<Specification<Collection>> globalSpecificationList = new ArrayList<>();
+        
         if (filterList != null) {
 	        for (Filter f: filterList) {
 	        	CollectionSpecification spec = new CollectionSpecification(f);
@@ -769,19 +831,46 @@ public class DataController {
         }
         
         if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
-        	specificationList.add(new CollectionSpecification(new Filter ("name", globalFilter)));
-        	specificationList.add(new CollectionSpecification(new Filter ("description", globalFilter)));
+        	globalSpecificationList.add(new CollectionSpecification(new Filter ("name", globalFilter)));
+        	globalSpecificationList.add(new CollectionSpecification(new Filter ("description", globalFilter)));
+        }
+        
+        Specification<Collection> globalSpec = null;
+        if (!globalSpecificationList.isEmpty()) {
+        	globalSpec = globalSpecificationList.get(0);
+        	for (int i=1; i < globalSpecificationList.size(); i++) {
+        		globalSpec = Specification.where(globalSpec).or(globalSpecificationList.get(i)); 
+        	}
         }
         
         Specification<Collection> spec = null;
-        if (!specificationList.isEmpty()) {
-        	spec = specificationList.get(0);
-        	for (int i=1; i < specificationList.size(); i++) {
-        		spec = Specification.where(spec).or(specificationList.get(i)); 
-        	}
+        if (globalSpec != null && specificationList.isEmpty()) { // no more filters, add the user filter
+        	spec = Specification.where(globalSpec).and(CollectionSpecification.hasUserWithId(user.getUserId()));
+        	if (sortByChildren) spec = Specification.where (spec).and(CollectionSpecification.orderBySize(asc, "collections"));
         	
-        	spec = Specification.where(spec).and(CollectionSpecification.hasUserWithId(user.getUserId()));
-        	spec = Specification.where(spec).and(CollectionSpecification.hasChildren());
+        } else {
+	        if (!specificationList.isEmpty()) {
+	        	spec = specificationList.get(0);
+	        	for (int i=1; i < specificationList.size(); i++) {
+	        		spec = Specification.where(spec).and(specificationList.get(i)); 
+	        	}
+	        	
+	        	spec = Specification.where(spec).and(CollectionSpecification.hasUserWithId(user.getUserId()));
+	        	spec = Specification.where(spec).and(CollectionSpecification.hasChildren());
+	        	
+	        	if (globalSpec != null) {
+	        		spec = Specification.where(spec).and(globalSpec);
+	        	}
+	        }
+	        if (sortByChildren) {
+	        	if (specificationList.isEmpty()) {
+	        		spec = Specification.where(spec).and(CollectionSpecification.hasUserWithId(user.getUserId()));
+	        		spec = Specification.where(spec).and(CollectionSpecification.hasChildren());
+	        	}
+	        	spec = Specification.where (spec).and(
+	        			CollectionSpecification.orderBySize(asc, "collections")); 
+	        				
+	        }
         }
         
         Page<Collection> collectionsInPage = null;
