@@ -1,7 +1,6 @@
 package org.glygen.tablemaker.persistence.dao;
 
 import org.glygen.tablemaker.persistence.UserEntity;
-import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
 import org.glygen.tablemaker.view.Filter;
 import org.springframework.data.jpa.domain.Specification;

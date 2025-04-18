@@ -629,6 +629,7 @@ public class AsyncServiceImpl implements AsyncService {
 								Position end = new Position();
 								end.setLocation(Long.valueOf(position + sequence.length()));
 								pList.add(end);
+								site.setPosition(sp);
 								site.setGlycans(new ArrayList<>());
 								GlycanInSiteView gsv = new GlycanInSiteView();
 								gsv.setGlycan(glycanSequenceMap.get(seq.trim()));
