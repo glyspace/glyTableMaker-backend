@@ -39,6 +39,7 @@ glytoucan:
 github:
   token: ENC(0sa2VQ56p4vaj/IR39XUdq36LBs+qRBCHveywFoFz4e5+Y/+Pd4bymOtFD8oT6EHtCTjfclh3eY3WrVicOpIryY7koLGyhDNxBrnS7K3AJ+bG3HGLbxZMFngt5JW0SerwQz1is9RYEw=)
   issuesUrl: https://api.github.com/repos/glyspace/glyTableMaker-backend/issues
+  repoUrl: https://github.com/glyspace/glyTableMaker-backend/issues
   assignee: senaarpinar, ReneRanzinger
   
 glygen:

@@ -8,7 +8,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -401,6 +400,7 @@ public class AsyncServiceImpl implements AsyncService {
                         	GlycoproteinView protein = null;
                     		if (!uniprotMap.containsKey(uniProtId)) {
 	                    		protein = UniProtUtil.getProteinFromUniProt(uniProtId);
+	                    		protein.setName(uniProtId + "-" + file.getName());
 	                        	uniprotMap.put(uniProtId, protein);
                     		} else {
                     			protein = uniprotMap.get(uniProtId);
@@ -435,6 +435,7 @@ public class AsyncServiceImpl implements AsyncService {
 	        		// the process needs to wait! 
 	        		// set the status, waiting
 	        		upload.setStatus(UploadStatus.WAITING);	
+	        		break;
 	        	}
 			}
             if (upload.getStatus() == UploadStatus.WAITING) {
@@ -459,7 +460,7 @@ public class AsyncServiceImpl implements AsyncService {
 			errors.add(new UploadErrorEntity(null, "File is not valid. Reason: " + e.getMessage(), null));
             return CompletableFuture.failedFuture(new BatchUploadException("File is not valid.", errors));
 		}
-		return null;
+		return CompletableFuture.completedFuture (new SuccessResponse<BatchUploadEntity>(upload, "Completed the upload"));
 	}
 
 	private void createGlycoproteins(List<Glycoprotein> allGlycoproteins, Map<GlycoproteinView, List<ByonicRow>> proteinMap,

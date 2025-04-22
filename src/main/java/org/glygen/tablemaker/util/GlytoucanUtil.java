@@ -164,8 +164,6 @@ public class GlytoucanUtil {
 	}
 	
 	public String getAccessionNumber (String wurcsSequence) throws GlytoucanAPIFailedException {
-		String accessionNumber = null;
-		
 		String url = UriComponentsBuilder.fromHttpUrl(retrieveAPIURL + retrieveURL)
                 .queryParam("WURCS", wurcsSequence)
                 .toUriString();
@@ -196,11 +194,12 @@ public class GlytoucanUtil {
         	throw new GlytoucanAPIFailedException("Glytoucan retrieval API is not working. Reason: " + e.getMessage());
         } catch (ParseException e) {
         	logger.info("Exception retrieving glycan " + e.getMessage());
+        	throw new GlytoucanAPIFailedException("Glytoucan retrieval API is not working. Reason: " + e.getMessage());
 		} catch (IOException e) {
 			logger.info("Exception retrieving glycan " + e.getMessage());
+			throw new GlytoucanAPIFailedException("Glytoucan retrieval API is not working. Reason: " + e.getMessage());
 		}
 		
-		return accessionNumber;
 	}
 	
 	/**

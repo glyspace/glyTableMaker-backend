@@ -7,12 +7,12 @@ import java.util.List;
 import org.glygen.tablemaker.controller.DataController;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
-import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.BatchUploadJob;
 import org.glygen.tablemaker.persistence.ErrorReportEntity;
 import org.glygen.tablemaker.persistence.dao.BatchUploadJobRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
+import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
@@ -37,16 +37,18 @@ public class ScheduledTasksService {
 	final private BatchUploadRepository uploadRepository;
 	final private GlycanRepository glycanRepository;
 	final private ErrorReportingService errorReportingService;
+	final private UserRepository userRepository;
 	
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
 	
-	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, ErrorReportingService errorReportingService) {
+	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, ErrorReportingService errorReportingService, UserRepository userRepository) {
 		this.batchUploadJobRepository = batchUploadJobRepository;
 		this.batchUploadService = batchUploadService;
 		this.uploadRepository = uploadRepository;
 		this.glycanRepository = glycanRepository;
 		this.errorReportingService = errorReportingService;
+		this.userRepository = userRepository;
 	}
 	
     @Scheduled(fixedDelay = 86400000, initialDelay=1000)
@@ -150,14 +152,9 @@ public class ScheduledTasksService {
     			File uploadFolder = new File (uploadDir + File.separator + job.getUpload().getId());
     			File newFile = new File (uploadFolder + File.separator + job.getUpload().getFilename());
     			try {
-    				/*BatchUploadEntity upload = new BatchUploadEntity();
-    				upload.setFilename(job.getUpload().getFilename());
-    				upload.setFormat(job.getUpload().getFilename());
-    				upload.setStartDate(new Date());
-    				upload.setType(job.getUpload().getType());*/
-	    			DataController.addGlycoproteinsFromFile(this, newFile, job.getUpload(), job.getFileType(), 
-	    					job.getTag(), job.getOrderParam(), job.getUser(), 
-	    					uploadRepository, batchUploadJobRepository, batchUploadService);
+	    			DataController.rerunAddGlycoproteinsFromFile(this, newFile, job.getUpload().getId(), job.getFileType(), 
+	    					job.getTag(), job.getOrderParam(), job.getUser().getUserId(), 
+	    					uploadRepository, batchUploadJobRepository, batchUploadService, userRepository);
 	    			job.setLastRun(new Date());
 	    			batchUploadJobRepository.save(job);
     			} catch (Exception e) {

@@ -46,6 +46,9 @@ public class ErrorReportingService {
 	@Value ("${github.issuesUrl}")
 	String githubIssuesUrl;
 	
+	@Value ("${github.repoUrl}")
+	String githubRepoUrl;
+	
 	@Value ("${github.assignee}")
 	String githubAssignee;
 	
@@ -101,6 +104,8 @@ public class ErrorReportingService {
 				JsonNode jsonNode = objectMapper.readTree(responseBody);
 				if (jsonNode.has("url")) {
 					issueUrl = jsonNode.get("url").asText();
+					if (issueUrl.contains("/"))
+						issueUrl = githubRepoUrl + issueUrl.substring(issueUrl.lastIndexOf("/"));
 				}
 				if (response.getStatusLine().getStatusCode() < 400) {
 					logger.info("Issue created successfully: " + responseBody);

@@ -110,6 +110,7 @@ import org.glygen.tablemaker.service.CollectionManager;
 import org.glygen.tablemaker.service.EmailManager;
 import org.glygen.tablemaker.service.ErrorReportingService;
 import org.glygen.tablemaker.service.GlycanManagerImpl;
+import org.glygen.tablemaker.service.ScheduledTasksService;
 import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.SequenceUtils;
@@ -1344,8 +1345,10 @@ public class DataController {
         			collectionString += col.getCollection().getName() + ", ";
         		}
         	}
-        	collectionString = collectionString.substring(0, collectionString.lastIndexOf(","));
-        	throw new BadRequestException ("Cannot delete this glycan. It is used in the following collections: " + collectionString);
+        	if (collectionString.endsWith(", ")) {
+	        	collectionString = collectionString.substring(0, collectionString.lastIndexOf(","));
+	        	throw new BadRequestException ("Cannot delete this glycan. It is used in the following collections: " + collectionString);
+        	}
         }
         glycanRepository.deleteById(glycanId);
         return new ResponseEntity<>(new SuccessResponse<Long>(glycanId, "Glycan deleted successfully"), HttpStatus.OK);
@@ -1390,15 +1393,27 @@ public class DataController {
 	        //need to check if the glycan appears in any glycoprotein collection and give an error message
 	        if (existing.getSites() != null && !existing.getSites().isEmpty()) {
 	        	String collectionString = "";
+	        	String glycoproteinString = "";
 	        	for (GlycanInSite site: existing.getSites()) {
 	        		for (GlycoproteinInCollection col: site.getSite().getGlycoprotein().getGlycoproteinCollections()) {
 	        			collectionString += col.getCollection().getName() + ", ";
 	        		}
+	        		glycoproteinString += (site.getSite().getGlycoprotein().getName() != null ?  site.getSite().getGlycoprotein().getName() + ", " 
+	        				: site.getSite().getGlycoprotein().getUniprotId() + ", ");
+	        		
 	        	}
-	        	collectionString = collectionString.substring(0, collectionString.lastIndexOf(","));
-	        	errorMessage.append("Cannot delete " + (existing.getGlytoucanID() != null ?  existing.getGlytoucanID() : existing.getGlycanId())
+	        	if (collectionString.endsWith (", ")) {
+	        		collectionString = collectionString.substring(0, collectionString.lastIndexOf(","));
+	        		errorMessage.append("Cannot delete " + (existing.getGlytoucanID() != null ?  existing.getGlytoucanID() : existing.getGlycanId())
 	        			+ ". It is used in the following collections: " + collectionString + "\n");
-	        	continue;
+	        		continue;
+	        	}
+	        	if (glycoproteinString.endsWith (", ")) {
+	        		glycoproteinString = glycoproteinString.substring(0, glycoproteinString.lastIndexOf(","));
+	        		errorMessage.append("Cannot delete " + (existing.getGlytoucanID() != null ?  existing.getGlytoucanID() : existing.getGlycanId())
+	        			+ ". It is referenced in the following glycoproteins: " + glycoproteinString + "\n");
+	        		continue;
+	        	}
 	        }
 	        glycanRepository.deleteById(glycanId.longValue());
         }
@@ -2578,6 +2593,24 @@ public class DataController {
         }
     }
     
+    public static void rerunAddGlycoproteinsFromFile(ScheduledTasksService scheduledTasksService, File file, Long uploadId,
+			String fileType, String tag, MultipleGlycanOrder orderParam, Long userId,
+			BatchUploadRepository uploadRepository, BatchUploadJobRepository batchUploadJobRepository,
+			AsyncService batchUploadService, UserRepository userRepository) {
+    	
+    	Optional<UserEntity> user = userRepository.findById(userId);
+ 		Optional<BatchUploadEntity> batch = uploadRepository.findById(uploadId);
+ 		
+		if (batch != null && user != null) {
+			BatchUploadEntity result = batch.get();
+			result.setStatus(UploadStatus.PROCESSING);
+			BatchUploadEntity saved = uploadRepository.save(result);
+			addGlycoproteinsFromFile(scheduledTasksService, file, saved, fileType, tag, orderParam, user.get(), 
+					uploadRepository, batchUploadJobRepository, batchUploadService);
+		}
+		
+	}
+    
     public static void addGlycoproteinsFromFile (Object instance, File newFile, BatchUploadEntity result, String fileType, 
     		String tag, MultipleGlycanOrder multipleGlycanOrder,
     		UserEntity user, BatchUploadRepository uploadRepository, 
@@ -2630,11 +2663,22 @@ public class DataController {
                         	result.setGlycoproteins(new ArrayList<>());
                         }
                 		uploadRepository.save(result);
-                		BatchUploadJob job = new BatchUploadJob();
-                		job.setUpload(upload);
-                		job.setTag(tag);
-                		job.setOrderParam(multipleGlycanOrder);
-                		batchUploadJobRepository.save(job);                    		
+                		List<BatchUploadJob> batchUploadJobs = batchUploadJobRepository.findAllByUpload(upload);
+                		if (batchUploadJobs.isEmpty()) {
+	                		BatchUploadJob job = new BatchUploadJob();
+	                		job.setUpload(upload);
+	                		job.setTag(tag);
+	                		job.setOrderParam(multipleGlycanOrder);
+	                		job.setUser(user);
+	                		job.setFileType(fileType);
+	                		job.setLastRun(new Date());
+	                		batchUploadJobRepository.save(job); 
+                		} else {
+                			for (BatchUploadJob job: batchUploadJobs) {
+                				job.setLastRun(new Date());
+                				batchUploadJobRepository.save(job);
+                			}
+                		}
                 	} else {
                     	int count = 0;
                     	for (GlycoproteinInFile g: upload.getGlycoproteins()) {
