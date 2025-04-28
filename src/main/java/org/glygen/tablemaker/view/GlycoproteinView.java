@@ -15,13 +15,13 @@ public class GlycoproteinView {
 	String name;
 	String proteinName;
 	String sequence;
+	String sequenceVersion;
 	String geneSymbol;
 	
 	List<SiteView> sites;
 	List<GlycanTag> tags;
 	
 	public GlycoproteinView() {
-		// TODO Auto-generated constructor stub
 	}
 
 	public GlycoproteinView(Glycoprotein p) {
@@ -29,6 +29,7 @@ public class GlycoproteinView {
 		this.name = p.getName();
 		this.proteinName = p.getProteinName();
 		this.sequence = p.getSequence();
+		this.sequenceVersion = p.getSequenceVersion();
 		this.uniprotId = p.getUniprotId();
 		this.id = p.getId();
 		if (p.getSites() != null) {
@@ -120,5 +121,13 @@ public class GlycoproteinView {
 
 	public void setProteinName(String proteinName) {
 		this.proteinName = proteinName;
+	}
+
+	public String getSequenceVersion() {
+		return sequenceVersion;
+	}
+
+	public void setSequenceVersion(String sequenceVersion) {
+		this.sequenceVersion = sequenceVersion;
 	}
 }

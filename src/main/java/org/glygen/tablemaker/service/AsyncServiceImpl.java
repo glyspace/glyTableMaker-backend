@@ -395,12 +395,26 @@ public class AsyncServiceImpl implements AsyncService {
                     	// extract info for glycoprotein
                     	String proteinData = data[proteinCol];
                     	String uniProtId = proteinData.substring(proteinData.indexOf("|")+1, proteinData.lastIndexOf("|"));
+                    	String version = "last";
+                    	if (proteinData.contains("SV=")) {
+                    		version = proteinData.substring(proteinData.indexOf("SV=")+3).trim();
+                    	}
                     	// check if it is valid
                     	try {
                         	GlycoproteinView protein = null;
                     		if (!uniprotMap.containsKey(uniProtId)) {
 	                    		protein = UniProtUtil.getProteinFromUniProt(uniProtId);
-	                    		protein.setName(uniProtId + "-" + file.getName());
+	                    		try {
+	                    			String sequence = UniProtUtil.getSequenceFromUniProt(uniProtId, version);
+	                    			protein.setSequence(sequence);
+	                    			protein.setSequenceVersion(version);
+	                    		} catch (IOException e) {
+	                    			errors.add(new UploadErrorEntity(count+"", "Could not get the version specific sequence. Reason: " + e.getMessage(), null));
+	                    			logger.warn("Could not get the version specific sequence", e);
+	                    			protein.setSequenceVersion("last");
+	                    		}
+	                    		
+	                    		//protein.setName(uniProtId + "-" + file.getName());
 	                        	uniprotMap.put(uniProtId, protein);
                     		} else {
                     			protein = uniprotMap.get(uniProtId);

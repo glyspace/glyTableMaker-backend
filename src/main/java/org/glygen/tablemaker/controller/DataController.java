@@ -1919,6 +1919,7 @@ public class DataController {
 	   	glycoprotein.setGeneSymbol(gp.getGeneSymbol());
 	   	glycoprotein.setUniprotId(gp.getUniprotId());
 	   	glycoprotein.setSequence(gp.getSequence());
+	   	glycoprotein.setSequenceVersion(gp.getSequenceVersion());
 	   	glycoprotein.setTags(gp.getTags());
 	   	glycoprotein.setUser(user);
 	   	glycoprotein.setDateCreated(new Date());

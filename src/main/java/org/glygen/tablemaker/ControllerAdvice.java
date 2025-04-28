@@ -4,6 +4,8 @@ import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.exception.UploadNotFinishedException;
+import org.glygen.tablemaker.persistence.ErrorReportEntity;
+import org.glygen.tablemaker.service.ErrorReportingService;
 import org.glygen.tablemaker.view.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,9 +19,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,7 +38,13 @@ public class ControllerAdvice {
     
     public static final Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
     final static Logger log = LoggerFactory.getLogger(ControllerAdvice.class);
-
+    
+    private final ErrorReportingService errorReportingService;
+    
+    public ControllerAdvice(ErrorReportingService errorReportingService) {
+		this.errorReportingService = errorReportingService;
+	}
+    
     @ExceptionHandler({NoHandlerFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse noHandlerFoundException(NoHandlerFoundException ex) {
@@ -82,6 +93,16 @@ public class ControllerAdvice {
     @ExceptionHandler({Exception.class})
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleAllExceptions(Exception ex) {
+    	//send an email and create a ticket with the stack trace
+    	ErrorReportEntity error = new ErrorReportEntity();
+    	error.setDateReported(new Date());
+    	error.setMessage(ex.getMessage());
+    	StringWriter stringWriter = new StringWriter();
+    	PrintWriter printWriter = new PrintWriter(stringWriter);
+    	ex.printStackTrace(printWriter);
+    	error.setDetails(stringWriter.toString());
+    	error.setTicketLabel("bug");
+    	errorReportingService.reportError(error);
         log.error(ex.getMessage(), ex.getLocalizedMessage());
         return new ErrorResponse(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), ex.getMessage(), TIMESTAMP);
     }

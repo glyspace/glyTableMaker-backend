@@ -144,10 +144,15 @@ public class ScheduledTasksService {
     		}
     	}
     	
+    	logger.info("DONE Checking glycans: " + new Date());
+    	
+    	logger.info("Checking upload (waiting) jobs: " + new Date());
+    	
     	//check the batch upload jobs waiting on glytoucan registration and resume them
     	List<BatchUploadJob> jobs = batchUploadJobRepository.findAll();
     	for (BatchUploadJob job: jobs) {
     		if (job.getUpload() != null && job.getUpload().getStatus() == UploadStatus.WAITING) {
+    			logger.info("Restarting job: " + job.getJobId());
     			// restart the job
     			File uploadFolder = new File (uploadDir + File.separator + job.getUpload().getId());
     			File newFile = new File (uploadFolder + File.separator + job.getUpload().getFilename());
@@ -162,6 +167,6 @@ public class ScheduledTasksService {
     			}
     		}
     	}
-    	
+    	logger.info("DONE Checking upload jobs: " + new Date());
     }
 }

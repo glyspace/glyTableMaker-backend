@@ -32,6 +32,7 @@ public class Glycoprotein {
 	String description;
 	String geneSymbol;
 	String sequence;
+	String sequenceVersion;
 	
 	Date dateCreated;
     UserEntity user;
@@ -163,5 +164,13 @@ public class Glycoprotein {
 	}
 	public void setProteinName(String proteinName) {
 		this.proteinName = proteinName;
+	}
+	
+	@Column
+	public String getSequenceVersion() {
+		return sequenceVersion;
+	}
+	public void setSequenceVersion(String sequenceVersion) {
+		this.sequenceVersion = sequenceVersion;
 	}
 }
