@@ -7,7 +7,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.view.GlycoproteinView;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -69,7 +68,7 @@ public class UniProtUtil {
         }
     }
     
-    public static GlycoproteinView getProteinFromUniProt (String uniProtId) throws Exception {
+    public static GlycoproteinView getProteinFromUniProt (String uniProtId, String version) throws Exception {
     	
     	RestTemplate restTemplate = new RestTemplate();
         String requestURL = url + uniProtId + ".json";
@@ -122,6 +121,16 @@ public class UniProtUtil {
             	JSONObject entry = obj.getJSONObject("entryAudit");
             	if (entry.has("sequenceVersion")) {
             		protein.setSequenceVersion(entry.getString("sequenceVersion"));
+            	}
+            }
+            
+            if (version != null) {
+            	try {
+            		String sequence = getSequenceFromUniProt(uniProtId, version);
+            		protein.setSequence(sequence);
+            		protein.setSequenceVersion(version);
+            	} catch (Exception e) {
+            		// ignore
             	}
             }
             

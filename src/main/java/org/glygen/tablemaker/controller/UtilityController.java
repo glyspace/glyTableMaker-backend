@@ -778,12 +778,14 @@ public class UtilityController {
             @ApiResponse(responseCode="500", description="Internal Server Error")})
     public ResponseEntity<SuccessResponse<GlycoproteinView>> getSequenceFromUniProt (
             @Parameter(required=true, description="uniprotid such as P12345") 
-            @PathVariable("uniprotid") String uniprotId) {
+            @PathVariable("uniprotid") String uniprotId,
+            @Parameter(required=false, description="sequence version") 
+            @RequestParam("version") String version) {
         if (uniprotId == null || uniprotId.trim().isEmpty()) {
             throw new IllegalArgumentException("uniprotId should be provided");
         }
         try {
-            GlycoproteinView protein = UniProtUtil.getProteinFromUniProt(uniprotId.trim());
+            GlycoproteinView protein = UniProtUtil.getProteinFromUniProt(uniprotId.trim(), version == null ? null : version.trim());
             if (protein == null) {
                 throw new EntityNotFoundException("protein with the given UniProt ID " + uniprotId  + " cannot be found");
             }
