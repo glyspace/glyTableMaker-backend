@@ -94,8 +94,10 @@ public class ErrorReportingService {
 				assigneeString += "\"" + assignee.trim() + "\",";
 			}
 			assigneeString = assigneeString.substring(0, assigneeString.length()-1);
+			
+			String cleanedBody = escapeJsonString(body);
 
-			String json = String.format("{\"title\": \"%s\", \"body\": \"%s\", \"assignees\": [%s], \"type\": \"bug\", \"labels\": [\"%s\"]}", title, escapeJsonString(body), assigneeString, label);
+			String json = String.format("{\"title\": \"%s\", \"body\": \"%s\", \"assignees\": [%s], \"type\": \"bug\", \"labels\": [\"%s\"]}", title, cleanedBody, assigneeString, label);
 			StringEntity entity = new StringEntity(json, ContentType.APPLICATION_JSON);
 			httpPost.setEntity(entity);
 			ObjectMapper objectMapper = new ObjectMapper();
@@ -122,6 +124,7 @@ public class ErrorReportingService {
 		return str.replace("\\", "\\\\")
 				.replace("\"", "\\\"")
 				.replace("\n", "\\n")
+				.replace("\t", " ")
 				.replace("\r", "\\r");
 	}
 	

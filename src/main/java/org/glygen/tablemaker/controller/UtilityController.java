@@ -21,6 +21,7 @@ import javax.imageio.ImageIO;
 
 import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.glygen.tablemaker.config.NamespaceHandler;
+import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.persistence.FeedbackEntity;
 import org.glygen.tablemaker.persistence.GlycanImageEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
@@ -760,7 +761,7 @@ public class UtilityController {
             	return cartoon;
         		
         	} else {
-        		throw new EntityNotFoundException("Invalid Input: Glycan with the given glytoucan id cannot be located");
+        		throw new DataNotFoundException("Invalid Input: Glycan with the given glytoucan id cannot be located");
         	}
         	
         	
@@ -780,14 +781,14 @@ public class UtilityController {
             @Parameter(required=true, description="uniprotid such as P12345") 
             @PathVariable("uniprotid") String uniprotId,
             @Parameter(required=false, description="sequence version") 
-            @RequestParam("version") String version) {
+            @RequestParam(name="version", required=false) String version) {
         if (uniprotId == null || uniprotId.trim().isEmpty()) {
             throw new IllegalArgumentException("uniprotId should be provided");
         }
         try {
             GlycoproteinView protein = UniProtUtil.getProteinFromUniProt(uniprotId.trim(), version == null ? null : version.trim());
             if (protein == null) {
-                throw new EntityNotFoundException("protein with the given UniProt ID " + uniprotId  + " cannot be found");
+                throw new DataNotFoundException("protein with the given UniProt ID " + uniprotId  + " cannot be found");
             }
             protein.setSites(new ArrayList<>());
             protein.setTags(new ArrayList<>());

@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
+import jakarta.persistence.EntityNotFoundException;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.Instant;
@@ -61,7 +63,7 @@ public class ControllerAdvice {
 
     }
 
-    @ExceptionHandler({DataNotFoundException.class})
+    @ExceptionHandler({DataNotFoundException.class, EntityNotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse noHandlerFoundException(Exception ex) {
         log.debug(ex.getMessage(), ex.getCause());
@@ -100,7 +102,7 @@ public class ControllerAdvice {
     	StringWriter stringWriter = new StringWriter();
     	PrintWriter printWriter = new PrintWriter(stringWriter);
     	ex.printStackTrace(printWriter);
-    	error.setDetails(stringWriter.toString());
+    	error.setDetails(stringWriter.toString().substring(0, 3900));
     	error.setTicketLabel("bug");
     	errorReportingService.reportError(error);
         log.error(ex.getMessage(), ex.getLocalizedMessage());
