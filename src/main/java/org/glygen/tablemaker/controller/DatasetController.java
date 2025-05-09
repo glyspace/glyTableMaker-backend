@@ -357,9 +357,17 @@ public class DatasetController {
         
         if (type == CollectionType.GLYCAN) {
         	version.setData(generateData(version, d.getCollections()));
+        	
+        	if (version.getData() == null || version.getData().isEmpty()) {
+        		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
+        	}
         	version.setType(type);
         } else {
         	version.setGlycoproteinData(generateGlycoproteinData(version, d.getCollections()));
+        	
+        	if (version.getGlycoproteinData() == null || version.getGlycoproteinData().isEmpty()) {
+        		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
+        	}
         	version.setType(type);
         }
         version.setDataset(newDataset);
@@ -666,17 +674,46 @@ public class DatasetController {
     		}
     		
     		if (d.getCollections() == null) {
+    			// check the type and copy data accordingly
+    			
+    			if (head.getType() == CollectionType.GLYCAN) {
+    				
+    				// data is the same, copy data, errors and publications to the new version
+        			for (DatasetMetadata m: head.getData()) {
+        				DatasetMetadata copy = new DatasetMetadata(m);
+        				copy.setDataset(version);
+        				version.getData().add(copy);
+        			}	
+        			version.setPublications(new ArrayList<>());
+        			for (Publication p: head.getPublications()) {
+        				version.getPublications().add(p);
+        			}
+    				
+    	        	if (version.getData() == null || version.getData().isEmpty()) {
+    	        		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
+    	        	}
+    	        	version.setType(head.getType());
+    	        } else {
+    	        	// data is the same, copy data, errors and publications to the new version
+        			for (DatasetGlycoproteinMetadata m: head.getGlycoproteinData()) {
+        				DatasetGlycoproteinMetadata copy = new DatasetGlycoproteinMetadata(m);
+        				copy.setDataset(version);
+        				version.getGlycoproteinData().add(copy);
+        			}	
+        			version.setPublications(new ArrayList<>());
+        			for (Publication p: head.getPublications()) {
+        				version.getPublications().add(p);
+        			}
+    	        	
+    	        	if (version.getGlycoproteinData() == null || version.getGlycoproteinData().isEmpty()) {
+    	        		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
+    	        	}
+    	        	version.setType(head.getType());
+    	        }
+    			
+    			
     			version.setData(new ArrayList<>());
-    			// data is the same, copy data, errors and publications to the new version
-    			for (DatasetMetadata m: head.getData()) {
-    				DatasetMetadata copy = new DatasetMetadata(m);
-    				copy.setDataset(version);
-    				version.getData().add(copy);
-    			}	
-    			version.setPublications(new ArrayList<>());
-    			for (Publication p: head.getPublications()) {
-    				version.getPublications().add(p);
-    			}
+    			
     		} else {
     			// create new metadata from the selected collections
     			
@@ -692,21 +729,59 @@ public class DatasetController {
     	        	throw new IllegalArgumentException (errorMessage.toString().trim());
     	        }
     	        
-    	        version.setData(generateData(version, d.getCollections()));
-    	        
-    	        version.setPublications(new ArrayList<>());
-    	        for (DatasetMetadata m: version.getData()) {
-    	        	// find the publications
-    	        	if (m.getDatatype() != null && m.getDatatype().getName().equals("Evidence")) {
-    	        		try {
-							Publication pub = UtilityController.getPublication(m.getValue(), publicationRepository);
-							if (pub != null && !version.getPublications().contains(pub)) {
-								version.getPublications().add(pub);
-							}
-						} catch (Exception e) {
-							logger.error("Failed to retrieve the publication", e);
-						}
+    	        // find the type
+    	        CollectionType type = CollectionType.GLYCAN;
+    	        for (CollectionView col: d.getCollections()) {
+    	        	if (col.getType() != null) {
+    	        		type = col.getType();
+    	        		break;
     	        	}
+    	        }
+    	        
+    	        if (type == CollectionType.GLYCAN) {
+    	        	version.setData(generateData(version, d.getCollections()));
+    	        	
+    	        	if (version.getData() == null || version.getData().isEmpty()) {
+    	        		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
+    	        	}
+    	        	version.setType(type);
+    	        	
+    	        	version.setPublications(new ArrayList<>());
+        	        for (DatasetMetadata m: version.getData()) {
+        	        	// find the publications
+        	        	if (m.getDatatype() != null && m.getDatatype().getName().equals("Evidence")) {
+        	        		try {
+    							Publication pub = UtilityController.getPublication(m.getValue(), publicationRepository);
+    							if (pub != null && !version.getPublications().contains(pub)) {
+    								version.getPublications().add(pub);
+    							}
+    						} catch (Exception e) {
+    							logger.error("Failed to retrieve the publication", e);
+    						}
+        	        	}
+        	        }
+    	        } else {
+    	        	version.setGlycoproteinData(generateGlycoproteinData(version, d.getCollections()));
+    	        	
+    	        	if (version.getGlycoproteinData() == null || version.getGlycoproteinData().isEmpty()) {
+    	        		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
+    	        	}
+    	        	version.setType(type);
+    	        	
+    	        	version.setPublications(new ArrayList<>());
+        	        for (DatasetGlycoproteinMetadata m: version.getGlycoproteinData()) {
+        	        	// find the publications
+        	        	if (m.getDatatype() != null && m.getDatatype().getName().equals("Evidence")) {
+        	        		try {
+    							Publication pub = UtilityController.getPublication(m.getValue(), publicationRepository);
+    							if (pub != null && !version.getPublications().contains(pub)) {
+    								version.getPublications().add(pub);
+    							}
+    						} catch (Exception e) {
+    							logger.error("Failed to retrieve the publication", e);
+    						}
+        	        	}
+        	        }
     	        }
     		}
     		existing.getVersions().add(version);
