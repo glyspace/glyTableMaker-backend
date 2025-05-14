@@ -9,6 +9,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.glygen.tablemaker.view.GlycoproteinView;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -120,7 +121,12 @@ public class UniProtUtil {
             if (obj.has("entryAudit")) {
             	JSONObject entry = obj.getJSONObject("entryAudit");
             	if (entry.has("sequenceVersion")) {
-            		protein.setSequenceVersion(entry.getString("sequenceVersion"));
+            		try {
+            			protein.setSequenceVersion(entry.getInt("sequenceVersion")+"");
+            		} catch (JSONException e) {
+            			// ignore
+            			//System.out.println (e.getMessage());
+            		}
             	}
             }
             
@@ -143,8 +149,8 @@ public class UniProtUtil {
     public static void main(String[] args) {
     	GlycoproteinView prot;
 		try {
-			//prot = UniProtUtil.getProteinFromUniProt("P12345-112");
-			//System.out.println (prot.getName() + " gene: " + prot.getGeneSymbol() + " seq: " + prot.getSequence());
+			prot = UniProtUtil.getProteinFromUniProt("P12345", null);
+			System.out.println (prot.getName() + " gene: " + prot.getGeneSymbol() + " seq: " + prot.getSequence());
 			
 			String sequence = UniProtUtil.getSequenceFromUniProt("P12763", "2");
 		} catch (Exception e) {
