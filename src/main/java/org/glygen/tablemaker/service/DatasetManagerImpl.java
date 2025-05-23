@@ -36,8 +36,10 @@ public class DatasetManagerImpl implements DatasetManager {
 
 	@Override
 	public Dataset saveDataset(Dataset d) {
-		String identifier = generateUniqueIdentifier ();
-		d.setDatasetIdentifier(identifier);
+		if (d.getDatasetIdentifier() == null) {
+			String identifier = generateUniqueIdentifier ();
+			d.setDatasetIdentifier(identifier);
+		}
 		
 		for (DatasetVersion version: d.getVersions()) {
 			if (version.getPublications() != null) {
