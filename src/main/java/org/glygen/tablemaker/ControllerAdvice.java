@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -90,6 +91,13 @@ public class ControllerAdvice {
     public ErrorResponse notSupportedException(HttpRequestMethodNotSupportedException ex) {
         log.debug(ex.getMessage(), ex.getCause());
         return new ErrorResponse(String.valueOf(HttpStatus.METHOD_NOT_ALLOWED.value()),"Method Not Allowed. Please verify you request", TIMESTAMP);
+    }
+    
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse notSupportedResourceException(NoResourceFoundException ex) {
+        log.debug("Resource not found: " + ex.getHttpMethod() + " " + ex.getResourcePath(), ex.getCause());
+        return new ErrorResponse(String.valueOf(HttpStatus.NOT_FOUND.value()),"Resource not found: " + ex.getHttpMethod() + " " + ex.getResourcePath(), TIMESTAMP);
     }
 
     @ExceptionHandler({Exception.class})
