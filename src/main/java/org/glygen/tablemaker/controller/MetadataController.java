@@ -191,8 +191,7 @@ public class MetadataController {
     	
         existing.setDescription(d.getDescription());
         existing.setName(d.getName());
-        existing.setDataTypes(d.getDataTypes());
-    	DatatypeCategory saved = datatypeCategoryRepository.save(d);
+    	DatatypeCategory saved = datatypeCategoryRepository.save(existing);
     	return new ResponseEntity<>(new SuccessResponse<DatatypeCategory>(saved, "datatype category updated"), HttpStatus.OK);
     }
 	
