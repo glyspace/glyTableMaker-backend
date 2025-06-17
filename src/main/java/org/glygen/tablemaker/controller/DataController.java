@@ -8,6 +8,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
@@ -952,28 +954,30 @@ public class DataController {
 		    	}
 	    	}
     	} else {   // Glycoproteins
-    		cv.setGlycoproteins(new ArrayList<>());
-    		for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
-    			Glycoprotein p = gp.getGlycoprotein();
-    			for (Site s: p.getSites()) {
-    				for (GlycanInSite gic: s.getGlycans()) {
-    	        		Glycan g = gic.getGlycan();
-    	        		if (g != null) {
-	    	        		g.setGlycanCollections(null);
-	    	        		g.setSites(null);
-	    	        		SequenceUtils.addCompositionInformation(g);
-	    	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
-	    	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
-	    	        		try {
-	    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-	    	                } catch (DataNotFoundException e) {
-	    	                    // ignore
-	    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
-	    	                }
-    	        		}
-    	        	}
-    			}
-    			cv.getGlycoproteins().add(p);
+    		if (collection.getGlycoproteins() != null && !collection.getGlycoproteins().isEmpty()) {
+    			cv.setGlycoproteins(new ArrayList<>());
+	    		for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+	    			Glycoprotein p = gp.getGlycoprotein();
+	    			for (Site s: p.getSites()) {
+	    				for (GlycanInSite gic: s.getGlycans()) {
+	    	        		Glycan g = gic.getGlycan();
+	    	        		if (g != null) {
+		    	        		g.setGlycanCollections(null);
+		    	        		g.setSites(null);
+		    	        		SequenceUtils.addCompositionInformation(g);
+		    	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
+		    	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
+		    	        		try {
+		    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+		    	                } catch (DataNotFoundException e) {
+		    	                    // ignore
+		    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
+		    	                }
+	    	        		}
+	    	        	}
+	    			}
+	    			cv.getGlycoproteins().add(p);
+	    		}
     		}
     	}
     	if (collection.getCollections() != null && !collection.getCollections().isEmpty()) {
@@ -1006,25 +1010,27 @@ public class DataController {
 			        	}
 	    	    	}
 	    		} else {
-	    			child.setGlycoproteins(new ArrayList<>());
-	        		for (GlycoproteinInCollection gp: c.getGlycoproteins()) {
-	        			Glycoprotein p = gp.getGlycoprotein();
-	        			for (Site s: p.getSites()) {
-	        				for (GlycanInSite gic: s.getGlycans()) {
-	        	        		Glycan g = gic.getGlycan();
-	        	        		g.setGlycanCollections(null);
-	        	        		g.setSites(null);
-	        	        		SequenceUtils.addCompositionInformation(g);
-	        	        		try {
-	        	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-	        	                } catch (DataNotFoundException e) {
-	        	                    // ignore
-	        	                    logger.warn ("no image found for glycan " + g.getGlycanId());
-	        	                }
-	        	        	}
-	        			}
-	        			child.getGlycoproteins().add(p);
-	        		}
+	    			if (c.getGlycoproteins() != null && !c.getGlycoproteins().isEmpty()) {
+		    			child.setGlycoproteins(new ArrayList<>());
+		        		for (GlycoproteinInCollection gp: c.getGlycoproteins()) {
+		        			Glycoprotein p = gp.getGlycoprotein();
+		        			for (Site s: p.getSites()) {
+		        				for (GlycanInSite gic: s.getGlycans()) {
+		        	        		Glycan g = gic.getGlycan();
+		        	        		g.setGlycanCollections(null);
+		        	        		g.setSites(null);
+		        	        		SequenceUtils.addCompositionInformation(g);
+		        	        		try {
+		        	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+		        	                } catch (DataNotFoundException e) {
+		        	                    // ignore
+		        	                    logger.warn ("no image found for glycan " + g.getGlycanId());
+		        	                }
+		        	        	}
+		        			}
+		        			child.getGlycoproteins().add(p);
+		        		}
+	    			}
 	    		}
 	        	cv.getChildren().add(child);
 	    	}
@@ -2303,7 +2309,7 @@ public class DataController {
     	if (gv.getSites() == null || gv.getSites().isEmpty()) {
     		existing.getSites().clear();
     	} else {
-	    	// remove collections as necessary
+	    	// remove sites as necessary
     		List<Site> toBeRemoved = new ArrayList<>();
 	    	for (Site site: existing.getSites()) {
 	    		boolean found = false;
@@ -2321,7 +2327,8 @@ public class DataController {
     	}
     	
     	if (gv.getSites() != null && !gv.getSites().isEmpty()) {
-    		// check if this collection already exists in the collection
+    		List<Site> toBeAdded = new ArrayList<>();
+    		// check if this site already exists in the glycoprotein
     		for (SiteView sv: gv.getSites()) {
     			boolean exists = false;
     			for (Site col: existing.getSites()) {
@@ -2353,9 +2360,10 @@ public class DataController {
         				g.setSite (s);
         				s.getGlycans().add(g);
         			}
-    				existing.getSites().add(s);
+    				toBeAdded.add(s);
     			}
     		}
+    		existing.getSites().addAll(toBeAdded);
     	}
     	
     	Glycoprotein saved = glycoproteinRepository.save(existing);
@@ -2477,7 +2485,20 @@ public class DataController {
                             if (saved.getGlycoproteins() == null) {
                             	saved.setGlycoproteins(new ArrayList<>());
                             }
-                            uploadRepository.save(saved);
+                            try {
+                            	uploadRepository.save(saved);
+                            } catch (Exception ex) {
+                            	logger.error("could not set status to ERROR for upload " + saved.getId(), e);
+                            	ErrorReportEntity error = new ErrorReportEntity();
+                    			error.setMessage("Error occurred setting the status of batch glycan upload after the process is finished with an error");
+                    			StringWriter stringWriter = new StringWriter();
+                    	    	PrintWriter printWriter = new PrintWriter(stringWriter);
+                    	    	ex.printStackTrace(printWriter);
+                    	    	error.setDetails(stringWriter.toString().substring(0, 3900));
+                    	    	error.setTicketLabel("bug");
+                    			error.setDateReported(new Date());
+                            	errorReportingService.reportError(error);
+                            }
                             
                         } else {
                         	BatchUploadEntity upload = (BatchUploadEntity) resp.getData();
@@ -2496,7 +2517,20 @@ public class DataController {
                             if (saved.getGlycans() == null) {
                             	saved.setGlycans(new ArrayList<>());
                             }
-                            uploadRepository.save(saved);
+                            try {
+                            	uploadRepository.save(saved);
+                            } catch (Exception ex) {
+                            	logger.error("could not set status to DONE for upload " + saved.getId(), e);
+                            	ErrorReportEntity error = new ErrorReportEntity();
+                    			error.setMessage("Error occurred setting the status of batch glycan upload after the process is finished");
+                    			StringWriter stringWriter = new StringWriter();
+                    	    	PrintWriter printWriter = new PrintWriter(stringWriter);
+                    	    	ex.printStackTrace(printWriter);
+                    	    	error.setDetails(stringWriter.toString().substring(0, 3900));
+                    	    	error.setTicketLabel("bug");
+                    			error.setDateReported(new Date());
+                            	errorReportingService.reportError(error);
+                            }
                         }                       
                     });
                     response.get(1000, TimeUnit.MILLISECONDS);
