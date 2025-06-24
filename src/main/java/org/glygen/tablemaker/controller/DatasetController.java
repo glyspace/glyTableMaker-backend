@@ -328,6 +328,7 @@ public class DatasetController {
         Dataset newDataset = new Dataset();
         newDataset.setName(d.getName());
         newDataset.setDescription(d.getDescription());
+        newDataset.setNotes(d.getNotes());
         newDataset.setAssociatedDatasources(d.getAssociatedDatasources());
         newDataset.setAssociatedPapers(d.getAssociatedPapers());
         newDataset.setGrants(d.getGrants());
@@ -526,6 +527,7 @@ public class DatasetController {
     	}
     	existing.setName(d.getName());
     	existing.setDescription(d.getDescription());
+    	existing.setNotes(d.getNotes());
     	
     	// update grants/associated databases/associated papers
 		if (existing.getAssociatedDatasources() == null) {
@@ -840,6 +842,7 @@ public class DatasetController {
     	dv.setDatasetIdentifier(d.getDatasetIdentifier());
     	dv.setName(d.getName());
     	dv.setDescription(d.getDescription());
+    	dv.setNotes(d.getNotes());
     	dv.setRetracted(d.getRetracted());
     	dv.setDateCreated(d.getDateCreated());
     	dv.setUser(d.getUser());

@@ -30,6 +30,7 @@ public class Dataset {
 	String datasetIdentifier;
 	String name;
 	String description;
+	String notes;
 	Boolean retracted;
 	Date dateCreated;
 	
@@ -159,5 +160,13 @@ public class Dataset {
 	}
 	public void setRetracted(Boolean retracted) {
 		this.retracted = retracted;
+	}
+	
+	@Column (name="notes", columnDefinition="text")
+	public String getNotes() {
+		return notes;
+	}
+	public void setNotes(String notes) {
+		this.notes = notes;
 	}
 }

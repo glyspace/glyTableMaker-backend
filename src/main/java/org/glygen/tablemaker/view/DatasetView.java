@@ -18,6 +18,7 @@ public class DatasetView {
 	String datasetIdentifier;
 	String name;
 	String description;
+	String notes;
 	
 	Boolean retracted;
 	Date dateCreated;
@@ -166,6 +167,12 @@ public class DatasetView {
 	}
 	public void setGlycoproteinData(List<GlygenProteinMetadataRow> glycoproteinData) {
 		this.glycoproteinData = glycoproteinData;
+	}
+	public String getNotes() {
+		return notes;
+	}
+	public void setNotes(String notes) {
+		this.notes = notes;
 	}
 	
 	

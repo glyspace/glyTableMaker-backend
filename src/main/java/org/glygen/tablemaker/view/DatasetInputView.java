@@ -16,6 +16,7 @@ public class DatasetInputView {
 	Long id;
 	String name;
 	String description;
+	String notes;
 	License license;
 	List<Grant> grants;
 	List<DatabaseResourceDataset> integratedIn;
@@ -98,5 +99,13 @@ public class DatasetInputView {
 
 	public void setChangeComment(String changeComment) {
 		this.changeComment = changeComment;
+	}
+
+	public String getNotes() {
+		return notes;
+	}
+
+	public void setNotes(String notes) {
+		this.notes = notes;
 	}
 }
