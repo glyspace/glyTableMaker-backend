@@ -1554,7 +1554,10 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
         
+        StringBuffer errors = new StringBuffer();
+        
     	List<Glycan> allAdded = new ArrayList<>();
+    	int i=0;
     	for (GlycanView g: gList) {
     		try {
 	    		ResponseEntity<SuccessResponse<Glycan>> response = addGlycan (g, g.getType() != null ? g.getType() : compositionType);
@@ -1562,12 +1565,20 @@ public class DataController {
 	    		allAdded.add(added);
     		} catch (DuplicateException e) {
     			allAdded.add ((Glycan)e.getDuplicate());
+    		} catch (Exception e) {
+    			// add them to error list and return errors
+    			errors.append ("Row " + i + ": " + e.getMessage()+ ";");
     		}
+    		i++;
     	}
     	
     	glycanManager.addTagToGlycans(allAdded, tag, user);
     	
-    	return new ResponseEntity<>(new SuccessResponse<List<Glycan>>(allAdded, "glycans added"), HttpStatus.OK);
+    	if (errors.isEmpty()) {
+    		return new ResponseEntity<>(new SuccessResponse<List<Glycan>>(allAdded, "glycans added"), HttpStatus.OK);
+    	} else {
+    		throw new IllegalArgumentException ("Errors: " + errors.toString());
+    	}
     }
 
     
@@ -1705,7 +1716,7 @@ public class DataController {
                 }
                 
             } catch (DictionaryException | CompositionParseException | ConversionException | WURCSException e1) {
-                throw new IllegalArgumentException ("Composition parsing/conversion failed. Reason " + e1.getMessage());
+                throw new IllegalArgumentException (e1.getMessage());
             } catch (GlycoVisitorException e1) {
                 throw new IllegalArgumentException (e1);
             }
@@ -2533,21 +2544,23 @@ public class DataController {
                             }
                         }                       
                     });
-                    response.get(1000, TimeUnit.MILLISECONDS);
+                    response.get(100, TimeUnit.MILLISECONDS);
                 } catch (TimeoutException e) {
                 	synchronized (this) {
-                        if (saved.getErrors() != null && !saved.getErrors().isEmpty()) {
-                        	saved.setStatus(UploadStatus.ERROR);
-                        } else if (saved.getErrors() == null) {
-                        	saved.setErrors(new ArrayList<>());
-                        }
-                        if (saved.getGlycans() == null) {
-                        	saved.setGlycans(new ArrayList<>());
-                        }
-                        if (saved.getGlycoproteins() == null) {
-                        	saved.setGlycoproteins(new ArrayList<>());
-                        }
-                        uploadRepository.save(saved);
+                		Optional<BatchUploadEntity> reload = uploadRepository.findById(saved.getId());
+                		if (reload.isPresent()) {
+	                        if (saved.getErrors() != null && !saved.getErrors().isEmpty()) {
+	                        	BatchUploadEntity existing = reload.get();
+	                        	existing.setStatus(UploadStatus.ERROR);
+	                        	if (existing.getErrors() == null) {
+	                        		existing.setErrors(new ArrayList<>());
+	                        	}
+	                        	for (UploadErrorEntity err: saved.getErrors()) {
+	                        		existing.getErrors().add(err);
+	                        	}
+	                        	uploadRepository.save(existing);
+	                        } 
+                		}
                     }
                 } catch (InterruptedException e1) {
 					logger.error("batch upload is interrupted", e1);

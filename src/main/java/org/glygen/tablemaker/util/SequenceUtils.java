@@ -253,24 +253,39 @@ public class SequenceUtils {
         }
     }
     
+
+    public static boolean isValidByonicComposition(String input) {
+    	String pattern = "^(?:\\s*[A-Za-z]+\\s*\\(\\s*\\d+\\s*\\)\\s*)+$";
+    	return input.matches(pattern);
+    }
+
+    
     public static Composition getWurcsCompositionFromByonic (String sequence) throws DictionaryException, CompositionParseException {
     	if (sequence != null) {
-    		String[] monoWithCountList = sequence.split("\\)");
-    		String composition  = "";
-    		for (String monoWithCount: monoWithCountList) {
-    			String mono = monoWithCount.substring(0, monoWithCount.indexOf("("));
-    			String count = monoWithCount.substring(monoWithCount.indexOf("(")+1);
-    			String mapped = byonicMapping.get(mono);
-    			composition += (mapped != null ? mapped : mono) + ":" + count + "|";
+    		if (isValidByonicComposition(sequence)) {
+	    		String[] monoWithCountList = sequence.split("\\)");
+	    		String composition  = "";
+	    		for (String monoWithCount: monoWithCountList) {
+	    			monoWithCount = monoWithCount.trim();
+	    			String mono = monoWithCount.substring(0, monoWithCount.indexOf("("));
+	    			String count = monoWithCount.substring(monoWithCount.indexOf("(")+1);
+	    			mono = mono.trim();
+	    			count = count.trim();
+	    			String mapped = byonicMapping.get(mono);
+	    			composition += (mapped != null ? mapped : mono) + ":" + count + "|";
+	    		}
+	    		if (composition.endsWith("|"))
+	    			composition = composition.substring(0, composition.length()-1);
+	    		
+	    		Composition compo = CompositionUtils.parse(composition);
+	    		return compo;
     		}
-    		if (composition.endsWith("|"))
-    			composition = composition.substring(0, composition.length()-1);
-    		
-    		Composition compo = CompositionUtils.parse(composition);
-    		return compo;
+    		else {
+    			throw new CompositionParseException("The composition string is not valid: " + sequence);
+    		}
     	}
     	
-    	return null;
+    	throw new CompositionParseException("The composition string is not valid: " + sequence);
     }
     
     public static Composition getWurcsCompositionFromCondensed (String sequence) throws DictionaryException, CompositionParseException {
