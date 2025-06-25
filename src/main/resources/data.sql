@@ -59,6 +59,8 @@ insert into datatype_category (datatypeid, categoryid) values (11, 2) on conflic
 insert into datatype_category (datatypeid, categoryid, mandatory) values (12, 2, TRUE) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid, mandatory) values (16, 2, TRUE) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid) values (17, 2) on conflict do nothing;
+insert into datatype_category (datatypeid, categoryid) values (18, 2) on conflict do nothing;
+
 
 insert into tablemakertemplate (templateid, name, description) values (1, 'GlyGen Glycomics', 'Template for submitting glycans to GlyGen') on conflict do nothing;
 insert into table_column (columnid, name, glycancolumn, column_order) values (1, 'GlyTouCan ID', 'GLYTOUCANID',  1) ON CONFLICT DO NOTHING;
@@ -113,8 +115,9 @@ insert into table_column (columnid, name, datatypeid, valuetype, column_order) v
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (27, 'Disease', 7, 'ID', 12) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (28, 'Functional annotation/Keyword', 11, 'VALUE', 13) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (29, 'Experimental technique', 12, 'VALUE', 14) ON CONFLICT DO NOTHING;
-insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (30, 'Contributor', 16, 'VALUE', 15) ON CONFLICT DO NOTHING;
-insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (31, 'Comment', 17, 'VALUE', 16) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (30, 'Contributor', 16, 'VALUE', 16) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (31, 'Comment', 17, 'VALUE', 17) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (37, 'Cellular Component', 18, 'ID', 15) ON CONFLICT DO NOTHING;
 insert into tablemakertemplate_table_column (columnid, templateid) values (21, 2) ON CONFLICT DO NOTHING;
 insert into tablemakertemplate_table_column (columnid, templateid) values (22, 2) ON CONFLICT DO NOTHING;
 insert into tablemakertemplate_table_column (columnid, templateid) values (23, 2) ON CONFLICT DO NOTHING;
@@ -131,6 +134,7 @@ insert into tablemakertemplate_table_column (columnid, templateid) values (33, 2
 insert into tablemakertemplate_table_column (columnid, templateid) values (34, 2) on conflict do nothing;
 insert into tablemakertemplate_table_column (columnid, templateid) values (35, 2) on conflict do nothing;
 insert into tablemakertemplate_table_column (columnid, templateid) values (36, 2) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (37, 2) on conflict do nothing;
 
 insert into license (id, name, attribution, commercialuse, distribution, url) values (1, 'CC0 1.0', 'The person who associated a work with this deed has dedicated the work to the public domain by waiving all of his or her rights to the work worldwide under copyright law, including all related and neighboring rights, to the extent allowed by law.', TRUE, 'You can copy, modify, distribute and perform the work, even for commercial purposes, all without asking permission.', 'https://creativecommons.org/publicdomain/zero/1.0/') on CONFLICT DO NOTHING;
 insert into license (id, name, attribution, commercialuse, distribution, url) values (2, 'CC BY 4.0', 'You must give appropriate credit , provide a link to the license, and indicate if changes were made . You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.', TRUE, 'No additional restrictions — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.', 'https://creativecommons.org/licenses/by/4.0/') on CONFLICT DO NOTHING;
