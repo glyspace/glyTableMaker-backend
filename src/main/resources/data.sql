@@ -11,6 +11,7 @@ insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentif
 insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentifier) values (11, 'Experimental technique', 'https://www.glygen.org/dictionary/experimental_technique', FALSE, FALSE, 'experiment.txt') ON CONFLICT DO NOTHING; 
 insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentifier) values (12, 'Human Phenotype', 'https://hpo.jax.org/app/', TRUE, TRUE, 'hp.txt') ON CONFLICT DO NOTHING; 
 insert into Namespace (namespaceid, name, dictionary) values (13, 'BCO contributor', null) ON CONFLICT DO NOTHING; 
+insert into Namespace (namespaceid, name, dictionary, hasUri, hasId, fileIdentifier) values (14, 'Cellular Component', 'https://geneontology.org/', TRUE, TRUE, 'go-basic.txt') ON CONFLICT DO NOTHING; 
 insert into Category (categoryid, name, description) values(1, 'GlyGen Glycomics Data', 'Metadata required for the data export into the GlyGen Glycomics Data format.')  ON CONFLICT DO NOTHING; 
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (2, 'Evidence', 'PMID (PubMed Identifier) is a unique numerical identifier assigned to an article in PubMed. DOI (Digital Object Identifier) is an alphanumeric string assigned to online content, such as articles, book chapters, or data sets. Some examples: 10.3390/cimb45110575 or doi:10.3390/cimb45110575 or https://doi.org/10.3390/cimb45110575', 'https://www.glygen.org/datatype/2', TRUE, 5) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (3, 'Species', 'A species is the broadest classification and refers to a group of organisms that can interbreed and produce fertile offspring. The Taxonomy ID is a unique numerical identifier assigned by the NCBI to each species. To retrieve the Taxonomy ID, search the NCBI Taxonomy Browser database for the organism’s common name or scientific name. For example, searching for the common name “Humans” or the scientific name “Homo sapiens” will retrieve the taxonomy ID 9606.', 'https://www.glygen.org/datatype/3', FALSE, 4) ON CONFLICT DO NOTHING;
@@ -28,6 +29,7 @@ insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid)
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (15, 'Molecular Phenotype', 'A molecular phenotype refers to the observable characteristics of an organism at the molecular level. ', 'https://www.glygen.org/datatype/15', FALSE, 1) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (16, 'Contributor', 'If you are curating the paper use curatedBy, if you are using a software/tool/code to add information to the dataset use createdWith. For final dataset to be integrated GW will use createdBy. If the initial dataset is shared to you by a researcher use contributedBy or authoredBy whichever is applicable as per this. There is no need to add corresponding author or other author name list if curating the paper by yourself.', 'https://www.glygen.org/datatype/16', FALSE, 13) ON CONFLICT DO NOTHING;
 insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (17, 'Comment', 'Additional comments', 'https://www.glygen.org/datatype/17', FALSE, 1) ON CONFLICT DO NOTHING;
+insert into Datatype (datatypeid, name, description, uri, multiple, namespaceid) values (18, 'Cellular Component', 'A location, relative to cellular compartments and structures, occupied by a macromolecular machine. There are three types of cellular components described in the gene ontology: (1) the cellular anatomical entity where a gene product carries out a molecular function (e.g., plasma membrane, cytoskeleton) or membrane-enclosed compartments (e.g., mitochondrion); (2) virion components, where viral proteins act, and (3) the stable macromolecular complexes of which gene product are parts (e.g., the clathrin complex).', 'https://www.glygen.org/datatype/18', TRUE, 14) ON CONFLICT DO NOTHING;
 insert into datatype_category (datatypeid, categoryid) values (2, 1) ON CONFLICT DO NOTHING;
 insert into datatype_category (datatypeid, categoryid, mandatory) values (3, 1, TRUE) ON CONFLICT DO NOTHING;
 insert into datatype_category (datatypeid, categoryid) values (4, 1) on conflict do nothing;
@@ -44,6 +46,7 @@ insert into datatype_category (datatypeid, categoryid) values (14, 1) on conflic
 insert into datatype_category (datatypeid, categoryid) values (15, 1) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid, mandatory) values (16, 1, TRUE) on conflict do nothing;
 insert into datatype_category (datatypeid, categoryid) values (17, 1) on conflict do nothing;
+insert into datatype_category (datatypeid, categoryid) values (18, 1) on conflict do nothing;
 
 insert into Category (categoryid, name, description) values(2, 'GlyGen Glycoproteomics Data', 'Metadata required for the data export into the GlyGen Glycoproteomics Data format.')  ON CONFLICT DO NOTHING; 
 insert into datatype_category (datatypeid, categoryid) values (2, 2) ON CONFLICT DO NOTHING;
@@ -73,8 +76,9 @@ insert into table_column (columnid, name, datatypeid, valuetype, column_order) v
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (13, 'Variant (Fly, yeast, mouse)', 13, 'VALUE', 13) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (14, 'Organismal/cellular Phenotype', 14, 'ID', 14) ON CONFLICT DO NOTHING;
 insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (15, 'Molecular Phenotype', 15, 'VALUE', 15) ON CONFLICT DO NOTHING;
-insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (16, 'Contributor', 16, 'VALUE', 16) ON CONFLICT DO NOTHING;
-insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (17, 'Comment', 17, 'VALUE', 17) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (16, 'Contributor', 16, 'VALUE', 17) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (17, 'Comment', 17, 'VALUE', 18) ON CONFLICT DO NOTHING;
+insert into table_column (columnid, name, datatypeid, valuetype, column_order) values (18, 'Cellular Component', 18, 'ID', 16) ON CONFLICT DO NOTHING;
 insert into tablemakertemplate_table_column (columnid, templateid) values (1, 1) ON CONFLICT DO NOTHING;
 insert into tablemakertemplate_table_column (columnid, templateid) values (2, 1) ON CONFLICT DO NOTHING;
 insert into tablemakertemplate_table_column (columnid, templateid) values (3, 1) ON CONFLICT DO NOTHING;
@@ -92,6 +96,7 @@ insert into tablemakertemplate_table_column (columnid, templateid) values (14, 1
 insert into tablemakertemplate_table_column (columnid, templateid) values (15, 1) on conflict do nothing;
 insert into tablemakertemplate_table_column (columnid, templateid) values (16, 1) on conflict do nothing;
 insert into tablemakertemplate_table_column (columnid, templateid) values (17, 1) on conflict do nothing;
+insert into tablemakertemplate_table_column (columnid, templateid) values (18, 1) on conflict do nothing;
 
 insert into tablemakertemplate (templateid, name, description) values (2, 'GlyGen Glycoproteomics', 'Template for submitting glycoproteins to GlyGen') on conflict do nothing;
 insert into table_column (columnid, name, glycoproteincolumn, column_order) values (21, 'Uniprot ID', 'UNIPROTID',  1) ON CONFLICT DO NOTHING;
