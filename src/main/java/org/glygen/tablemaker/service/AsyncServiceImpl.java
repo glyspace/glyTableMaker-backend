@@ -19,6 +19,7 @@ import javax.imageio.ImageIO;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -34,6 +35,7 @@ import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
+import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
@@ -278,6 +280,197 @@ public class AsyncServiceImpl implements AsyncService {
             return CompletableFuture.failedFuture(new BatchUploadException("File is not valid.", errors));
 		}
 	}
+	
+	@Override
+	@Async("GlygenAsyncExecutor")
+	public CompletableFuture<SuccessResponse<BatchUploadEntity>> addGlycoproteinFromExcelFile(File file, 
+			BatchUploadEntity upload, UserEntity user, String tag, CompositionType compType) {
+		try {
+			List<UploadErrorEntity> errors = new ArrayList<>();
+            List<Glycoprotein> allGlycoproteins = new ArrayList<>();
+            
+            List<Glycan> allGlycans = new ArrayList<>();
+            Map<String, Glycan> glycanSequenceMap = new HashMap<>();
+            
+            Workbook workbook = WorkbookFactory.create(file);
+			int rowNo = 1;  // assume a single header row
+			
+			Sheet sheet = workbook.getSheetAt(0);
+			Iterator<Row> rowIterator = sheet.iterator();
+			boolean started = false;
+			int count = 0;
+	        while (rowIterator.hasNext()) {
+	            Row row = rowIterator.next();
+	            if (row.getRowNum() == rowNo) {
+	            	started = true;
+	            }
+	            if (started) {
+	            	count++;
+	            	String glycanData = null;
+	            	Cell glycanCell = row.getCell(3);
+	            	if (glycanCell != null) {
+	            		glycanData = glycanCell.getStringCellValue();
+	            	}
+	            	if (glycanData == null || glycanData.trim().isEmpty()) {
+	            		continue;
+	            	}
+	            	
+	            	String[] glycans = glycanData.trim().split (";");
+                	for (String comp: glycans) {
+                		try {
+		            		Composition compo = null;
+							// parse and register glycans
+		            		if (compType != null && compType == CompositionType.COMPACT) {
+		            			compo = SequenceUtils.getWurcsCompositionFromCondensed(comp.trim());
+		            		} else { // assume byonic
+		            			compo = SequenceUtils.getWurcsCompositionFromByonic(comp.trim());
+		            		}
+	    					String strWURCS = CompositionConverter.toWURCS(compo);
+		                	//  parse and add glycan
+		                	GlycanView g = new GlycanView();
+		                	g.setFormat(SequenceFormat.WURCS);
+		                	g.setSequence(strWURCS);
+		                	Glycan glycan = new Glycan();
+		                	DataController.parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user);
+		                	// save the glycan
+		                    glycan.setDateCreated(new Date());
+		                    glycan.setUser(user);
+		                    allGlycans.add(glycan);
+		                    glycanSequenceMap.put (comp.trim(), glycan);
+		                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
+		                    if (added != null) {
+		                        BufferedImage t_image = DataController.createImageForGlycan(added);
+		                        if (t_image != null) {
+		                            String filename = added.getGlycanId() + ".png";
+		                            //save the image into a file
+		                            logger.debug("Adding image to " + imageLocation);
+		                            File imageFile = new File(imageLocation + File.separator + filename);
+		                            try {
+		                                ImageIO.write(t_image, "png", imageFile);
+		                            } catch (IOException e) {
+		                                logger.error("could not write cartoon image to file", e);
+		                            }
+		                        } else {
+		                            logger.warn ("Glycan image cannot be generated for glycan " + added.getGlycanId());
+		                        }
+		                    }
+                		
+		                } catch (DuplicateException e) {
+		                	//errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));
+		                	if (e.getDuplicate() != null && e.getDuplicate() instanceof Glycan) {
+		                		Glycan existing = (Glycan) e.getDuplicate();
+		                		if (!allGlycans.contains(existing)) {
+		                			glycanManager.addUploadToGlycan(existing, upload, false, user);
+		                			allGlycans.add(existing);
+		                			glycanSequenceMap.put(comp.trim(), existing);
+		                		}
+		                	}
+		                } catch (Exception e) {
+		                	errors.add(new UploadErrorEntity(count+"", e.getMessage(), comp));
+		                }
+                	}
+	            }
+	        }
+	        
+	        if (tag != null && !tag.trim().isEmpty()) {
+            	glycanManager.addTagToGlycans(allGlycans, tag, user);
+            }
+            
+            for (Glycan glycan: allGlycans) {
+	            if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
+	        		// the process needs to wait! 
+	        		// set the status, waiting
+	        		upload.setStatus(UploadStatus.WAITING);	
+	        		break;
+	        	}
+			}
+            if (upload.getStatus() == UploadStatus.WAITING) {
+            	// save the upload and retry later
+            	return CompletableFuture.completedFuture (new SuccessResponse<BatchUploadEntity>(upload, "Waiting for glytoucan registration"));
+            }
+            
+            // another pass to create sites and glycoproteins
+            Map<String, GlycoproteinView> uniprotMap = new HashMap<>();
+            Map<GlycoproteinView, List<ByonicRow>> proteinMap = new HashMap<>();
+            count = 0;
+            started = false;
+            rowIterator = sheet.iterator();
+            while (rowIterator.hasNext()) {
+            	Row row = rowIterator.next();
+	            if (row.getRowNum() == rowNo) {
+	            	started = true;
+	            }
+	            if (started) {
+	            	count++;
+	            	Cell proteinCell = row.getCell(0);
+	            	// extract info for glycoprotein
+	            	if (proteinCell == null) continue;
+	            	String uniProtId = proteinCell.getStringCellValue();
+	            	String version = "last";
+	            	// check if it is valid
+	            	try {
+	                	GlycoproteinView protein = null;
+	            		if (!uniprotMap.containsKey(uniProtId)) {
+	                		protein = UniProtUtil.getProteinFromUniProt(uniProtId, version);
+	                		//protein.setName(uniProtId + "-" + file.getName());
+	                    	uniprotMap.put(uniProtId, protein);
+	            		} else {
+	            			protein = uniprotMap.get(uniProtId);
+	            		}
+	            		if (!proteinMap.containsKey(protein)) {
+	                		proteinMap.put(protein, new ArrayList<ByonicRow>());
+	                	}
+	            		ByonicRow br = new ByonicRow();
+	            		String[] data = new String[6];
+	            		data[0] = uniProtId;
+	            		Cell startCell = row.getCell(1);
+	            		if (startCell != null) {
+		            		if (startCell.getCellType() == CellType.NUMERIC) {
+		            			data[1] = (int)startCell.getNumericCellValue() + "";
+		            		} else {
+		            			data[1] = startCell.getStringCellValue();
+		            		}
+	            		}
+	            		Cell endCell = row.getCell(2);
+	            		if (endCell != null) {
+		            		if (endCell.getCellType() == CellType.NUMERIC) {
+		            			data[2] = (int)endCell.getNumericCellValue() + "";
+		            		} else {
+		            			data[2] = endCell.getStringCellValue();
+		            		}
+	            		}
+	            		if (row.getCell(3) != null) data[3] = row.getCell(3).getStringCellValue();
+	            		if (row.getCell(4) != null) data[4] = row.getCell(4).getStringCellValue();
+	            		if (row.getCell(5) != null) data[5] = row.getCell(5).getStringCellValue();
+	                	br.setRow(data);
+	                	br.setRowNo(count);
+	                	proteinMap.get(protein).add(br);
+	            	} catch (Exception e) {
+	            		// cannot find the protein in UniProt
+	            		errors.add(new UploadErrorEntity(count+"", "Could not find protein " + uniProtId + " in UniProt database. Reason: " + e.getMessage(), null));
+	            	}
+	            }
+            }
+            
+            // create glycoproteins
+            createGlycoproteinsForExcelFile (allGlycoproteins, proteinMap, glycanSequenceMap, upload, errors, user); 
+            
+			if (tag != null && !tag.trim().isEmpty()) {
+            	glycanManager.addTagToGlycoproteins(allGlycoproteins, tag, user);
+            }
+            
+			if (!errors.isEmpty()) {
+            	return CompletableFuture.failedFuture(new BatchUploadException("There are errors in the file", errors));
+            }
+            
+            
+		} catch (Exception e) {
+			List<UploadErrorEntity> errors = new ArrayList<>();
+			errors.add(new UploadErrorEntity(null, "File is not valid. Reason: " + e.getMessage(), null));
+            return CompletableFuture.failedFuture(new BatchUploadException("File is not valid.", errors));
+		}
+		return CompletableFuture.completedFuture (new SuccessResponse<BatchUploadEntity>(upload, "Completed the upload"));
+	}
 
 	@Override
 	@Async("GlygenAsyncExecutor")
@@ -404,16 +597,6 @@ public class AsyncServiceImpl implements AsyncService {
                         	GlycoproteinView protein = null;
                     		if (!uniprotMap.containsKey(uniProtId)) {
 	                    		protein = UniProtUtil.getProteinFromUniProt(uniProtId, version);
-	                    		/*try {
-	                    			String sequence = UniProtUtil.getSequenceFromUniProt(uniProtId, version);
-	                    			protein.setSequence(sequence);
-	                    			protein.setSequenceVersion(version);
-	                    		} catch (IOException e) {
-	                    			errors.add(new UploadErrorEntity(count+"", "Could not get the version specific sequence. Reason: " + e.getMessage(), null));
-	                    			logger.warn("Could not get the version specific sequence", e);
-	                    			protein.setSequenceVersion("last");
-	                    		}*/
-	                    		
 	                    		//protein.setName(uniProtId + "-" + file.getName());
 	                        	uniprotMap.put(uniProtId, protein);
                     		} else {
@@ -433,6 +616,18 @@ public class AsyncServiceImpl implements AsyncService {
                     	
                     }
                     if (dataStart) count++;
+                }
+                if (!dataStart) {
+                	// file format is not valid, could not find expected header line
+                	// ERROR
+                	String message = "";
+                	if (posCol == -1) message += "Position column (Pos.) is not found";
+                	if (glycanCol == -1) message += " Glycan column (Glycans) is not found";
+                	if (proteinCol == -1) message += "Protein column (Protein Name) is not found";
+                	if (modCol == -1) message += " Modification column (Mod (variable)) is not found";
+                	if (seqCol == -1) message += " Sequence column (Sequence (unformatted)) is not found";
+                	errors.add (new UploadErrorEntity(null, message, line));
+                	return CompletableFuture.failedFuture(new BatchUploadException("Required columns cannot be located", errors));
                 }
 
             } catch (IOException e) {
@@ -475,6 +670,86 @@ public class AsyncServiceImpl implements AsyncService {
             return CompletableFuture.failedFuture(new BatchUploadException("File is not valid.", errors));
 		}
 		return CompletableFuture.completedFuture (new SuccessResponse<BatchUploadEntity>(upload, "Completed the upload"));
+	}
+	
+	private void createGlycoproteinsForExcelFile(List<Glycoprotein> allGlycoproteins,
+			Map<GlycoproteinView, List<ByonicRow>> proteinMap, Map<String, Glycan> glycanSequenceMap,
+			BatchUploadEntity upload, List<UploadErrorEntity> errors, UserEntity user) {
+		
+		for (GlycoproteinView protein: proteinMap.keySet()) {
+			try {
+				protein.setSites(new ArrayList<>());
+				List<ByonicRow> rows = proteinMap.get(protein);
+				for (ByonicRow br: rows) {
+					String[] row = br.getRow();
+					String start = row[1];
+					String end = row[2];
+					try {
+						// create a new Site
+						SiteView site = new SiteView();
+						SitePosition sp = new SitePosition();
+						List<Position> pList = new ArrayList<>();
+						sp.setPositionList(pList);
+						Position startPos = new Position();
+						startPos.setLocation(Long.valueOf(start));
+						if (startPos.getLocation() >= protein.getSequence().length()) {
+							errors.add(new UploadErrorEntity(null, "Start position " + start + " is off range for protein " + protein.getUniprotId() + ". Protein length is " + protein.getSequence().length(), protein.getUniprotId()));
+							continue;
+						}
+						pList.add(startPos);
+						if (end == null || start.equalsIgnoreCase(end)) {
+							// single site,
+							site.setType(GlycoproteinSiteType.EXPLICIT);
+						} else {
+							site.setType(GlycoproteinSiteType.RANGE);
+							Position endPos = new Position();
+							endPos.setLocation(Long.valueOf(end));
+							pList.add(endPos);
+							if (endPos.getLocation() < startPos.getLocation() || endPos.getLocation() > protein.getSequence().length()) {
+								errors.add(new UploadErrorEntity(null, "End position " + end + " is off range for protein " + protein.getUniprotId() + ". Protein length is " + protein.getSequence().length(), protein.getUniprotId()));
+								continue;
+							}
+						}
+						site.setPosition(sp);
+						site.setGlycans(new ArrayList<>());
+						String glycanColumn = row[3];
+						String[] glycanList = glycanColumn.split(";");
+						for (String seq: glycanList) {
+							GlycanInSiteView gsv = new GlycanInSiteView();
+							gsv.setGlycan(glycanSequenceMap.get(seq));
+							gsv.setType("Glycan");
+							if (row[4] != null && !row[4].isEmpty()) {
+								gsv.setGlycosylationType(row[4]);
+							}
+							if (row[5] != null && !row[5].isEmpty()) {
+								gsv.setGlycosylationSubType(row[5]);
+							}
+							site.getGlycans().add(gsv);	
+						}
+						
+						if (!protein.getSites().contains(site)) {
+							protein.getSites().add(site);
+						}
+					} catch (NumberFormatException | IndexOutOfBoundsException e) {
+						errors.add(new UploadErrorEntity(null, "Position(s) " + start + ":" + end + " are invalid in Protein " + protein.getUniprotId() + " Error occured: " + e.getMessage(), row[3]));
+						continue;
+					}
+				}
+				Glycoprotein saved = DataController.addGlycoprotein(protein, user, glycoproteinRepository);
+				Glycoprotein updated = glycanManager.addUploadToGlycoprotein(saved, upload, true, user);
+				allGlycoproteins.add(updated);
+			} catch (DuplicateException e) {
+				if (e.getDuplicate() != null && e.getDuplicate() instanceof Glycoprotein) {
+		    		Glycoprotein existing = (Glycoprotein) e.getDuplicate();
+		    		if (!allGlycoproteins.contains(existing)) {
+		    			glycanManager.addUploadToGlycoprotein(existing, upload, false, user);
+		    			allGlycoproteins.add(existing);
+		    		}
+		    	}
+			} catch (Exception e) {
+				errors.add(new UploadErrorEntity(null, e.getMessage(), protein.getUniprotId()));
+			}
+		}		
 	}
 
 	private void createGlycoproteins(List<Glycoprotein> allGlycoproteins, Map<GlycoproteinView, List<ByonicRow>> proteinMap,

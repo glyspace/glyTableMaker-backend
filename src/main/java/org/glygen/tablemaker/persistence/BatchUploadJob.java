@@ -2,6 +2,7 @@ package org.glygen.tablemaker.persistence;
 
 import java.util.Date;
 
+import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.protein.MultipleGlycanOrder;
 
 import jakarta.persistence.Column;
@@ -26,6 +27,7 @@ public class BatchUploadJob {
 	String fileType;
 	BatchUploadEntity upload;
 	MultipleGlycanOrder orderParam;
+	CompositionType compType;
 	Date lastRun;
 	UserEntity user;
 	
@@ -90,5 +92,11 @@ public class BatchUploadJob {
 	}
 	public void setFileType(String fileType) {
 		this.fileType = fileType;
+	}
+	public CompositionType getCompType() {
+		return compType;
+	}
+	public void setCompType(CompositionType compType) {
+		this.compType = compType;
 	}
 }

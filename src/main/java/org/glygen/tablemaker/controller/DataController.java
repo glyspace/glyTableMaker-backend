@@ -2583,12 +2583,16 @@ public class DataController {
 	        @RequestBody
     		FileWrapper fileWrapper, 
     		@Parameter(required=true, name="filetype", description="type of the file", schema = @Schema(type = "string",
-    		allowableValues= {"BYONIC"})) 
+    		allowableValues= {"BYONIC, EXCEL"})) 
 	        @RequestParam(required=true, value="filetype") String fileType,
 	        @RequestParam(required=false, value="tag") String tag,
 	        @Parameter(required=false, description="way to handle multiple glycans")
 			@RequestParam (required=false, value="glycanorder", defaultValue="ALTERNATIVE")
-			MultipleGlycanOrder multipleGlycanOrder) {
+			MultipleGlycanOrder multipleGlycanOrder,
+			@Parameter(required=false, name="compositiontype", description="format for the compositions", schema = @Schema(type = "string",
+    		allowableValues= {"BYONIC", "COMPACT"})) 
+    		@RequestParam(required=false, value="compositiontype")
+    		CompositionType compType) {
     	
     	
     	// get user info
@@ -2635,14 +2639,14 @@ public class DataController {
             if (!success) {
             	logger.error("Could not store the original file");
             }
-            addGlycoproteinsFromFile(this, newFile, saved, fileType, tag, multipleGlycanOrder, 
+            addGlycoproteinsFromFile(this, newFile, saved, fileType, tag, multipleGlycanOrder, compType,
     			user, uploadRepository, batchUploadJobRepository, batchUploadService);
             return new ResponseEntity<>(new SuccessResponse<Boolean>(true, "batch upload finished"), HttpStatus.OK); 
         }
     }
     
     public static void rerunAddGlycoproteinsFromFile(ScheduledTasksService scheduledTasksService, File file, Long uploadId,
-			String fileType, String tag, MultipleGlycanOrder orderParam, Long userId,
+			String fileType, String tag, MultipleGlycanOrder orderParam, CompositionType compositionType, Long userId,
 			BatchUploadRepository uploadRepository, BatchUploadJobRepository batchUploadJobRepository,
 			AsyncService batchUploadService, UserRepository userRepository) {
     	
@@ -2653,20 +2657,24 @@ public class DataController {
 			BatchUploadEntity result = batch.get();
 			result.setStatus(UploadStatus.PROCESSING);
 			BatchUploadEntity saved = uploadRepository.save(result);
-			addGlycoproteinsFromFile(scheduledTasksService, file, saved, fileType, tag, orderParam, user.get(), 
+			addGlycoproteinsFromFile(scheduledTasksService, file, saved, fileType, tag, orderParam, compositionType, user.get(), 
 					uploadRepository, batchUploadJobRepository, batchUploadService);
 		}
 		
 	}
     
     public static void addGlycoproteinsFromFile (Object instance, File newFile, BatchUploadEntity result, String fileType, 
-    		String tag, MultipleGlycanOrder multipleGlycanOrder,
+    		String tag, MultipleGlycanOrder multipleGlycanOrder, CompositionType compType,
     		UserEntity user, BatchUploadRepository uploadRepository, 
     		BatchUploadJobRepository batchUploadJobRepository, AsyncService batchUploadService) {
     	
         try {    
-            CompletableFuture<SuccessResponse<BatchUploadEntity>> response = 
-            		batchUploadService.addGlycoproteinFromByonicFile(newFile, result, user, ",", tag, multipleGlycanOrder);
+            CompletableFuture<SuccessResponse<BatchUploadEntity>> response = null;
+            if (fileType.equalsIgnoreCase("byonic")) {
+            	response = batchUploadService.addGlycoproteinFromByonicFile(newFile, result, user, ",", tag, multipleGlycanOrder);
+            } else if (fileType.equalsIgnoreCase("excel")) {
+            	response = batchUploadService.addGlycoproteinFromExcelFile(newFile, result, user, tag, compType);
+            }
             
             response.whenComplete((resp, e) -> {
             	if (e != null) {
@@ -2717,6 +2725,7 @@ public class DataController {
 	                		job.setUpload(upload);
 	                		job.setTag(tag);
 	                		job.setOrderParam(multipleGlycanOrder);
+	                		job.setCompType(compType);
 	                		job.setUser(user);
 	                		job.setFileType(fileType);
 	                		job.setLastRun(new Date());

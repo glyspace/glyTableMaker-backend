@@ -158,7 +158,7 @@ public class ScheduledTasksService {
     			File newFile = new File (uploadFolder + File.separator + job.getUpload().getFilename());
     			try {
 	    			DataController.rerunAddGlycoproteinsFromFile(this, newFile, job.getUpload().getId(), job.getFileType(), 
-	    					job.getTag(), job.getOrderParam(), job.getUser().getUserId(), 
+	    					job.getTag(), job.getOrderParam(), job.getCompType(), job.getUser().getUserId(), 
 	    					uploadRepository, batchUploadJobRepository, batchUploadService, userRepository);
 	    			job.setLastRun(new Date());
 	    			batchUploadJobRepository.save(job);

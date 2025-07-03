@@ -36,7 +36,7 @@ public class GlycanInSiteView {
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof GlycanInSiteView) {
-			if (((GlycanInSiteView) obj).getGlycan() != null) {
+			if (((GlycanInSiteView) obj).getGlycan() != null && this.glycan != null) {
 				if (this.glycan.getGlycanId() != null && ((GlycanInSiteView) obj).getGlycan().getGlycanId() != null) {
 					return this.glycan.getGlycanId().equals (((GlycanInSiteView) obj).getGlycan().getGlycanId());
 				} else if (this.glycan.getGlytoucanID() != null && ((GlycanInSiteView) obj).getGlycan().getGlytoucanID() != null) {
