@@ -110,7 +110,13 @@ public class ControllerAdvice {
     	StringWriter stringWriter = new StringWriter();
     	PrintWriter printWriter = new PrintWriter(stringWriter);
     	ex.printStackTrace(printWriter);
-    	error.setDetails(stringWriter.toString().substring(0, 3900));
+    	String stackTrace = stringWriter.toString();
+    	int index = stackTrace.indexOf("org.glygen.tablemaker");
+    	String glygenLine = "";
+    	if (index != -1) {
+    		glygenLine = stackTrace.substring(index, index+200);
+    	}
+    	error.setDetails("Glygen line\n" + glygenLine + "\nStack trace\n" + stringWriter.toString().substring(0, 3750));
     	error.setTicketLabel("bug");
     	errorReportingService.reportError(error);
         log.error(ex.getMessage(), ex.getLocalizedMessage());
