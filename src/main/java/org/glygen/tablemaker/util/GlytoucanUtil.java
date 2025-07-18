@@ -163,8 +163,8 @@ public class GlytoucanUtil {
 	}
 	
 	public String getAccessionNumber (String wurcsSequence) throws GlytoucanAPIFailedException {
-		String url = UriComponentsBuilder.fromHttpUrl(retrieveAPIURL + retrieveURL)
-                .queryParam("WURCS", wurcsSequence)
+		String url = UriComponentsBuilder.fromHttpUrl(apiURL + alternativeRetrieveURL)
+                .queryParam("wurcs", wurcsSequence)
                 .toUriString();
 		
 		//String urlTest = "https://sparqlist.glyconavi.org/api/WURCS2GlyTouCa";
@@ -201,8 +201,8 @@ public class GlytoucanUtil {
 		}
 		if (errorString != null) {
 			// try the alternate URL
-			url = UriComponentsBuilder.fromHttpUrl(apiURL + alternativeRetrieveURL)
-	                .queryParam("wurcs", wurcsSequence)
+			url = UriComponentsBuilder.fromHttpUrl(retrieveAPIURL + retrieveURL)
+	                .queryParam("WURCS", wurcsSequence)
 	                .toUriString();
 			try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
 	            HttpGet request = new HttpGet(url);
