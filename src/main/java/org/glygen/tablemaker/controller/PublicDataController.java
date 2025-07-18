@@ -224,7 +224,7 @@ public class PublicDataController {
 				List<GlygenMetadataRow> data = table.getData();
 				if (data != null) {
 					for (GlygenMetadataRow r: data) {
-						String[] row = new String[r.getColumns().size()];
+						String[] row = new String[glygenTemplate.getColumns().size()];
 						for (TableColumn col: glygenTemplate.getColumns()) {
 							for (DatasetMetadata c: r.getColumns()) {
 								if (col.getGlycanColumn() != null && col.getGlycanColumn().equals(c.getGlycanColumn())) {
@@ -271,7 +271,7 @@ public class PublicDataController {
 				List<GlygenProteinMetadataRow> data = table.getGlycoproteinData();
 				if (data != null) {
 					for (GlygenProteinMetadataRow r: data) {
-						String[] row = new String[r.getColumns().size()];
+						String[] row = new String[glygenTemplate.getColumns().size()];
 						for (TableColumn col: glygenTemplate.getColumns()) {
 							for (DatasetGlycoproteinMetadata c: r.getColumns()) {
 								if (col.getProteinColumn() != null && col.getProteinColumn().equals(c.getGlycoproteinColumn())) {
