@@ -17,7 +17,7 @@ import org.springframework.web.client.RestTemplate;
 
 public class UniProtUtil {
 
-    static String url = "https://www.uniprot.org/uniprot/";
+    static String url = "https://rest.uniprot.org/uniprotkb/";
     static String type = ".fasta";
     static String uniSaveUrl = "https://rest.uniprot.org/unisave/";
     
@@ -70,12 +70,12 @@ public class UniProtUtil {
     }
     
     public static GlycoproteinView getProteinFromUniProt (String uniProtId, String version) throws Exception {
-    	
-    	RestTemplate restTemplate = new RestTemplate();
         String requestURL = url + uniProtId + ".json";
-        try {
-            ResponseEntity<String> response = restTemplate.exchange(requestURL, HttpMethod.GET, null, String.class);
-            String details = response.getBody();
+        
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            HttpGet request = new HttpGet(requestURL);
+            HttpResponse response = httpClient.execute(request);
+            String details = EntityUtils.toString(response.getEntity());
             if (details == null)
                 return null;
             GlycoproteinView protein = new GlycoproteinView ();
@@ -149,8 +149,8 @@ public class UniProtUtil {
     public static void main(String[] args) {
     	GlycoproteinView prot;
 		try {
-			prot = UniProtUtil.getProteinFromUniProt("P12345", null);
-			System.out.println (prot.getName() + " gene: " + prot.getGeneSymbol() + " seq: " + prot.getSequence());
+			prot = UniProtUtil.getProteinFromUniProt("A6H8Y2", null);
+			System.out.println (prot.getProteinName() + " gene: " + prot.getGeneSymbol() + " seq: " + prot.getSequence());
 			
 			String sequence = UniProtUtil.getSequenceFromUniProt("P12763", "2");
 		} catch (Exception e) {
