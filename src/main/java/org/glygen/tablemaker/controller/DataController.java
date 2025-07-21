@@ -27,6 +27,8 @@ import javax.imageio.ImageIO;
 import org.apache.commons.io.IOUtils;
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarExporterGlycoCTCondensed;
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarImporterGlycoCTCondensed;
+import org.eurocarbdb.MolecularFramework.io.carbbank.SugarImporterCarbbank;
+import org.eurocarbdb.MolecularFramework.io.cfg.SugarImporterCFG;
 import org.eurocarbdb.MolecularFramework.sugar.Anomer;
 import org.eurocarbdb.MolecularFramework.sugar.GlycoNode;
 import org.eurocarbdb.MolecularFramework.sugar.GlycoconjugateException;
@@ -127,6 +129,7 @@ import org.glygen.tablemaker.view.SiteView;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.glygen.tablemaker.view.UserStatisticsView;
+import org.grits.toolbox.glycanarray.om.parser.cfg.CFGMasterListParser;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
@@ -3044,10 +3047,41 @@ public class DataController {
                 } catch (Exception e) {
                     throw new IllegalArgumentException("GWS sequence is not valid. Reason: " + e.getMessage());
                 }
+                existing = glycanRepository.findByGlycoCTIgnoreCaseAndUser(glycan.getGlycoCT(), user);
+                if (existing != null && existing.size() > 0) {
+                    throw new DuplicateException ("There is already a glycan with GlycoCT " + glycan.getGlycoCT(), null, existing.get(0));
+                } 
                 break;
+            case LINEARCODE:
+            	try {
+            		SugarImporterCFG importer = new SugarImporterCFG();
+                	sugar = importer.parse(g.getSequence().trim());
+                	if (sugar == null) {
+                        logger.error("Cannot get Sugar object for sequence:\n" + glycan.getGlycoCT());
+                    } else {
+                        SugarExporterGlycoCTCondensed exporter = new SugarExporterGlycoCTCondensed();
+                        exporter.start(sugar);
+                        String glycoCT = exporter.getHashCode();
+                        glycoCT = fixGlycoCT.fixGlycoCT(glycoCT);
+                        glycan.setGlycoCT(glycoCT);
+                        // calculate mass
+                        GlycoVisitorMass massVisitor = new GlycoVisitorMass();
+                        massVisitor.start(sugar);
+                        glycan.setMass(massVisitor.getMass(GlycoVisitorMass.DERIVATISATION_NONE));
+                    }
+            	} catch (Exception e) {
+            		logger.error("Linearcode parsing failed", e.getMessage());
+                    throw new IllegalArgumentException ("Linearcode parsing failed. Reason " + e.getMessage());
+                
+            	}
+            	existing = glycanRepository.findByGlycoCTIgnoreCaseAndUser(glycan.getGlycoCT(), user);
+                if (existing != null && existing.size() > 0) {
+                    throw new DuplicateException ("There is already a glycan with GlycoCT " + glycan.getGlycoCT(), null, existing.get(0));
+                } 
+            	break;
             case GLYCOCT:
             default:
-                glycan.setGlycoCT(g.getSequence().trim());
+            	glycan.setGlycoCT(g.getSequence().trim());
                 // parse and convert to WURCS
                 try {
                     glycanObject = org.eurocarbdb.application.glycanbuilder.Glycan.fromGlycoCTCondensed(glycan.getGlycoCT());
@@ -3106,6 +3140,16 @@ public class DataController {
 			error.setTicketLabel("GlytoucanAPI");
 			errorReportingService.reportError(error);
         }          
+    }
+    
+    public static String cleanupSequence (String a_sequence) {
+        String sequence = a_sequence.trim();
+        sequence = sequence.replaceAll(" ", "");
+        sequence = sequence.replaceAll("\u00A0", "");
+        if (sequence.endsWith("1") || sequence.endsWith("2")) {
+            sequence = sequence.substring(0, sequence.length()-1);
+        }
+        return sequence;
     }
     
     public static BufferedImage createImageForGlycan(Glycan glycan) {
