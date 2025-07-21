@@ -179,7 +179,7 @@ public class GlytoucanUtil {
             } else {
 	            String responseBody = EntityUtils.toString(response.getEntity());
 	            ObjectMapper objectMapper = new ObjectMapper();
-	            GlytoucanResponse[] resp = objectMapper.readValue(responseBody, GlytoucanResponse[].class);
+	            GlytoucanResponseAlt[] resp = objectMapper.readValue(responseBody, GlytoucanResponseAlt[].class);
 	            if (resp.length == 0) {
 				    logger.info ("No accession number is found! " + wurcsSequence);
 				    return null;
@@ -214,7 +214,7 @@ public class GlytoucanUtil {
 	            } 
 	            String responseBody = EntityUtils.toString(response.getEntity());
 	            ObjectMapper objectMapper = new ObjectMapper();
-	            GlytoucanResponseAlt[] resp = objectMapper.readValue(responseBody, GlytoucanResponseAlt[].class);
+	            GlytoucanResponse[] resp = objectMapper.readValue(responseBody, GlytoucanResponse[].class);
 	            if (resp.length == 0) {
 				    logger.info ("No accession number is found! " + wurcsSequence);
 				    return null;

@@ -29,6 +29,7 @@ import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarExporterGlycoCTCondense
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarImporterGlycoCTCondensed;
 import org.eurocarbdb.MolecularFramework.io.carbbank.SugarImporterCarbbank;
 import org.eurocarbdb.MolecularFramework.io.cfg.SugarImporterCFG;
+import org.eurocarbdb.MolecularFramework.io.namespace.GlycoVisitorToGlycoCT;
 import org.eurocarbdb.MolecularFramework.sugar.Anomer;
 import org.eurocarbdb.MolecularFramework.sugar.GlycoNode;
 import org.eurocarbdb.MolecularFramework.sugar.GlycoconjugateException;
@@ -43,6 +44,9 @@ import org.eurocarbdb.application.glycanbuilder.massutil.IonCloud;
 import org.eurocarbdb.application.glycanbuilder.massutil.MassOptions;
 import org.eurocarbdb.application.glycanbuilder.renderutil.GlycanRendererAWT;
 import org.eurocarbdb.application.glycanbuilder.util.GraphicOptions;
+import org.eurocarbdb.resourcesdb.Config;
+import org.eurocarbdb.resourcesdb.GlycanNamescheme;
+import org.eurocarbdb.resourcesdb.io.MonosaccharideConverter;
 import org.glycoinfo.GlycanCompositionConverter.conversion.CompositionConverter;
 import org.glycoinfo.GlycanCompositionConverter.conversion.ConversionException;
 import org.glycoinfo.GlycanCompositionConverter.structure.Composition;
@@ -3054,11 +3058,21 @@ public class DataController {
                 break;
             case LINEARCODE:
             	try {
+            		// initialization
+                	MonosaccharideConverter t_msdb = new MonosaccharideConverter(new Config());
+                	GlycoVisitorToGlycoCT t_visitorToGlycoCT = new GlycoVisitorToGlycoCT(t_msdb , GlycanNamescheme.CFG);
+                	t_visitorToGlycoCT.setUseStrict(false);
             		SugarImporterCFG importer = new SugarImporterCFG();
                 	sugar = importer.parse(g.getSequence().trim());
                 	if (sugar == null) {
                         logger.error("Cannot get Sugar object for sequence:\n" + glycan.getGlycoCT());
                     } else {
+                    	
+                    	// translation successful
+                    	// use on the sugar and get a sugar in the right namespace
+                    	t_visitorToGlycoCT.start(sugar);
+                    	sugar = t_visitorToGlycoCT.getNormalizedSugar();
+                        	
                         SugarExporterGlycoCTCondensed exporter = new SugarExporterGlycoCTCondensed();
                         exporter.start(sugar);
                         String glycoCT = exporter.getHashCode();
