@@ -31,6 +31,7 @@ public class GlycanSpecifications implements Specification<Glycan> {
 	
 	public static Specification<Glycan> hasUserWithId(Long userid) {
 	    return (root, query, criteriaBuilder) -> {
+	    	query.distinct(true);
 	        Join<UserEntity, Glycan> glycanUser = root.join("user");
 	        return criteriaBuilder.equal(glycanUser.get("userId"), userid);
 	    };
@@ -38,12 +39,30 @@ public class GlycanSpecifications implements Specification<Glycan> {
 	
 	public static Specification<Glycan> hasGlycanTag(String label) {
 	    return (root, query, criteriaBuilder) -> {
+	    	query.distinct(true);
 	        Join<GlycanTag, Glycan> glycanTags = root.join("tags");
 	        return criteriaBuilder.like(glycanTags.get("label"), "%" + label + "%");
 	    };
 	}
 	
 	public static Specification<Glycan> orderByTags(boolean asc) {
+	    return (root, query, cb) -> {
+	        query.distinct(true); // Prevent duplicates
+	        Join<Glycan, GlycanTag> tagsJoin = root.join("tags", JoinType.LEFT);
+
+	        if (!Long.class.equals(query.getResultType())) {
+	            if (asc)
+	                query.orderBy(cb.asc(tagsJoin.get("label")));
+	            else
+	                query.orderBy(cb.desc(tagsJoin.get("label")));
+	        }
+
+	        return cb.conjunction();
+	    };
+	}
+
+	
+	/*public static Specification<Glycan> orderByTags(boolean asc) {
         return new Specification<Glycan>() {
             @Override
             public Predicate toPredicate(Root<Glycan> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
@@ -59,5 +78,5 @@ public class GlycanSpecifications implements Specification<Glycan> {
                 return criteriaBuilder.conjunction();
             }
         };
-    }
+    }*/
 }
