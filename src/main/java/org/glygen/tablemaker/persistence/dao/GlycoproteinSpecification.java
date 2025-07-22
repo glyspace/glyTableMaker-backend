@@ -33,6 +33,7 @@ public class GlycoproteinSpecification implements Specification<Glycoprotein> {
 	
 	public static Specification<Glycoprotein> hasUserWithId(Long userid) {
 	    return (root, query, criteriaBuilder) -> {
+	    	query.distinct(true); // Prevent duplicates
 	        Join<UserEntity, Glycoprotein> gUser = root.join("user");
 	        return criteriaBuilder.equal(gUser.get("userId"), userid);
 	    };
@@ -40,6 +41,7 @@ public class GlycoproteinSpecification implements Specification<Glycoprotein> {
 	
 	public static Specification<Glycoprotein> hasTag(String label) {
 	    return (root, query, criteriaBuilder) -> {
+	    	query.distinct(true); // Prevent duplicates
 	        Join<GlycanTag, Glycoprotein> gTags = root.join("tags");
 	        return criteriaBuilder.like(gTags.get("label"), "%" + label + "%");
 	    };
@@ -47,29 +49,31 @@ public class GlycoproteinSpecification implements Specification<Glycoprotein> {
 	
 	public static Specification<Glycoprotein> orderBySites(boolean ascending) {
 		return (root, query, criteriaBuilder) -> {
-			query.orderBy(ascending ? 
-	            criteriaBuilder.asc(criteriaBuilder.size(root.get("sites"))) : 
-	            criteriaBuilder.desc(criteriaBuilder.size(root.get("sites"))));
+			query.distinct(true); // Prevent duplicates
+			if (!Long.class.equals(query.getResultType())) {
+				query.orderBy(ascending ? 
+		            criteriaBuilder.asc(criteriaBuilder.size(root.get("sites"))) : 
+		            criteriaBuilder.desc(criteriaBuilder.size(root.get("sites"))));
+			}
 			return criteriaBuilder.conjunction();
 		};
 	}
 	
 	public static Specification<Glycoprotein> orderByTags(boolean asc) {
-        return new Specification<Glycoprotein>() {
-            @Override
-            public Predicate toPredicate(Root<Glycoprotein> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
-                // Join Glycan with GlycanTag
-                Join<Glycoprotein, GlycanTag> tagsJoin = root.join("tags", JoinType.LEFT);
-                
-                // Order by tag label
-                if (asc)
-                	query.orderBy(criteriaBuilder.asc(tagsJoin.get("label")));
-                else 
-                	query.orderBy(criteriaBuilder.desc(tagsJoin.get("label")));
-                
-                return criteriaBuilder.conjunction();
-            }
-        };
+		
+		return (root, query, cb) -> {
+	        query.distinct(true); // Prevent duplicates
+	        Join<Glycoprotein, GlycanTag> tagsJoin = root.join("tags", JoinType.LEFT);
+
+	        if (!Long.class.equals(query.getResultType())) {
+	            if (asc)
+	                query.orderBy(cb.asc(tagsJoin.get("label")));
+	            else
+	                query.orderBy(cb.desc(tagsJoin.get("label")));
+	        }
+
+	        return cb.conjunction();
+	    };
     }
 
 }
