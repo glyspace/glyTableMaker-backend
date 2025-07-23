@@ -170,6 +170,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 
 @RestController
@@ -2028,6 +2029,39 @@ public class DataController {
         
         return new ResponseEntity<>(new SuccessResponse<GlycoproteinView>(gv, "glycoprotein retrieved"), HttpStatus.OK);
     }
+    
+    @Operation(summary = "Get glycan by sequence", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/getglycan")
+    public ResponseEntity<SuccessResponse<Glycan>> getGlycanBySequence(
+    		@Valid @RequestBody GlycanView g) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        List<Glycan> existing = new ArrayList<>();
+        switch (g.getFormat()) {
+        case GLYCOCT:
+        	existing = glycanRepository.findByGlycoCTIgnoreCaseAndUser(g.getSequence(), user);
+        	break;
+        case WURCS:
+        	existing = glycanRepository.findByWurcsIgnoreCaseAndUser(g.getSequence(), user);
+        	break;
+        case GWS:
+        	existing = glycanRepository.findByGwsIgnoreCaseAndUser(g.getSequence(), user);
+        	break;
+		default:
+			break;
+        }
+        
+        if (existing.isEmpty()) {
+        	throw new EntityNotFoundException("glycan with the given sequence does not exist!");
+        }
+        
+        return new ResponseEntity<>(new SuccessResponse<Glycan>(existing.get(0), "glycan retrieved"), HttpStatus.OK);
+    }
 
 	@Operation(summary = "update collection", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatecollection")
@@ -3084,7 +3118,7 @@ public class DataController {
                         glycan.setMass(massVisitor.getMass(GlycoVisitorMass.DERIVATISATION_NONE));
                     }
             	} catch (Exception e) {
-            		logger.error("Linearcode parsing failed", e.getMessage());
+            		logger.error("Linearcode parsing failed for " + g.getSequence().trim(), e.getMessage());
                     throw new IllegalArgumentException ("Linearcode parsing failed. Reason " + e.getMessage());
                 
             	}
