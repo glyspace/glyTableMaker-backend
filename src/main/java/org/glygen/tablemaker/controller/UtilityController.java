@@ -585,7 +585,14 @@ public class UtilityController {
         }
         
         try {
-        	return new ResponseEntity<>(new SuccessResponse<Publication>(getPublication(identifier, publicationRepository), "Publication retrieved"), HttpStatus.OK);
+        	ResponseEntity<SuccessResponse<Publication>> response = new ResponseEntity<>(new SuccessResponse<Publication>(getPublication(identifier, publicationRepository), "Publication retrieved"), HttpStatus.OK);
+        	// put a sleep before next call
+        	try {
+		        Thread.sleep(400); // wait 100 milliseconds between requests
+		    } catch (InterruptedException e) {
+		        Thread.currentThread().interrupt(); // restore interrupted status
+		    }
+        	return response;
         } catch (Exception e) {    
             throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Publication identifier is invalid");
         }
