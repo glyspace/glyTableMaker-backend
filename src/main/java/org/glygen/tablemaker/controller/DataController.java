@@ -433,6 +433,22 @@ public class DataController {
                 	}
                 	// save glycan with the updated information
                 	glycanRepository.save(g);
+                } else {
+                	if (g.getGlytoucanID() != null) {
+                		List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(g.getGlytoucanID());
+            			if (images == null || images.isEmpty()) {
+            				// update glycan image table
+                			imageHandle = glycanImageRepository.findByGlycanId(g.getGlycanId());
+                			if (imageHandle.isPresent()) {
+                				GlycanImageEntity entity = imageHandle.get();
+                				entity.setGlytoucanId(g.getGlytoucanID());
+                				glycanImageRepository.save(entity);
+                			}
+                			else {
+                				logger.error("Cannot find glycan with id " + g.getGlycanId() + " in the image repository");
+                			}
+            			}
+                	}
                 }
             } catch (DataNotFoundException e) {
                 // ignore
@@ -2803,7 +2819,7 @@ public class DataController {
             });
             response.get(1000, TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
-        	synchronized (instance) {
+        	synchronized (result) {
                 if (result.getErrors() != null && !result.getErrors().isEmpty()) {
                     result.setStatus(UploadStatus.ERROR);
                 } else if (result.getErrors() == null){

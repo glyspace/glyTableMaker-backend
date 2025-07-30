@@ -45,6 +45,7 @@ import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.service.DatasetManager;
 import org.glygen.tablemaker.util.SequenceUtils;
+import org.glygen.tablemaker.util.pubmed.PubmedUtil;
 import org.glygen.tablemaker.view.CollectionView;
 import org.glygen.tablemaker.view.DatasetError;
 import org.glygen.tablemaker.view.DatasetInputView;
@@ -105,6 +106,9 @@ public class DatasetController {
 	
 	@Value("${glygen.export.version}")
     String exportVersion;
+	
+	@Value("${ncbi.api-key}")
+	String apiKey;
 	
 	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository) {
 		this.datasetRepository = datasetRepository;
@@ -753,7 +757,7 @@ public class DatasetController {
         	        	// find the publications
         	        	if (m.getDatatype() != null && m.getDatatype().getName().equals("Evidence")) {
         	        		try {
-    							Publication pub = UtilityController.getPublication(m.getValue(), publicationRepository);
+    							Publication pub = UtilityController.getPublication(m.getValue(), publicationRepository, new PubmedUtil(apiKey));
     							if (pub != null && !version.getPublications().contains(pub)) {
     								version.getPublications().add(pub);
     							}
@@ -775,7 +779,7 @@ public class DatasetController {
         	        	// find the publications
         	        	if (m.getDatatype() != null && m.getDatatype().getName().equals("Evidence")) {
         	        		try {
-    							Publication pub = UtilityController.getPublication(m.getValue(), publicationRepository);
+    							Publication pub = UtilityController.getPublication(m.getValue(), publicationRepository, new PubmedUtil(apiKey));
     							if (pub != null && !version.getPublications().contains(pub)) {
     								version.getPublications().add(pub);
     							}

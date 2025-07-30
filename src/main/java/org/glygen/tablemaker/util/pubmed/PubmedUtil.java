@@ -23,6 +23,16 @@ import jakarta.persistence.EntityNotFoundException;
 
 public class PubmedUtil
 {
+	
+	String apiKey;
+	
+	public PubmedUtil(String apiKey) {
+		this.apiKey = apiKey;
+	}
+	
+	public PubmedUtil() {
+	}
+	
 	static Logger logger = org.slf4j.LoggerFactory.getLogger(PubmedUtil.class);
 	
 	private String m_strPubmedURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=xml&id=";

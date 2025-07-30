@@ -100,6 +100,9 @@ public class UtilityController {
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
 	
+	@Value("${ncbi.api-key}")
+	String apiKey;
+	
 	public UtilityController(NamespaceRepository namespaceRepository, 
 			FeedbackRepository feedbackRepository, 
 			EmailManager emailManager, 
@@ -585,7 +588,7 @@ public class UtilityController {
         }
         
         try {
-        	ResponseEntity<SuccessResponse<Publication>> response = new ResponseEntity<>(new SuccessResponse<Publication>(getPublication(identifier, publicationRepository), "Publication retrieved"), HttpStatus.OK);
+        	ResponseEntity<SuccessResponse<Publication>> response = new ResponseEntity<>(new SuccessResponse<Publication>(getPublication(identifier), "Publication retrieved"), HttpStatus.OK);
         	// put a sleep before next call
         	try {
 		        Thread.sleep(400); // wait 100 milliseconds between requests
@@ -598,8 +601,7 @@ public class UtilityController {
         }
     }
 	
-	public static Publication getPublication (String identifier, PublicationRepository pubRepository) throws Exception {
-		
+	public static Publication getPublication (String identifier, PublicationRepository pubRepository, PubmedUtil util) throws Exception {
 		String doiid = null;
 		
 		if (identifier.toLowerCase().startsWith("doi:")) {
@@ -630,7 +632,6 @@ public class UtilityController {
 		} else {
         	try {
         		Integer pubmedid = Integer.parseInt(identifier);
-        		PubmedUtil util = new PubmedUtil();
                 try {
                 	List<Publication> existing = pubRepository.findByPubmedId(pubmedid);
             		if (existing != null && existing.size() > 0) {
@@ -651,6 +652,10 @@ public class UtilityController {
         		throw new IllegalArgumentException("Invalid Input: Not a valid publication information. Pubmed id is invalid");
         	}
         }
+	}
+	
+	public Publication getPublication (String identifier) throws Exception {
+		return getPublication(identifier, publicationRepository, new PubmedUtil(apiKey));	
 	}
 	
 	public static Publication getPublicationFrom (DTOPublication pub) {

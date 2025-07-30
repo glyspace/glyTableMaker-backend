@@ -3,14 +3,18 @@ package org.glygen.tablemaker.service;
 import java.io.File;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 import org.glygen.tablemaker.controller.DataController;
+import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
 import org.glygen.tablemaker.persistence.BatchUploadJob;
 import org.glygen.tablemaker.persistence.ErrorReportEntity;
+import org.glygen.tablemaker.persistence.GlycanImageEntity;
 import org.glygen.tablemaker.persistence.dao.BatchUploadJobRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
+import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
@@ -38,17 +42,22 @@ public class ScheduledTasksService {
 	final private GlycanRepository glycanRepository;
 	final private ErrorReportingService errorReportingService;
 	final private UserRepository userRepository;
+	final private GlycanImageRepository glycanImageRepository;
 	
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
 	
-	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, ErrorReportingService errorReportingService, UserRepository userRepository) {
+	@Value("${spring.file.imagedirectory}")
+    String imageLocation;
+	
+	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, ErrorReportingService errorReportingService, UserRepository userRepository, GlycanImageRepository glycanImageRepository) {
 		this.batchUploadJobRepository = batchUploadJobRepository;
 		this.batchUploadService = batchUploadService;
 		this.uploadRepository = uploadRepository;
 		this.glycanRepository = glycanRepository;
 		this.errorReportingService = errorReportingService;
 		this.userRepository = userRepository;
+		this.glycanImageRepository = glycanImageRepository;
 	}
 	
     @Scheduled(fixedDelay = 86400000, initialDelay=1000)
@@ -116,6 +125,38 @@ public class ScheduledTasksService {
     			}
     		}
     		if (modified) glycanRepository.save(glycan);
+    		
+    		// save cartoons in imagerepository as necessary
+    		Optional<GlycanImageEntity> imageHandle = glycanImageRepository.findByGlycanId(glycan.getGlycanId());
+        	if (!imageHandle.isPresent()) {
+        		// create entry
+        		GlycanImageEntity entity = new GlycanImageEntity();
+        		entity.setGlycanId(glycan.getGlycanId());
+        		entity.setGlytoucanId(glycan.getGlytoucanID());
+        		entity.setWurcs(glycan.getWurcs());
+        		glycanImageRepository.save(entity);
+        	}
+            try {
+            	glycan.setCartoon(DataController.getImageForGlycan(imageLocation, glycan.getGlycanId()));
+                if (glycan.getGlytoucanID() != null) {
+            		List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(glycan.getGlytoucanID());
+        			if (images == null || images.isEmpty()) {
+        				// update glycan image table
+            			imageHandle = glycanImageRepository.findByGlycanId(glycan.getGlycanId());
+            			if (imageHandle.isPresent()) {
+            				GlycanImageEntity entity = imageHandle.get();
+            				entity.setGlytoucanId(glycan.getGlytoucanID());
+            				glycanImageRepository.save(entity);
+            			}
+            			else {
+            				logger.error("Cannot find glycan with id " + glycan.getGlycanId() + " in the image repository");
+            			}
+        			}
+            	}
+            } catch (DataNotFoundException e) {
+                // ignore
+                logger.warn ("no image found for glycan " + glycan.getGlycanId());
+            }
     	}
     	List<Glycan> notYetSubmitted = glycanRepository.findByStatus(RegistrationStatus.NOT_SUBMITTED_YET);
     	for (Glycan glycan: notYetSubmitted) {
@@ -131,6 +172,38 @@ public class ScheduledTasksService {
                 	SequenceUtils.registerGlycan(glycan);
                 }
     	        glycanRepository.save(glycan);
+    	        
+    	        // save cartoons in imagerepository as necessary
+        		Optional<GlycanImageEntity> imageHandle = glycanImageRepository.findByGlycanId(glycan.getGlycanId());
+            	if (!imageHandle.isPresent()) {
+            		// create entry
+            		GlycanImageEntity entity = new GlycanImageEntity();
+            		entity.setGlycanId(glycan.getGlycanId());
+            		entity.setGlytoucanId(glycan.getGlytoucanID());
+            		entity.setWurcs(glycan.getWurcs());
+            		glycanImageRepository.save(entity);
+            	}
+                try {
+                	glycan.setCartoon(DataController.getImageForGlycan(imageLocation, glycan.getGlycanId()));
+                    if (glycan.getGlytoucanID() != null) {
+                		List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(glycan.getGlytoucanID());
+            			if (images == null || images.isEmpty()) {
+            				// update glycan image table
+                			imageHandle = glycanImageRepository.findByGlycanId(glycan.getGlycanId());
+                			if (imageHandle.isPresent()) {
+                				GlycanImageEntity entity = imageHandle.get();
+                				entity.setGlytoucanId(glycan.getGlytoucanID());
+                				glycanImageRepository.save(entity);
+                			}
+                			else {
+                				logger.error("Cannot find glycan with id " + glycan.getGlycanId() + " in the image repository");
+                			}
+            			}
+                	}
+                } catch (DataNotFoundException e) {
+                    // ignore
+                    logger.warn ("no image found for glycan " + glycan.getGlycanId());
+                }
     		} catch (GlytoucanAPIFailedException e) {
     			// report the issue
 				logger.error (e.getMessage(), e);

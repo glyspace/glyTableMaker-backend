@@ -41,6 +41,9 @@ github:
   issuesUrl: https://api.github.com/repos/glyspace/glyTableMaker-backend/issues
   repoUrl: https://github.com/glyspace/glyTableMaker-backend/issues
   assignee: senaarpinar, ReneRanzinger
+ 
+ncbi:
+  api-key: ENC(/IuwNTHNR7ZDXFolnV/bnTfhj9l0Awr2UN1wBeWdKPzaARshqNOUTA3F7giwo6tq)
   
 glygen:
   oauth2:
