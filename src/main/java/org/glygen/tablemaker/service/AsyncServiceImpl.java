@@ -697,7 +697,7 @@ public class AsyncServiceImpl implements AsyncService {
 							continue;
 						}
 						pList.add(startPos);
-						if (end == null || start.equalsIgnoreCase(end)) {
+						if ((end == null || end.isEmpty()) || start.equalsIgnoreCase(end)) {
 							// single site,
 							site.setType(GlycoproteinSiteType.EXPLICIT);
 						} else {
@@ -731,6 +731,7 @@ public class AsyncServiceImpl implements AsyncService {
 							protein.getSites().add(site);
 						}
 					} catch (NumberFormatException | IndexOutOfBoundsException e) {
+						logger.error("Position(s) " + start + ":" + end + " are invalid in Protein " + protein.getUniprotId() + " Error occured: " + e.getMessage(), row[3], e);
 						errors.add(new UploadErrorEntity(null, "Position(s) " + start + ":" + end + " are invalid in Protein " + protein.getUniprotId() + " Error occured: " + e.getMessage(), row[3]));
 						continue;
 					}
