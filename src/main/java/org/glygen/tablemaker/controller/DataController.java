@@ -1954,7 +1954,9 @@ public class DataController {
 	   			Site s = new Site();
 	   			s.setType(sv.getType());
 	   			s.setGlycoprotein(glycoprotein);
-	   			s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
+	   			if (sv.getPosition() != null) {
+	   				s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
+	   			}
 	   			s.setGlycans(new ArrayList<>());
 	   			if (sv.getGlycans() != null && !sv.getGlycans().isEmpty()) {
 	   				for (GlycanInSiteView gv: sv.getGlycans()) {
@@ -2393,7 +2395,9 @@ public class DataController {
     				Site s = new Site();
         			s.setType(sv.getType());
         			s.setGlycoprotein(existing);
-        			s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
+        			if (s.getPosition() != null) {
+        				s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
+        			}
         			s.setGlycans(new ArrayList<>());
         			if (sv.getGlycans() != null && !sv.getGlycans().isEmpty()) {
         				for (GlycanInSiteView giv: sv.getGlycans()) {

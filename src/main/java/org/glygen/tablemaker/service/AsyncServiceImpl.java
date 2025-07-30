@@ -687,30 +687,34 @@ public class AsyncServiceImpl implements AsyncService {
 					try {
 						// create a new Site
 						SiteView site = new SiteView();
-						SitePosition sp = new SitePosition();
-						List<Position> pList = new ArrayList<>();
-						sp.setPositionList(pList);
-						Position startPos = new Position();
-						startPos.setLocation(Long.valueOf(start));
-						if (startPos.getLocation() >= protein.getSequence().length()) {
-							errors.add(new UploadErrorEntity(null, "Start position " + start + " is off range for protein " + protein.getUniprotId() + ". Protein length is " + protein.getSequence().length(), protein.getUniprotId()));
-							continue;
-						}
-						pList.add(startPos);
-						if ((end == null || end.isEmpty()) || start.equalsIgnoreCase(end)) {
-							// single site,
-							site.setType(GlycoproteinSiteType.EXPLICIT);
+						if ((start == null || start.isEmpty()) && (end == null || end.isEmpty())) {
+							site.setType(GlycoproteinSiteType.UNKNOWN);
 						} else {
-							site.setType(GlycoproteinSiteType.RANGE);
-							Position endPos = new Position();
-							endPos.setLocation(Long.valueOf(end));
-							pList.add(endPos);
-							if (endPos.getLocation() < startPos.getLocation() || endPos.getLocation() > protein.getSequence().length()) {
-								errors.add(new UploadErrorEntity(null, "End position " + end + " is off range for protein " + protein.getUniprotId() + ". Protein length is " + protein.getSequence().length(), protein.getUniprotId()));
+							SitePosition sp = new SitePosition();
+							List<Position> pList = new ArrayList<>();
+							sp.setPositionList(pList);
+							Position startPos = new Position();
+							startPos.setLocation(Long.valueOf(start));
+							if (startPos.getLocation() >= protein.getSequence().length()) {
+								errors.add(new UploadErrorEntity(null, "Start position " + start + " is off range for protein " + protein.getUniprotId() + ". Protein length is " + protein.getSequence().length(), protein.getUniprotId()));
 								continue;
 							}
+							pList.add(startPos);
+							if ((end == null || end.isEmpty()) || start.equalsIgnoreCase(end)) {
+								// single site,
+								site.setType(GlycoproteinSiteType.EXPLICIT);
+							} else {
+								site.setType(GlycoproteinSiteType.RANGE);
+								Position endPos = new Position();
+								endPos.setLocation(Long.valueOf(end));
+								pList.add(endPos);
+								if (endPos.getLocation() < startPos.getLocation() || endPos.getLocation() > protein.getSequence().length()) {
+									errors.add(new UploadErrorEntity(null, "End position " + end + " is off range for protein " + protein.getUniprotId() + ". Protein length is " + protein.getSequence().length(), protein.getUniprotId()));
+									continue;
+								}
+							}
+							site.setPosition(sp);
 						}
-						site.setPosition(sp);
 						site.setGlycans(new ArrayList<>());
 						String glycanColumn = row[3];
 						String[] glycanList = glycanColumn.split(";");
