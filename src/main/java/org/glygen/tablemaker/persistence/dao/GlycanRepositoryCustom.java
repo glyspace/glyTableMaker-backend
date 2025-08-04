@@ -8,5 +8,6 @@ import org.springframework.data.jpa.domain.Specification;
 
 public interface GlycanRepositoryCustom {
     Page<Long> findAllIdsBySpecification(Specification<Glycan> spec, Pageable pageable);
+    Page<Glycan> searchGlycans(String tagKeyword, String glytoucanID, Double massMin, Double massMax, Pageable pageable);
 }
 

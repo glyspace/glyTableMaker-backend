@@ -1,7 +1,9 @@
 package org.glygen.tablemaker.persistence.dao;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.springframework.data.domain.Page;
@@ -74,5 +76,58 @@ public class GlycanRepositoryCustomImpl implements GlycanRepositoryCustom {
 
         return new PageImpl<>(ids, pageable, total);
     }
+    
+
+    @Override
+    public Page<Glycan> searchGlycans(String tagKeyword, String glytoucanID, Double massMin, Double massMax, Pageable pageable) {
+        String baseQuery = "SELECT DISTINCT g FROM Glycan g JOIN g.tags t WHERE LOWER(t.label) LIKE LOWER(:tagKeyword)";
+        String countQuery = "SELECT COUNT(DISTINCT g) FROM Glycan g JOIN g.tags t WHERE LOWER(t.label) LIKE LOWER(:tagKeyword)";
+
+        StringBuilder whereClause = new StringBuilder();
+        Map<String, Object> params = new HashMap<>();
+        params.put("tagKeyword", "%" + tagKeyword + "%");
+
+        if (glytoucanID != null) {
+            whereClause.append(" AND g.glytoucanID = :glytoucanID");
+            params.put("glytoucanID", glytoucanID);
+        }
+        if (massMin != null) {
+            whereClause.append(" AND g.mass >= :massMin");
+            params.put("massMin", massMin);
+        }
+        if (massMax != null) {
+            whereClause.append(" AND g.mass <= :massMax");
+            params.put("massMax", massMax);
+        }
+        
+        String orderBy = " ORDER BY g.dateCreated DESC";
+        // Apply sorting
+        if (pageable.getSort().isSorted()) {
+            for (Sort.Order order : pageable.getSort()) {
+                if (order.getProperty().contains("tags")) {
+                	orderBy = " ORDER BY t.label " + (order.isAscending() ? "ASC" : "DESC");
+                } else {
+                	orderBy = " ORDER BY " + order.getProperty() + " " + (order.isAscending() ? "ASC" : "DESC"); 
+                }
+            }
+        }
+
+        String finalQuery = baseQuery + whereClause.toString() + orderBy;
+        String finalCountQuery = countQuery + whereClause.toString();
+
+        TypedQuery<Glycan> query = entityManager.createQuery(finalQuery, Glycan.class);
+        TypedQuery<Long> count = entityManager.createQuery(finalCountQuery, Long.class);
+
+        params.forEach((k, v) -> {
+            query.setParameter(k, v);
+            count.setParameter(k, v);
+        });
+
+        query.setFirstResult((int) pageable.getOffset());
+        query.setMaxResults(pageable.getPageSize());
+
+        return new PageImpl<>(query.getResultList(), pageable, count.getSingleResult());
+    }
+
 }
 
