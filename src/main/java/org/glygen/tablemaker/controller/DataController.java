@@ -12,6 +12,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -298,10 +299,11 @@ public class DataController {
                 throw new InternalError("filter parameter is invalid " + filters, e);
             }
         }
+        
         List<Sorting> sortingList = null;
         List<Order> sortOrders = new ArrayList<>();
         boolean orderByTags = false;
-        boolean asc = false;
+        
         if (sorting != null && !sorting.equals("[]")) {
             try {
                 sortingList = mapper.readValue(sorting, 
@@ -309,7 +311,7 @@ public class DataController {
                 for (Sorting s: sortingList) {
                 	if (s.getId().equalsIgnoreCase("tags")) {
                 		orderByTags = true;
-                		asc = s.getDesc() ? false : true;
+                		sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()).nullsFirst());
                 	} else {
                 		sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()).nullsFirst());
                 	}
@@ -319,74 +321,48 @@ public class DataController {
             }
         }
         
-        // apply filters
-        List<Specification<Glycan>> globalSpecificationList = new ArrayList<>();
-        List<Specification<Glycan>> specificationList = new ArrayList<>();
-        
-        if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
-        	globalSpecificationList.add(new GlycanSpecifications(new Filter ("glytoucanID", globalFilter)));
-        	globalSpecificationList.add(new GlycanSpecifications(new Filter ("mass", globalFilter)));
-        	globalSpecificationList.add(GlycanSpecifications.hasGlycanTag(globalFilter));
-        }
-        
-        if (filterList != null) {
-	        for (Filter f: filterList) {
-	        	if (!f.getId().equalsIgnoreCase("tags")) {
-	        		GlycanSpecifications s = new GlycanSpecifications(f);
-	        		specificationList.add(s);
-	        	} else {
-	        		specificationList.add(GlycanSpecifications.hasGlycanTag(f.getValue()));
-	        	}
-	        }
-        }
-        
-        Specification<Glycan> globalSpec = null;
-        if (!globalSpecificationList.isEmpty()) {
-        	globalSpec = globalSpecificationList.get(0);
-        	for (int i=1; i < globalSpecificationList.size(); i++) {
-        		globalSpec = Specification.where(globalSpec).or(globalSpecificationList.get(i)); 
-        	}
-        }
-        
-        Specification<Glycan> spec = null;
-        if (globalSpec != null && specificationList.isEmpty()) { // no more filters, add the user filter
-        	spec = Specification.where(globalSpec).and(GlycanSpecifications.hasUserWithId(user.getUserId()));
-        	if (orderByTags) spec = Specification.where (spec).and(GlycanSpecifications.orderByTags(asc));
-        } else {
-	        if (!specificationList.isEmpty()) {
-	        	spec = specificationList.get(0);
-	        	for (int i=1; i < specificationList.size(); i++) {
-	        		spec = Specification.where(spec).and(specificationList.get(i)); 
-	        	}
-	        	
-	        	spec = Specification.where(spec).and(GlycanSpecifications.hasUserWithId(user.getUserId()));
-	        	
-	        	if (globalSpec != null) {
-	        		spec = Specification.where(spec).and(globalSpec);
-	        	}
-	        }
-	        if (orderByTags) {
-	        	if (specificationList.isEmpty()) {
-	        		spec = Specification.where(spec).and(GlycanSpecifications.hasUserWithId(user.getUserId()));
-	        	}
-	        	spec = Specification.where (spec).and(GlycanSpecifications.orderByTags(asc));
-	        }
-        }
-        
         Page<Glycan> glycansInPage = null;
-        if (spec != null) {
-        	try {
-        		glycansInPage = glycanRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
-        	} catch (Exception e) {
-        		logger.error(e.getMessage(), e);
-        		throw e;
-        	}
-        } else {
-        	glycansInPage = glycanRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
-        }
+       
+        List<Glycan> pageGlycans = null;
+        int currentPage = 0;
+        long totalItems = 0;
+        int totalPages = 0;
+        
+    	try {
+    		boolean orFilter = false;
+			String glytoucanId = null;
+			String mass = null;
+			String tagValue = null;
+			if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+				glytoucanId = globalFilter;
+				mass = globalFilter;
+				tagValue = globalFilter;
+				orFilter = true;
+			} else if (filterList != null) {
+				for (Filter f: filterList) {
+					if (f.getId().equalsIgnoreCase("mass")) {
+						mass = f.getValue();
+					}
+					if (f.getId().equalsIgnoreCase("glytoucanId")) {
+						glytoucanId = f.getValue();
+					}
+					if (f.getId().equalsIgnoreCase("tags")) {
+						tagValue = f.getValue();
+					}
+				}
+			}
+			glycansInPage = glycanRepository.searchGlycans(tagValue, glytoucanId, mass, user, orFilter, orderByTags, PageRequest.of(start, size, Sort.by(sortOrders)));
+			pageGlycans = glycansInPage.getContent();
+			currentPage = glycansInPage.getNumber();
+			totalItems = glycansInPage.getTotalElements();
+			totalPages = glycansInPage.getNumberOfElements();
+    	} catch (Exception e) {
+    		logger.error(e.getMessage(), e);
+    		throw e;
+    	}
         
         // retrieve cartoon images
-        for (Glycan g: glycansInPage.getContent()) {
+        for (Glycan g: pageGlycans) {
         	// generate optional byonic and condensed composition strings
         	SequenceUtils.addCompositionInformation(g);
         	//g.setByonicString(SequenceUtils.generateByonicString(g));
@@ -457,15 +433,15 @@ public class DataController {
         }
         
         Map<String, Object> response = new HashMap<>();
-        response.put("objects", glycansInPage.getContent());
-        response.put("currentPage", glycansInPage.getNumber());
-        response.put("totalItems", glycansInPage.getTotalElements());
-        response.put("totalPages", glycansInPage.getTotalPages());
+        response.put("objects", pageGlycans);
+        response.put("currentPage", currentPage);
+        response.put("totalItems", totalItems);
+        response.put("totalPages", totalPages);
         
         return new ResponseEntity<>(new SuccessResponse(response, "glycans retrieved"), HttpStatus.OK);
     }
-    
-    @Operation(summary = "Get user's glycoproteins", security = { @SecurityRequirement(name = "bearer-key") })
+
+	@Operation(summary = "Get user's glycoproteins", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getglycoproteins")
     public ResponseEntity<SuccessResponse> getGlycoproteins(
             @RequestParam("start")
@@ -504,7 +480,6 @@ public class DataController {
         List<Order> sortOrders = new ArrayList<>();
         boolean orderByTags = false;
         boolean orderBySites = false;
-        boolean asc = false;
         if (sorting != null && !sorting.equals("[]")) {
             try {
                 sortingList = mapper.readValue(sorting, 
@@ -512,12 +487,12 @@ public class DataController {
                 for (Sorting s: sortingList) {
                 	if (s.getId().equalsIgnoreCase("tags")) {
                 		orderByTags = true;
-                		asc = s.getDesc() ? false : true;
+                		sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()).nullsFirst());
                 	} else if (s.getId().equalsIgnoreCase("siteNo")) {
                 		orderBySites = true;
-                		asc = s.getDesc() ? false : true;
+                		sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()).nullsFirst());
                 	} else {
-                		sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                		sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()).nullsFirst());
                 	}
                 }
             } catch (JsonProcessingException e) {
@@ -525,69 +500,51 @@ public class DataController {
             }
         }
         
-        // apply filters
-        List<Specification<Glycoprotein>> globalSpecificationList = new ArrayList<>();
-        List<Specification<Glycoprotein>> specificationList = new ArrayList<>();
-        
-        if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
-        	globalSpecificationList.add(new GlycoproteinSpecification(new Filter ("uniprotId", globalFilter)));
-        	globalSpecificationList.add(new GlycoproteinSpecification(new Filter ("name", globalFilter)));
-        	globalSpecificationList.add(new GlycoproteinSpecification(new Filter ("geneSymbol", globalFilter)));
-        	globalSpecificationList.add(GlycoproteinSpecification.hasTag(globalFilter));
-        }
-        
-        if (filterList != null) {
-	        for (Filter f: filterList) {
-	        	if (!f.getId().equalsIgnoreCase("tags")) {
-	        		GlycoproteinSpecification s = new GlycoproteinSpecification(f);
-	        		specificationList.add(s);
-	        	} else {
-	        		specificationList.add(GlycoproteinSpecification.hasTag(f.getValue()));
-	        	}
-	        }
-        }
-        
-        Specification<Glycoprotein> globalSpec = null;
-        if (!globalSpecificationList.isEmpty()) {
-        	globalSpec = globalSpecificationList.get(0);
-        	for (int i=1; i < globalSpecificationList.size(); i++) {
-        		globalSpec = Specification.where(globalSpec).or(globalSpecificationList.get(i)); 
-        	}
-        }
-        
-        Specification<Glycoprotein> spec = null;
-        if (globalSpec != null && specificationList.isEmpty()) { // no more filters, add the user filter
-        	spec = Specification.where(globalSpec).and(GlycoproteinSpecification.hasUserWithId(user.getUserId()));
-        	if (orderByTags) spec = Specification.where (spec).and(GlycoproteinSpecification.orderByTags(asc));
-        	if (orderBySites) spec = Specification.where (spec).and(GlycoproteinSpecification.orderBySites(asc));
-        } else {
-	        if (!specificationList.isEmpty()) {
-	        	spec = specificationList.get(0);
-	        	for (int i=1; i < specificationList.size(); i++) {
-	        		spec = Specification.where(spec).and(specificationList.get(i)); 
-	        	}
-	        	
-	        	spec = Specification.where(spec).and(GlycoproteinSpecification.hasUserWithId(user.getUserId()));
-	        	
-	        	if (globalSpec != null) {
-	        		spec = Specification.where(spec).and(globalSpec);
-	        	}
-	        }
-	        if (orderByTags) spec = Specification.where (spec).and(GlycoproteinSpecification.orderByTags(asc));
-	        if (orderBySites) spec = Specification.where (spec).and(GlycoproteinSpecification.orderBySites(asc));
-        }
-        
         Page<Glycoprotein> glycoproteinsInPage = null;
-        if (spec != null) {
-        	try {
-        		glycoproteinsInPage = glycoproteinRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
-        	} catch (Exception e) {
-        		logger.error(e.getMessage(), e);
-        		throw e;
-        	}
-        } else {
-        	glycoproteinsInPage = glycoproteinRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
-        }
+    	try {
+    		boolean orFilter = false;
+			String uniprotId = null;
+			String siteNo = null;
+			String tagValue = null;
+			String proteinName = null;
+			String name = null;
+			String seqVersion = null;
+			if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+				uniprotId = globalFilter;
+				siteNo = globalFilter;
+				tagValue = globalFilter;
+				proteinName = globalFilter;
+				name = globalFilter;
+				seqVersion = globalFilter;
+				orFilter = true;
+			} else if (filterList != null) {
+				for (Filter f: filterList) {
+					if (f.getId().equalsIgnoreCase("siteNo")) {
+						siteNo = f.getValue();
+					}
+					if (f.getId().equalsIgnoreCase("uniprotId")) {
+						uniprotId = f.getValue();
+					}
+					if (f.getId().equalsIgnoreCase("tags")) {
+						tagValue = f.getValue();
+					}
+					if (f.getId().equalsIgnoreCase("proteinName")) {
+						proteinName = f.getValue();
+					}
+					if (f.getId().equalsIgnoreCase("name")) {
+						name = f.getValue();
+					}
+					if (f.getId().equalsIgnoreCase("sequenceVersion")) {
+						seqVersion = f.getValue();
+					}
+				}
+			}
+    		glycoproteinsInPage = glycoproteinRepository.searchGlycoproteins(tagValue, uniprotId, name, proteinName, seqVersion, siteNo, user, 
+    				orFilter, orderByTags, orderBySites, PageRequest.of(start, size, Sort.by(sortOrders)));
+    	} catch (Exception e) {
+    		logger.error(e.getMessage(), e);
+    		throw e;
+    	}
         
         List<GlycoproteinView> glycoproteins = new ArrayList<>();
         for (Glycoprotein p: glycoproteinsInPage.getContent()) {
@@ -608,8 +565,6 @@ public class DataController {
 	    	        		g.setGlycanCollections(null);
 	    	        		g.setSites(null);
 	    	        		SequenceUtils.addCompositionInformation(g);
-	    	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
-	    	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
 	    	        		try {
 	    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 	    	                } catch (DataNotFoundException e) {
