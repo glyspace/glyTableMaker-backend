@@ -28,7 +28,6 @@ public class CollectionSpecification implements Specification<Collection> {
 	
 	public static Specification<Collection> hasUserWithId(Long userid) {
 	    return (root, query, criteriaBuilder) -> {
-	    	//query.distinct(true); // Prevent duplicates
 	        Join<UserEntity, Collection> collectionUser = root.join("user");
 	        return criteriaBuilder.equal(collectionUser.get("userId"), userid);
 	    };
@@ -36,21 +35,18 @@ public class CollectionSpecification implements Specification<Collection> {
 	
 	public static Specification<Collection> hasNoChildren () {
 		return (root, query, criteriaBuilder) -> {
-			//query.distinct(true); // Prevent duplicates
 	        return criteriaBuilder.isEmpty(root.get("collections"));
 	    };
 	}
 	
 	public static Specification<Collection> hasChildren () {
 		return (root, query, criteriaBuilder) -> {
-			//query.distinct(true); // Prevent duplicates
 	        return criteriaBuilder.isNotEmpty(root.get("collections"));
 	    };
 	}
 	
 	public static Specification<Collection> orderBySize(boolean ascending, String collection) {
 		return (root, query, criteriaBuilder) -> {
-			//query.distinct(true); // Prevent duplicates
 			query.orderBy(ascending ? 
 	            criteriaBuilder.asc(criteriaBuilder.size(root.get(collection))) : 
 	            criteriaBuilder.desc(criteriaBuilder.size(root.get(collection))));

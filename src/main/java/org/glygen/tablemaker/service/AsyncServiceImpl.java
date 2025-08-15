@@ -699,7 +699,9 @@ public class AsyncServiceImpl implements AsyncService {
 								errors.add(new UploadErrorEntity(null, "Start position " + start + " is off range for protein " + protein.getUniprotId() + ". Protein length is " + protein.getSequence().length(), protein.getUniprotId()));
 								continue;
 							}
-							pList.add(startPos);
+							char amino = protein.getSequence().charAt(startPos.getLocation().intValue()-1);
+							startPos.setAminoAcid(amino+"");
+ 							pList.add(startPos);
 							if ((end == null || end.isEmpty()) || start.equalsIgnoreCase(end)) {
 								// single site,
 								site.setType(GlycoproteinSiteType.EXPLICIT);
@@ -712,6 +714,8 @@ public class AsyncServiceImpl implements AsyncService {
 									errors.add(new UploadErrorEntity(null, "End position " + end + " is off range for protein " + protein.getUniprotId() + ". Protein length is " + protein.getSequence().length(), protein.getUniprotId()));
 									continue;
 								}
+								amino = protein.getSequence().charAt(startPos.getLocation().intValue()-1);
+								endPos.setAminoAcid(amino + "");
 							}
 							site.setPosition(sp);
 						}

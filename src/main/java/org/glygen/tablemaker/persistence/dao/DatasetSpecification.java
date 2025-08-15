@@ -29,7 +29,6 @@ public class DatasetSpecification implements Specification<DatasetProjection> {
 	
 	public static Specification<DatasetProjection> hasUserWithId(Long userid) {
 	    return (root, query, criteriaBuilder) -> {
-	    	//query.distinct(true); // Prevent duplicates
 	        Join<UserEntity, DatasetProjection> datasetUser = root.join("user");
 	        return criteriaBuilder.equal(datasetUser.get("userId"), userid);
 	    };
@@ -37,7 +36,6 @@ public class DatasetSpecification implements Specification<DatasetProjection> {
 	
 	public static Specification<DatasetProjection> hasUserWithUsername(String username) {
 	    return (root, query, criteriaBuilder) -> {
-	    	//query.distinct(true); // Prevent duplicates
 	        Join<UserEntity, DatasetProjection> datasetUser = root.join("user");
 	        return criteriaBuilder.or(
 	        		criteriaBuilder.like(criteriaBuilder.lower(datasetUser.get("username")), "%" + username.toLowerCase() + "%"),

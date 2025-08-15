@@ -110,6 +110,7 @@ import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInFile;
 import org.glygen.tablemaker.persistence.protein.MultipleGlycanOrder;
+import org.glygen.tablemaker.persistence.protein.Position;
 import org.glygen.tablemaker.persistence.protein.Site;
 import org.glygen.tablemaker.persistence.protein.SitePosition;
 import org.glygen.tablemaker.persistence.table.TableReport;
@@ -548,12 +549,25 @@ public class DataController {
         
         List<GlycoproteinView> glycoproteins = new ArrayList<>();
         for (Glycoprotein p: glycoproteinsInPage.getContent()) {
+        	boolean updated = false;
         	if (p.getSites() != null) {
         		for (Site s: p.getSites()) {
         			if (s.getPositionString() != null) {
         				ObjectMapper om = new ObjectMapper();
         				try {
 							s.setPosition(om.readValue(s.getPositionString(), SitePosition.class));
+							// if aminoacid is missing, update it and save it again
+							if (s.getPosition().getPositionList() != null) {
+								for (Position pos: s.getPosition().getPositionList()) {
+									if (pos.getLocation() != null && (pos.getAminoAcid() == null || pos.getAminoAcid().isEmpty())) {
+										pos.setAminoAcid (p.getSequence().charAt(pos.getLocation().intValue()-1) + "");
+										updated = true;
+									}
+								}
+							}
+							if (updated) {
+								s.setPositionString(s.getPosition().toString());
+							}
 						} catch (JsonProcessingException e) {
 							logger.warn ("Position string is invalid: " + s.getPositionString());
 						}
@@ -574,6 +588,9 @@ public class DataController {
     	        		}
     	        	}
         		}
+        	}
+        	if (updated) {
+        		glycoproteinRepository.save(p);
         	}
         	GlycoproteinView view = new GlycoproteinView (p);
         	glycoproteins.add(view);

@@ -37,6 +37,7 @@ import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.protein.GlycanInSite;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinSiteType;
 import org.glygen.tablemaker.persistence.protein.Position;
 import org.glygen.tablemaker.persistence.protein.Site;
 import org.glygen.tablemaker.persistence.protein.SitePosition;
@@ -889,7 +890,6 @@ public class DatasetController {
     					dv.getData().add(row);
     				}
     			}
-    			dv.setNoGlycans(dv.getData() != null ? dv.getData().size() : 0);
     			if (version.getGlycoproteinData() != null) {   
     				dv.setGlycoproteinData(new ArrayList<>());
     				Map<String, List<DatasetGlycoproteinMetadata>> rowMap = new HashMap<>();
@@ -917,6 +917,21 @@ public class DatasetController {
     					dv.getGlycoproteinData().add(row);
     				}
     			}
+    			
+    			int noGlycans = 0;
+    			if (version.getData() != null) {
+    				String glytoucanId =  null;
+    				for (DatasetMetadata meta: version.getData()) {
+    					if (meta.getGlycanColumn() != null && meta.getGlycanColumn() == GlycanColumns.GLYTOUCANID) {
+    						if (glytoucanId == null || !meta.getValue().equalsIgnoreCase(glytoucanId)) {
+    							glytoucanId = meta.getValue();
+    							noGlycans++;
+    						}
+    					}
+    				}
+    			}
+    			
+    			dv.setNoGlycans(noGlycans);
     			
     			// calculate no of proteins
     			int noProteins = 0;
@@ -1005,7 +1020,7 @@ public class DatasetController {
 				case AMINOACID:
 					for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
 						for (Site s: gp.getGlycoprotein().getSites()) {
-							if (s.getPositionString() == null || s.getPositionString().length() == 0) {
+							if (s.getType() !=GlycoproteinSiteType.UNKNOWN && (s.getPositionString() == null || s.getPositionString().length() == 0)) {
 								// error
 								errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for Amino Acid.", 1));
 							}
@@ -1047,7 +1062,7 @@ public class DatasetController {
 				case SITE:
 					for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
 						for (Site s: gp.getGlycoprotein().getSites()) {
-							if (s.getPositionString() == null || s.getPositionString().length() == 0) {
+							if (s.getType () != GlycoproteinSiteType.UNKNOWN && (s.getPositionString() == null || s.getPositionString().length() == 0)) {
 								// error
 								errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for Site/Location.", 1));
 							}
