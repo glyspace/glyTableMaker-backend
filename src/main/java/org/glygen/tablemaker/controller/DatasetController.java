@@ -403,6 +403,47 @@ public class DatasetController {
 							logger.warn ("Position string is invalid: " + s.getPositionString());
 						}
         			}
+					if (s.getGlycans().isEmpty()) {
+						// unknown site
+						// put values other than the glycan
+						for (TableColumn col: glygenTemplate.getColumns()) {
+		        			DatasetGlycoproteinMetadata dm = new DatasetGlycoproteinMetadata();
+		            		dm.setDataset(version);
+		            		dm.setRowId(collection.getCollectionId() + "-"
+		            				+ gp.getGlycoprotein().getId() 
+		            				+ "-" + s.getSiteId());
+		            		if (col.getProteinColumn() != null) {
+		            			switch (col.getProteinColumn()) {
+								case AMINOACID:
+									dm.setGlycoproteinColumn(col.getProteinColumn());
+		        					dm.setValue(s.getAminoAcidString());
+									break;
+								case SITE:
+									dm.setGlycoproteinColumn(col.getProteinColumn());
+		        					dm.setValue(s.getLocationString());
+									break;
+								case UNIPROTID:
+									dm.setGlycoproteinColumn(col.getProteinColumn());
+		        					dm.setValue(gp.getGlycoprotein().getUniprotId());
+									break;
+								default:
+									break;
+		            			}
+		            		}
+		            		else {
+		        				dm.setDatatype(col.getDatatype());
+		        				for (Metadata m: collection.getMetadata()) {
+		        					if (m.getType().getDatatypeId() == col.getDatatype().getDatatypeId()) {
+		        						dm.setValue(m.getValue());
+		        						dm.setValueId(m.getValueId());
+		        						dm.setValueUri(m.getValueUri());
+		        						break;
+		        					}
+		        				}
+		        			}
+		            		metadata.add(dm);
+						}
+					}
 					for (GlycanInSite g: s.getGlycans()) {
 						for (TableColumn col: glygenTemplate.getColumns()) {
 		        			DatasetGlycoproteinMetadata dm = new DatasetGlycoproteinMetadata();
@@ -410,7 +451,10 @@ public class DatasetController {
 		            		dm.setRowId(collection.getCollectionId() + "-"
 		            				+ gp.getGlycoprotein().getId() 
 		            				+ "-" + s.getSiteId() 
-		            				+ "-" + g.getGlycan() != null ? "" + g.getGlycan().getGlycanId() : "");
+		            				+ "-" );
+		            		if (g.getGlycan() != null) { 
+		            			dm.setRowId(dm.getRowId() + g.getGlycan().getGlycanId());
+		            		}
 		            		if (col.getProteinColumn() != null) {
 		            			switch (col.getProteinColumn()) {
 								case AMINOACID:
