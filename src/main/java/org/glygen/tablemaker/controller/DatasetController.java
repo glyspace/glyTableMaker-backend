@@ -24,14 +24,12 @@ import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Grant;
-import org.glygen.tablemaker.persistence.dataset.License;
 import org.glygen.tablemaker.persistence.dataset.Publication;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
-import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.protein.GlycanInSite;
@@ -45,7 +43,6 @@ import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.service.DatasetManager;
-import org.glygen.tablemaker.util.SequenceUtils;
 import org.glygen.tablemaker.util.pubmed.PubmedUtil;
 import org.glygen.tablemaker.view.CollectionView;
 import org.glygen.tablemaker.view.DatasetError;
@@ -413,18 +410,16 @@ public class DatasetController {
 		            				+ gp.getGlycoprotein().getId() 
 		            				+ "-" + s.getSiteId());
 		            		if (col.getProteinColumn() != null) {
+		            			dm.setGlycoproteinColumn(col.getProteinColumn());
 		            			switch (col.getProteinColumn()) {
 								case AMINOACID:
-									dm.setGlycoproteinColumn(col.getProteinColumn());
-		        					dm.setValue(s.getAminoAcidString());
+									dm.setValue(s.getAminoAcidString());
 									break;
 								case SITE:
-									dm.setGlycoproteinColumn(col.getProteinColumn());
-		        					dm.setValue(s.getLocationString());
+									dm.setValue(s.getLocationString());
 									break;
 								case UNIPROTID:
-									dm.setGlycoproteinColumn(col.getProteinColumn());
-		        					dm.setValue(gp.getGlycoprotein().getUniprotId());
+									dm.setValue(gp.getGlycoprotein().getUniprotId());
 									break;
 								default:
 									break;
@@ -432,12 +427,19 @@ public class DatasetController {
 		            		}
 		            		else {
 		        				dm.setDatatype(col.getDatatype());
+		        				boolean found = false;
 		        				for (Metadata m: collection.getMetadata()) {
 		        					if (m.getType().getDatatypeId() == col.getDatatype().getDatatypeId()) {
-		        						dm.setValue(m.getValue());
-		        						dm.setValueId(m.getValueId());
-		        						dm.setValueUri(m.getValueUri());
-		        						break;
+		        						if (!found) {
+			        						dm.setValue(m.getValue());
+			        						dm.setValueId(m.getValueId());
+			        						dm.setValueUri(m.getValueUri());
+		        						} else {
+		        							dm.setValue(dm.getValue() + " | " + m.getValue());
+		        							dm.setValueId(dm.getValueId() + " | " + m.getValueId());
+		        							dm.setValueUri(dm.getValueUri() + " | " + m.getValueUri());
+		        						}
+		        						found = true;
 		        					}
 		        				}
 		        			}
@@ -456,31 +458,26 @@ public class DatasetController {
 		            			dm.setRowId(dm.getRowId() + g.getGlycan().getGlycanId());
 		            		}
 		            		if (col.getProteinColumn() != null) {
+		            			dm.setGlycoproteinColumn(col.getProteinColumn());
 		            			switch (col.getProteinColumn()) {
 								case AMINOACID:
-									dm.setGlycoproteinColumn(col.getProteinColumn());
-		        					dm.setValue(s.getAminoAcidString());
+									dm.setValue(s.getAminoAcidString());
 									break;
 								case GLYCOSYLATIONSUBTYPE:
-									dm.setGlycoproteinColumn(col.getProteinColumn());
-		        					dm.setValue(g.getGlycosylationSubType());
+									dm.setValue(g.getGlycosylationSubType());
 									break;
 								case GLYCOSYLATIONTYPE:
-									dm.setGlycoproteinColumn(col.getProteinColumn());
-		        					dm.setValue(g.getGlycosylationType());
+									dm.setValue(g.getGlycosylationType());
 									break;
 								case GLYTOUCANID:
-									dm.setGlycoproteinColumn(col.getProteinColumn());
 									if (g.getGlycan() != null)
 										dm.setValue(g.getGlycan().getGlytoucanID());
 									break;
 								case SITE:
-									dm.setGlycoproteinColumn(col.getProteinColumn());
-		        					dm.setValue(s.getLocationString());
+									dm.setValue(s.getLocationString());
 									break;
 								case UNIPROTID:
-									dm.setGlycoproteinColumn(col.getProteinColumn());
-		        					dm.setValue(gp.getGlycoprotein().getUniprotId());
+									dm.setValue(gp.getGlycoprotein().getUniprotId());
 									break;
 								default:
 									break;
@@ -488,12 +485,19 @@ public class DatasetController {
 		            		}
 		            		else {
 		        				dm.setDatatype(col.getDatatype());
+		        				boolean found = false;
 		        				for (Metadata m: collection.getMetadata()) {
 		        					if (m.getType().getDatatypeId() == col.getDatatype().getDatatypeId()) {
-		        						dm.setValue(m.getValue());
-		        						dm.setValueId(m.getValueId());
-		        						dm.setValueUri(m.getValueUri());
-		        						break;
+		        						if (!found) {
+			        						dm.setValue(m.getValue());
+			        						dm.setValueId(m.getValueId());
+			        						dm.setValueUri(m.getValueUri());
+		        						} else {
+		        							dm.setValue(dm.getValue() + " | " + m.getValue());
+		        							dm.setValueId(dm.getValueId() + " | " + m.getValueId());
+		        							dm.setValueUri(dm.getValueUri() + " | " + m.getValueUri());
+		        						}
+		        						found = true;
 		        					}
 		        				}
 		        			}
@@ -534,12 +538,19 @@ public class DatasetController {
         				}
         			} else {
         				dm.setDatatype(col.getDatatype());
+        				boolean found = false;
         				for (Metadata m: collection.getMetadata()) {
         					if (m.getType().getDatatypeId() == col.getDatatype().getDatatypeId()) {
-        						dm.setValue(m.getValue());
-        						dm.setValueId(m.getValueId());
-        						dm.setValueUri(m.getValueUri());
-        						break;
+        						if (!found) { // first one
+        							dm.setValue(m.getValue());
+            						dm.setValueId(m.getValueId());
+            						dm.setValueUri(m.getValueUri());
+        						} else {
+        							dm.setValue(dm.getValue() + " | " + m.getValue());
+        							dm.setValueId(dm.getValueId() + " | " + m.getValueId());
+        							dm.setValueUri(dm.getValueUri() + " | " + m.getValueUri());
+        						}
+        						found = true;
         					}
         				}
         			}	

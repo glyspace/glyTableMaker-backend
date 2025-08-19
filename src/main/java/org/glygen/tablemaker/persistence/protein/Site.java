@@ -88,16 +88,16 @@ public class Site {
 		case ALTERNATIVE:
 			if (position != null && position.positionList != null) {
 				for (Position pos: position.positionList) {
-					aminoacidString += pos.getAminoAcid() + "|";
+					aminoacidString += pos.aminoAcid + "|";
 				}
 				return aminoacidString.substring(0, aminoacidString.length()-1);
 			}
 		case EXPLICIT:
 			if (position != null && position.positionList != null && position.positionList.size() > 0)
-				return position.positionList.get(0).location + "";
+				return position.positionList.get(0).aminoAcid + "";
 		case RANGE:
 			if (position != null && position.positionList != null && position.positionList.size() > 1)
-				return position.positionList.get(0).location + "-" + position.positionList.get(1).location;
+				return position.positionList.get(0).aminoAcid + "-" + position.positionList.get(1).aminoAcid;
 		default:
 			break;
 		
