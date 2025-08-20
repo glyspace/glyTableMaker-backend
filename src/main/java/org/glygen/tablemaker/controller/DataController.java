@@ -12,6 +12,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
@@ -22,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
@@ -83,11 +85,13 @@ import org.glygen.tablemaker.persistence.dao.BatchUploadJobRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
+import org.glygen.tablemaker.persistence.dao.CollectionTagRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
+import org.glygen.tablemaker.persistence.dao.GlycanTagRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinSpecification;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
@@ -95,6 +99,7 @@ import org.glygen.tablemaker.persistence.dao.TableReportRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
+import org.glygen.tablemaker.persistence.glycan.CollectionTag;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
@@ -135,6 +140,11 @@ import org.glygen.tablemaker.view.SiteView;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.glygen.tablemaker.view.UserStatisticsView;
+import org.glygen.tablemaker.view.dto.CollectionDTO;
+import org.glygen.tablemaker.view.dto.GlycanDTO;
+import org.glygen.tablemaker.view.dto.GlycanInSiteDTO;
+import org.glygen.tablemaker.view.dto.GlycoproteinDTO;
+import org.glygen.tablemaker.view.dto.SiteDTO;
 import org.grits.toolbox.glycanarray.om.parser.cfg.CFGMasterListParser;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
@@ -197,7 +207,9 @@ public class DataController {
     }
     
     final private GlycanRepository glycanRepository;
+    final private GlycanTagRepository glycanTagRepository;
     final private CollectionRepository collectionRepository;
+    final private CollectionTagRepository collectionTagRepository;
     final private UserRepository userRepository;
     final private BatchUploadRepository uploadRepository;
     final private AsyncService batchUploadService;
@@ -225,9 +237,11 @@ public class DataController {
     		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, 
     		TableReportRepository reportRepository, NamespaceRepository namespaceRepository, 
     		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
-    		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository, ErrorReportingService errorReportingService) {
+    		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository, ErrorReportingService errorReportingService, GlycanTagRepository glycanTagRepository, CollectionTagRepository collectionTagRepository) {
         this.glycanRepository = glycanRepository;
+		this.glycanTagRepository = glycanTagRepository;
 		this.collectionRepository = collectionRepository;
+		this.collectionTagRepository = collectionTagRepository;
         this.userRepository = userRepository;
         this.uploadRepository = uploadRepository;
 		this.batchUploadService = uploadService;
@@ -2812,7 +2826,345 @@ public class DataController {
 		}
     }
     
-    @Operation(summary = "Download glycans", security = { @SecurityRequirement(name = "bearer-key") })
+    @Operation(summary = "Export collection", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/downloadcollection/{collectionId}")
+	public ResponseEntity<Resource> exportCollection(
+			@Parameter(required=true, description="id of the collection to be retrieved") 
+			@PathVariable("collectionId") Long collectionId) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        Collection collection = collectionRepository.findByCollectionIdAndUser(collectionId, user);
+        if (collection == null) {
+        	throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
+        }
+        
+        try {
+	        String jsonString = new ObjectMapper().writeValueAsString(toDTO(collection));
+	        String filePath = collection.getName()+".json";
+	        File newFile = new File(filePath);
+	        FileWriter fileWriter = new FileWriter(newFile);
+	        fileWriter.write(jsonString);
+	        fileWriter.close();
+	        return FileController.download(newFile, filePath, null);
+        } catch (IOException e) {
+        	throw new IllegalArgumentException ("Could not export given collection " + collectionId + " for the user", e);
+        }
+    }
+    
+    @Operation(summary = "Import collection", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/importcollection")
+	public ResponseEntity<SuccessResponse<Boolean>> importCollection(
+			@Parameter(required=true, name="file", description="details of the uploded file") 
+			@RequestBody
+			FileWrapper fileWrapper) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        String fileFolder = uploadDir;
+        if (fileWrapper.getFileFolder() != null && !fileWrapper.getFileFolder().isEmpty())
+            fileFolder = fileWrapper.getFileFolder();
+        File file = new File (fileFolder, fileWrapper.getIdentifier());
+        if (!file.exists()) {
+            throw new IllegalArgumentException("File is not acceptable");
+        }
+        
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            CollectionDTO collection = mapper.readValue(file, CollectionDTO.class);
+            Collection c = fromDTO(collection, user);
+            List<Collection> existing = collectionRepository.findAllByNameAndUser(c.getName(), user);
+            if (existing != null && existing.size() > 0) {
+            	// there is already a collection with the given name
+            	// append something else to make it unique
+            	c.setName(c.getName() + "-" + fileWrapper.getOriginalName() + "-" +  new Date());
+            }
+            // add glycans and glycoproteins first
+            if (c.getGlycans() != null && !c.getGlycans().isEmpty()) {
+            	for (GlycanInCollection gic: c.getGlycans()) {
+            		// check if the glycan already exists
+            		Glycan glycan = gic.getGlycan();
+            		if (glycan != null && glycan.getGlytoucanID() != null) {
+            			List<Glycan> eg = glycanRepository.findByGlytoucanIDIgnoreCaseAndUser(glycan.getGlytoucanID(), user);
+            			if (eg != null && !eg.isEmpty()) {
+            				// use the same glycan
+            				gic.setGlycan(eg.get(0));
+            				continue;
+            			}
+            		}
+            		if (glycan.getTags() != null) {
+	            		List<GlycanTag> newTagList = new ArrayList<>();
+	            		for (GlycanTag tag: glycan.getTags()) {
+		            		GlycanTag et = glycanTagRepository.findByUserAndLabel(user, tag.getLabel());
+		        			if (et == null) {
+		        				et = glycanTagRepository.save(tag);	
+		        			}
+		        			newTagList.add(et);
+	            		}
+	            		glycan.setTags(newTagList);
+            		}
+            		Glycan saved = glycanRepository.save(gic.getGlycan());
+            		gic.setGlycan(saved);
+            	}
+            }
+            if (c.getGlycoproteins() != null && !c.getGlycoproteins().isEmpty()) {
+            	for (GlycoproteinInCollection gic: c.getGlycoproteins()) {
+            		for (Site s: gic.getGlycoprotein().getSites()) {
+            			for (GlycanInSite gis: s.getGlycans()) {
+            				Glycan glycan = gis.getGlycan();
+                    		if (glycan != null && glycan.getGlytoucanID() != null) {
+                    			List<Glycan> eg = glycanRepository.findByGlytoucanIDIgnoreCaseAndUser(glycan.getGlytoucanID(), user);
+                    			if (eg != null && !eg.isEmpty()) {
+                    				// use the same glycan
+                    				gis.setGlycan(eg.get(0));
+                    				continue;
+                    			}
+                    		}
+                    		Glycan saved = glycanRepository.save(gis.getGlycan());
+                    		gis.setGlycan(saved);
+            			}
+            		}
+            		// if the glycoprotein has a name, check if it is a duplicate
+            		if (gic.getGlycoprotein().getName() != null) {
+            			List<Glycoprotein> egp = glycoproteinRepository.findAllByNameAndUser(gic.getGlycoprotein().getName(), user);
+            			if (egp.size() > 0) {
+            				// duplicate
+            				gic.getGlycoprotein().setName (gic.getGlycoprotein().getName() + "-" + fileWrapper.getOriginalName() + "-" +  new Date());
+            			}
+            		}
+            		if (gic.getGlycoprotein().getTags() != null) {
+	            		List<GlycanTag> newTagList = new ArrayList<>();
+	            		for (GlycanTag tag: gic.getGlycoprotein().getTags()) {
+		            		GlycanTag et = glycanTagRepository.findByUserAndLabel(user, tag.getLabel());
+		        			if (et == null) {
+		        				et = glycanTagRepository.save(tag);	
+		        			}
+		        			newTagList.add(et);
+	            		}
+	            		gic.getGlycoprotein().setTags(newTagList);
+            		}
+            		Glycoprotein saved = glycoproteinRepository.save(gic.getGlycoprotein());
+            		gic.setGlycoprotein(saved);
+            	}
+            }
+            List<CollectionTag> newTagList = new ArrayList<>();
+            if (collection.getTags() != null) {
+	    		for (CollectionTag tag: collection.getTags()) {
+	        		CollectionTag et = collectionTagRepository.findByUserAndLabel(user, tag.getLabel());
+	    			if (et == null) {
+	    				et = collectionTagRepository.save(tag);	
+	    			}
+	    			newTagList.add(et);
+	    		}
+	    		collection.setTags(newTagList);
+            }
+            // then add the collection
+            collectionRepository.save(c);
+            return new ResponseEntity<>(new SuccessResponse<Boolean>(true, "collection is imported from the given file"), HttpStatus.OK); 
+            
+        } catch (IOException e) {
+        	throw new IllegalArgumentException ("Could not import collection from the given file", e);
+        }
+    }
+    
+    public Collection fromDTO (CollectionDTO dto, UserEntity user) {
+    	Collection collection = new Collection();
+    	collection.setUser(user);
+    	collection.setName(dto.getName());
+    	collection.setDescription(dto.getDescription());
+    	collection.setMetadata(dto.getMetadata());   // clear the ids
+    	for (Metadata m: collection.getMetadata()) {
+    		m.setMetadataId(null);
+    		m.setCollection(collection);
+    	}
+    	collection.setTags(dto.getTags());
+    	if (collection.getTags() != null) {
+	    	for (CollectionTag t: collection.getTags()) {
+	    		t.setTagId(null);
+	    		t.setUser(user);
+	    	}
+    	}
+    	collection.setType(dto.getType());
+    	
+    	collection.setGlycans(dto.getGlycans().stream()
+    	        .map(gc -> fromGlycanDTO(gc, collection))
+    	        .collect(Collectors.toList()));
+    	
+    	collection.setGlycoproteins(dto.getGlycoproteins().stream()
+    	        .map(gp -> fromGlycoproteinDTO(gp, collection))
+    	        .collect(Collectors.toList()));
+    	
+    	return collection;
+    }
+    
+    private GlycoproteinInCollection fromGlycoproteinDTO(GlycoproteinDTO dto, Collection collection) {
+    	GlycoproteinInCollection gic = new GlycoproteinInCollection();
+    	gic.setDateAdded(dto.getDateAdded());
+    	gic.setCollection(collection);
+    	Glycoprotein glycoprotein = new Glycoprotein();
+    	gic.setGlycoprotein(glycoprotein);
+    	
+    	glycoprotein.setDateCreated(dto.getDateCreated());
+    	glycoprotein.setDescription(dto.getDescription());
+    	glycoprotein.setGeneSymbol(dto.getGeneSymbol());
+    	glycoprotein.setName(dto.getName());
+    	glycoprotein.setProteinName(dto.getProteinName());
+    	glycoprotein.setSequence(dto.getSequence());
+    	glycoprotein.setSequenceVersion(dto.getSequenceVersion());
+    	glycoprotein.setUniprotId(dto.getUniprotId());
+    	glycoprotein.setTags(dto.getTags());
+    	glycoprotein.setUser(collection.getUser());
+    	if (glycoprotein.getTags() != null) {
+	    	for (GlycanTag t: glycoprotein.getTags()) {
+	    		t.setTagId(null);
+	    		t.setUser(collection.getUser());
+	    	}
+    	}
+		glycoprotein.setSites(dto.getSites().stream()
+		        .map(gs -> fromSiteDTO(gs, glycoprotein, collection.getUser()))
+		        .collect(Collectors.toList()));
+		return gic;
+	}
+
+	private Site fromSiteDTO(SiteDTO dto, Glycoprotein gp, UserEntity user) {
+		
+		Site site = new Site();
+		site.setPosition(dto.getPosition());
+		site.setPositionString(dto.getPositionString());
+		site.setType(dto.getType());
+		site.setGlycoprotein(gp);
+		site.setGlycans(dto.getGlycans().stream()
+		        .map(g -> fromGlycanInSiteDTO(g, site, user))
+		        .collect(Collectors.toList()));
+		return site;
+	}
+
+	private GlycanInSite fromGlycanInSiteDTO(GlycanInSiteDTO dto, Site site, UserEntity user) {
+		GlycanInSite gis = new GlycanInSite();
+		gis.setGlycosylationSubType(dto.getGlycosylationSubType());
+		gis.setGlycosylationType(dto.getGlycosylationType());
+		gis.setType(dto.getType());
+		if (dto.getGlycan() != null) {
+			gis.setGlycan(fromGlycanDTO(dto.getGlycan(), user));
+		}
+		gis.setSite(site);
+		return gis;
+	}
+
+	public GlycanInCollection fromGlycanDTO (GlycanDTO dto, Collection collection) {
+		GlycanInCollection gic = new GlycanInCollection();
+		gic.setDateAdded(dto.getDateAdded());
+		gic.setGlycan(fromGlycanDTO(dto, collection.getUser()));
+		gic.setCollection(collection);
+		return gic;
+    }
+	
+	public Glycan fromGlycanDTO (GlycanDTO dto, UserEntity user) {
+		Glycan glycan = new Glycan();
+		glycan.setDateCreated(dto.getDateCreated());
+		glycan.setDateCreated(dto.getDateCreated());
+		glycan.setGlycoCT(dto.getGlycoCT());
+		glycan.setGlytoucanHash(dto.getGlytoucanHash());
+		glycan.setGlytoucanID(dto.getGlytoucanID());
+		glycan.setGws(dto.getGws());
+		glycan.setWurcs(dto.getWurcs());
+		glycan.setMass(dto.getMass());
+		glycan.setTags(dto.getTags());
+		glycan.setUser(user);
+		if (glycan.getTags() != null) {
+	    	for (GlycanTag t: glycan.getTags()) {
+	    		t.setTagId(null);
+	    		t.setUser(user);
+	    	}
+    	}
+		return glycan;
+	}
+
+	public CollectionDTO toDTO(Collection collection) {
+	    CollectionDTO dto = new CollectionDTO();
+	    dto.setName(collection.getName());
+	    dto.setDescription(collection.getDescription());
+	    dto.setType(collection.getType());
+	    dto.setMetadata(new ArrayList<>(collection.getMetadata()));
+	    dto.setTags(new ArrayList<>(collection.getTags()));
+	    dto.setGlycans(collection.getGlycans().stream()
+	        .map(gc -> toGlycanDTO(gc.getGlycan(), gc.getDateAdded()))
+	        .collect(Collectors.toList()));
+	
+	    dto.setGlycoproteins(collection.getGlycoproteins().stream()
+	        .map(gp -> toGlycoproteinDTO(gp.getGlycoprotein(), gp.getDateAdded()))
+	        .collect(Collectors.toList()));
+	
+	    return dto;
+	}
+
+    
+    private GlycoproteinDTO toGlycoproteinDTO(Glycoprotein glycoprotein, Date dateAdded) {
+		GlycoproteinDTO dto = new GlycoproteinDTO();
+		dto.setDateAdded(dateAdded);
+		dto.setDateCreated(glycoprotein.getDateCreated());
+		dto.setDescription(glycoprotein.getDescription());
+		dto.setGeneSymbol(glycoprotein.getGeneSymbol());
+		dto.setName(glycoprotein.getName());
+		dto.setProteinName(glycoprotein.getProteinName());
+		dto.setSequence(glycoprotein.getSequence());
+		dto.setSequenceVersion(glycoprotein.getSequenceVersion());
+		dto.setUniprotId(glycoprotein.getUniprotId());
+		dto.setTags(glycoprotein.getTags());
+		
+		dto.setSites(glycoprotein.getSites().stream()
+		        .map(gs -> toSiteDTO(gs))
+		        .collect(Collectors.toList()));
+		
+		return dto;
+	}
+
+	private SiteDTO toSiteDTO(Site gs) {
+		SiteDTO dto = new SiteDTO();
+		dto.setPosition(gs.getPosition());
+		dto.setPositionString(gs.getPositionString());
+		dto.setType(gs.getType());
+		
+		dto.setGlycans(gs.getGlycans().stream()
+		        .map(g -> toGlycanInSiteDTO(g))
+		        .collect(Collectors.toList()));
+		return dto;
+	}
+
+	private GlycanInSiteDTO toGlycanInSiteDTO(GlycanInSite g) {
+		GlycanInSiteDTO dto = new GlycanInSiteDTO();
+		dto.setGlycosylationSubType(g.getGlycosylationSubType());
+		dto.setGlycosylationType(g.getGlycosylationType());
+		dto.setType(g.getType());
+		if (g.getGlycan() != null) {
+			dto.setGlycan(toGlycanDTO(g.getGlycan(), null));
+		}
+		return dto;
+	}
+
+	private GlycanDTO toGlycanDTO(Glycan glycan, Date dateAdded) {
+		GlycanDTO dto = new GlycanDTO();
+		dto.setDateAdded(dateAdded);
+		dto.setDateCreated(glycan.getDateCreated());
+		dto.setGlycoCT(glycan.getGlycoCT());
+		dto.setGlytoucanHash(glycan.getGlytoucanHash());
+		dto.setGlytoucanID(glycan.getGlytoucanID());
+		dto.setGws(glycan.getGws());
+		dto.setWurcs(glycan.getWurcs());
+		dto.setMass(glycan.getMass());
+		dto.setTags(new ArrayList<>(glycan.getTags()));
+		return dto;
+	}
+
+	@Operation(summary = "Download glycans", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/downloadglycans")
 	public ResponseEntity<Resource> downloadGlycans (
 			@Parameter(required=true, name="filetype", description="type of the file", schema = @Schema(type = "string",

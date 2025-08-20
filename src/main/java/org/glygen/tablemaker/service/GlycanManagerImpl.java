@@ -208,15 +208,4 @@ public class GlycanManagerImpl implements GlycanManager {
 		}
 		uploadRepository.delete(upload);
 	}
-	
-	@Override
-	public Glycoprotein saveGlycoProtein (Glycoprotein p) {
-		Glycoprotein saved = glycoproteinRepository.save(p);
-		for (Site s: p.getSites()) {
-			Site savedS = siteRepository.save(s);
-			if (savedS.getGlycans() == null)
-				System.out.println ("Error!!!");
-		}
-		return saved;
-	}
 }
