@@ -2928,6 +2928,17 @@ public class DataController {
                     				continue;
                     			}
                     		}
+                    		if (glycan.getTags() != null) {
+        	            		List<GlycanTag> newTagList = new ArrayList<>();
+        	            		for (GlycanTag tag: glycan.getTags()) {
+        		            		GlycanTag et = glycanTagRepository.findByUserAndLabel(user, tag.getLabel());
+        		        			if (et == null) {
+        		        				et = glycanTagRepository.save(tag);	
+        		        			}
+        		        			newTagList.add(et);
+        	            		}
+        	            		glycan.setTags(newTagList);
+                    		}
                     		Glycan saved = glycanRepository.save(gis.getGlycan());
                     		gis.setGlycan(saved);
             			}
