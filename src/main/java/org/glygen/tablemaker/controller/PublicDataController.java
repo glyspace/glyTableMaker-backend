@@ -159,6 +159,8 @@ public class PublicDataController {
         	dv.setDateCreated(d.getDateCreated());
         	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
         	dv.setUser (d.getUser());
+        	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
+        	dv.setNoProteins(proteinCount);
         	datasets.add(dv);
         }
         
