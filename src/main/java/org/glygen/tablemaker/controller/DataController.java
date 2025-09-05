@@ -10,6 +10,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -114,6 +116,7 @@ import org.glygen.tablemaker.persistence.protein.GlycanInSite;
 import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInFile;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinSiteType;
 import org.glygen.tablemaker.persistence.protein.MultipleGlycanOrder;
 import org.glygen.tablemaker.persistence.protein.Position;
 import org.glygen.tablemaker.persistence.protein.Site;
@@ -307,6 +310,7 @@ public class DataController {
         ObjectMapper mapper = new ObjectMapper();
         List<Filter> filterList = null;
         if (filters != null && !filters.equals("[]")) {
+        	filters = URLDecoder.decode(filters, StandardCharsets.UTF_8);
             try {
                 filterList = mapper.readValue(filters, 
                     new TypeReference<ArrayList<Filter>>() {});
@@ -574,8 +578,10 @@ public class DataController {
 							if (s.getPosition().getPositionList() != null) {
 								for (Position pos: s.getPosition().getPositionList()) {
 									if (pos.getLocation() != null && (pos.getAminoAcid() == null || pos.getAminoAcid().isEmpty())) {
-										pos.setAminoAcid (p.getSequence().charAt(pos.getLocation().intValue()-1) + "");
-										updated = true;
+										if (pos.getLocation().intValue() > 0) {
+											pos.setAminoAcid (p.getSequence().charAt(pos.getLocation().intValue()-1) + "");
+											updated = true;
+										}
 									}
 								}
 							}
@@ -1818,11 +1824,25 @@ public class DataController {
     	if (c.getGlycans() != null && !c.getGlycans().isEmpty()) {
     		collection.setGlycans(new ArrayList<>());
     		for (Glycan g: c.getGlycans()) {
-    			GlycanInCollection gic = new GlycanInCollection();
-    			gic.setCollection(collection);
-    			gic.setGlycan(g);
-    			gic.setDateAdded(new Date());
-    			collection.getGlycans().add(gic);
+    			if (g.getGlycanId() != null) {
+    				// retrieve the glycan
+    				Optional<Glycan> ge = glycanRepository.findById(g.getGlycanId());
+    				if (ge.isPresent()) {
+    					GlycanInCollection gic = new GlycanInCollection();
+    	    			gic.setCollection(collection);
+    	    			gic.setGlycan(ge.get());
+    	    			gic.setDateAdded(new Date());
+    	    			collection.getGlycans().add(gic);
+    	    		} else {
+    	    			throw new IllegalArgumentException ("Could not find the given glycan " + g.getGlycanId());
+    	    		}
+    			} else {
+	    			GlycanInCollection gic = new GlycanInCollection();
+	    			gic.setCollection(collection);
+	    			gic.setGlycan(g);
+	    			gic.setDateAdded(new Date());
+	    			collection.getGlycans().add(gic);
+    			}
     		}
     	}
     	
@@ -1956,8 +1976,12 @@ public class DataController {
 	   			Site s = new Site();
 	   			s.setType(sv.getType());
 	   			s.setGlycoprotein(glycoprotein);
-	   			if (sv.getPosition() != null) {
+	   			if (sv.getPosition() != null && sv.getType() != GlycoproteinSiteType.UNKNOWN) {
 	   				s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
+	   			}
+	   			else if (sv.getPosition() == null && sv.getType() != GlycoproteinSiteType.UNKNOWN) {
+	   				// error
+	   				throw new IllegalArgumentException("Position cannot be left empty if the site type is not unknown");
 	   			}
 	   			s.setGlycans(new ArrayList<>());
 	   			if (sv.getGlycans() != null && !sv.getGlycans().isEmpty()) {
@@ -2065,6 +2089,26 @@ public class DataController {
         }
         
         return new ResponseEntity<>(new SuccessResponse<Glycan>(existing.get(0), "glycan retrieved"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Get collection by name", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getcollectionbyname")
+    public ResponseEntity<SuccessResponse<CollectionView>> getCollectionByName(
+    		@RequestParam(required=true, value="name")
+    		String name) {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        List<Collection> existing = collectionRepository.findAllByNameAndUser (name, user);
+        if (existing.isEmpty()) {
+        	throw new EntityNotFoundException("collection with the given name does not exist!");
+        }
+        CollectionView result = createCollectionView(existing.get(0), imageLocation);
+        return new ResponseEntity<>(new SuccessResponse<CollectionView>(result, "collection retrieved"), HttpStatus.OK);
     }
 
 	@Operation(summary = "update collection", security = { @SecurityRequirement(name = "bearer-key") })
@@ -2397,9 +2441,13 @@ public class DataController {
     				Site s = new Site();
         			s.setType(sv.getType());
         			s.setGlycoprotein(existing);
-        			if (s.getPosition() != null) {
+        			if (s.getPosition() != null && sv.getType() != GlycoproteinSiteType.UNKNOWN) {
         				s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
         			}
+        			else if (sv.getPosition() == null && sv.getType() != GlycoproteinSiteType.UNKNOWN) {
+    	   				// error
+    	   				throw new IllegalArgumentException("Position cannot be left empty if the site type is not unknown");
+    	   			}
         			s.setGlycans(new ArrayList<>());
         			if (sv.getGlycans() != null && !sv.getGlycans().isEmpty()) {
         				for (GlycanInSiteView giv: sv.getGlycans()) {

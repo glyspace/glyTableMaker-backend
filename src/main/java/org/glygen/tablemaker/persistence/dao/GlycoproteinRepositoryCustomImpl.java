@@ -120,15 +120,15 @@ public class GlycoproteinRepositoryCustomImpl implements GlycoproteinRepositoryC
         if (siteNo != null) {
         	if (orFilter) {
         		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE CAST(COUNT(s.sites) AS string) like :siteNo");
+        			whereClause.append(" WHERE CAST(COUNT(g.sites) AS string) like :siteNo");
         		} else {
-        			whereClause.append(" OR CAST(COUNT(s.sites) AS string) like :siteNo");
+        			whereClause.append(" OR CAST(COUNT(g.sites) AS string) like :siteNo");
         		}
         	} else {
         		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE CAST(COUNT(s.sites) AS string) like :siteNo");
+        			whereClause.append(" WHERE CAST(COUNT(g.sites) AS string) like :siteNo");
         		} else {
-        			whereClause.append(" AND CAST(COUNT(s.sites) AS string) like :siteNo");
+        			whereClause.append(" AND CAST(COUNT(g.sites) AS string) like :siteNo");
         		}
         	}
             params.put("siteNo", "%" + siteNo + "%");

@@ -77,7 +77,7 @@ public class Publication {
     /**
      * @return the title
      */
-    @Column
+    @Column(length = 4000)
     public String getTitle() {
         return title;
     }

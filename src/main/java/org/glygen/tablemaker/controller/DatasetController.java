@@ -315,16 +315,18 @@ public class DatasetController {
         
         // save the dataset
         
-        // check for errors in the collections
-        StringBuffer errorMessage = new StringBuffer();
-        for (CollectionView cv: d.getCollections()) {
-        	getErrorsForCollection (cv);
-        	if (!cv.getErrors().isEmpty()) {
-        		errorMessage.append ("Collection" + cv.getName() + " has errors!\n");       		
-        	}
-        }
-        if (!errorMessage.isEmpty()) {
-        	throw new IllegalArgumentException (errorMessage.toString().trim());
+        if (!user.getUsername().equalsIgnoreCase("cfgdata")) {
+	        // check for errors in the collections
+	        StringBuffer errorMessage = new StringBuffer();
+	        for (CollectionView cv: d.getCollections()) {
+	        	getErrorsForCollection (cv);
+	        	if (!cv.getErrors().isEmpty()) {
+	        		errorMessage.append ("Collection" + cv.getName() + " has errors!\n");       		
+	        	}
+	        }
+	        if (!errorMessage.isEmpty()) {
+	        	throw new IllegalArgumentException (errorMessage.toString().trim());
+	        }
         }
         
         Dataset newDataset = new Dataset();
