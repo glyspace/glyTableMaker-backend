@@ -25,12 +25,21 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.eurocarbdb.MolecularFramework.sugar.Anomer;
+import org.eurocarbdb.MolecularFramework.sugar.GlycoNode;
+import org.eurocarbdb.MolecularFramework.sugar.GlycoconjugateException;
+import org.eurocarbdb.MolecularFramework.sugar.Monosaccharide;
+import org.eurocarbdb.MolecularFramework.sugar.Sugar;
 import org.glycoinfo.GlycanCompositionConverter.conversion.CompositionConverter;
 import org.glycoinfo.GlycanCompositionConverter.conversion.ConversionException;
 import org.glycoinfo.GlycanCompositionConverter.structure.Composition;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionParseException;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionUtils;
 import org.glycoinfo.GlycanCompositionConverter.utils.DictionaryException;
+import org.glycoinfo.GlycanFormatconverter.util.exchange.SugarToWURCSGraph.SugarToWURCSGraph;
+import org.glycoinfo.WURCSFramework.util.WURCSException;
+import org.glycoinfo.WURCSFramework.util.WURCSFactory;
+import org.glycoinfo.WURCSFramework.util.exchange.WURCSExchangeException;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.hibernate.query.SortDirection;
 
@@ -138,23 +147,44 @@ public class ProteinProspector {
 
             try {
 	            Composition compo = CompositionUtils.parse(output.toString());
-	            String wurcs = CompositionConverter.toWURCS(compo);
-	            Cell glytoucanCell = row.getCell(2);
-	            Cell newGlytoucanCell = row.createCell(3);
-	            
-	            String glytoucan = util.getAccessionNumber(wurcs);
-	            if (glytoucan != null) {
-	            	newGlytoucanCell.setCellValue(glytoucan);
-	            	if (glytoucanCell.getCellType() != CellType.BLANK) {
-	            		String existing = glytoucanCell.getStringCellValue();
-	            		if (existing != null && !existing.equalsIgnoreCase(glytoucan)) {
-	            			// highlight
-	            			newGlytoucanCell.setCellStyle(style);
-	            		}
-	            	}
-	            } else {
-	            	System.out.println ("Row " + rowCount + ". There is no accession number for " + wurcs);
-	            }
+	            // GLYGEN Composition: Unknown anomer, unknown ringsize, but closed ring.
+            	SugarToWURCSGraph t_s2w = new SugarToWURCSGraph();
+    			try {
+    				Sugar sugar = CompositionConverter.toSugar(compo);
+    				for (GlycoNode node: sugar.getNodes()) {
+    					if (node instanceof Monosaccharide) {
+    						Monosaccharide m = ((Monosaccharide)node);
+    						m.setRing(-1, -1);
+    						m.setAnomer(Anomer.Unknown);
+    					}
+    				}
+    				t_s2w.start(sugar);
+    			} catch (WURCSExchangeException | GlycoconjugateException e) {
+    				throw new ConversionException("Error in converting composition to Sugar object.", e);
+    			}
+    			try {
+    				WURCSFactory factory = new WURCSFactory(t_s2w.getGraph());
+    				String wurcs = factory.getWURCS();
+    				
+    				Cell glytoucanCell = row.getCell(2);
+    	            Cell newGlytoucanCell = row.createCell(3);
+    	            
+    	            String glytoucan = util.getAccessionNumber(wurcs);
+    	            if (glytoucan != null) {
+    	            	newGlytoucanCell.setCellValue(glytoucan);
+    	            	if (glytoucanCell.getCellType() != CellType.BLANK) {
+    	            		String existing = glytoucanCell.getStringCellValue();
+    	            		if (existing != null && !existing.equalsIgnoreCase(glytoucan)) {
+    	            			// highlight
+    	            			newGlytoucanCell.setCellStyle(style);
+    	            		}
+    	            	}
+    	            } else {
+    	            	System.out.println ("Row " + rowCount + ". There is no accession number for " + wurcs);
+    	            }
+    			} catch (WURCSException e) {
+    				throw new ConversionException("Error in encoding the composition in WURCS.", e);
+    			}
             } catch (DictionaryException e) {
 				System.err.println ("Could not parse composition: " +  input + " Reason: " + e);
 				e.printStackTrace();

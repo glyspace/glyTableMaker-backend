@@ -2434,6 +2434,28 @@ public class DataController {
     			for (Site col: existing.getSites()) {
         			if (col.getSiteId().equals(sv.getSiteId())) {
         				exists = true;
+        				// update
+        				col.setType(sv.getType());
+        				col.getGlycans().clear();
+            			if (sv.getGlycans() != null && !sv.getGlycans().isEmpty()) {
+            				for (GlycanInSiteView giv: sv.getGlycans()) {
+            					GlycanInSite g = new GlycanInSite();
+            					g.setGlycan(giv.getGlycan());
+            					g.setSite (col);
+            					g.setGlycosylationSubType(giv.getGlycosylationSubType());
+            					g.setGlycosylationType(giv.getGlycosylationType());
+            					g.setType(giv.getType());
+            					col.getGlycans().add(g);
+            				}
+            			} else if (sv.getGlycosylationType() != null && !sv.getGlycosylationType().isEmpty()) {
+            				GlycanInSite g = new GlycanInSite();
+            				g.setGlycosylationSubType(sv.getGlycosylationSubType());
+            				g.setGlycosylationType(sv.getGlycosylationType());
+            				g.setSite (col);
+            				col.getGlycans().add(g);
+            			}
+        				col.setPosition(sv.getPosition());
+        				col.setPositionString(sv.getPosition().toString());
         				break;
         			}
         		}
@@ -2441,7 +2463,7 @@ public class DataController {
     				Site s = new Site();
         			s.setType(sv.getType());
         			s.setGlycoprotein(existing);
-        			if (s.getPosition() != null && sv.getType() != GlycoproteinSiteType.UNKNOWN) {
+        			if (sv.getPosition() != null && sv.getType() != GlycoproteinSiteType.UNKNOWN) {
         				s.setPositionString(sv.getPosition().toString()); // convert the position to JSON string
         			}
         			else if (sv.getPosition() == null && sv.getType() != GlycoproteinSiteType.UNKNOWN) {
