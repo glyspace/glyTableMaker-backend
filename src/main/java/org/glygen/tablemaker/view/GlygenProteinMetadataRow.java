@@ -9,6 +9,14 @@ public class GlygenProteinMetadataRow {
 	List<DatasetGlycoproteinMetadata> columns;
 	byte[] cartoon;
 	
+	public GlygenProteinMetadataRow() {
+	}
+	
+	public GlygenProteinMetadataRow(String rowId, List<DatasetGlycoproteinMetadata> columns) {
+		this.rowId = rowId;
+		this.columns = columns;
+	}
+	
 	public String getRowId() {
 		return rowId;
 	}

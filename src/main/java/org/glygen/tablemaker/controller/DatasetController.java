@@ -378,7 +378,7 @@ public class DatasetController {
         version.setDataset(newDataset);
         
         Dataset saved = datasetManager.saveDataset (newDataset);
-        DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation);
+        DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation, false);
         return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset has been published"), HttpStatus.OK);
 	}
 	
@@ -853,7 +853,7 @@ public class DatasetController {
     	
 		Dataset saved = datasetManager.saveDataset(existing);
     	
-    	DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation);
+    	DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation, false);
     	return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset updated"), HttpStatus.OK);
 	}
 	
@@ -889,12 +889,56 @@ public class DatasetController {
             throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier + " for the user");
         }
         
-        DatasetView dv = createDatasetView (existing, version, glycanImageRepository, imageLocation);
+        DatasetView dv = createDatasetView (existing, version, glycanImageRepository, imageLocation, false);
         
         return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset retrieved"), HttpStatus.OK);
     }
 	
-    public static DatasetView createDatasetView(Dataset d, String versionString, GlycanImageRepository imageRepository, String imageLocation) {
+	@Operation(summary = "Get dataset's publications", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getdatasetpublications")
+    public ResponseEntity<SuccessResponse<Map<String, Object>>> getDatasetPublications(
+            @RequestParam("datasetid")
+            String datasetId,
+            @RequestParam("start")
+            Integer start, 
+            @RequestParam("size")
+            Integer size,
+            @RequestParam("filters")
+            String filters,
+            @RequestParam("globalFilter")
+            String globalFilter,
+            @RequestParam("sorting")
+            String sorting) {
+		
+		// parse filters and sorting
+        ObjectMapper mapper = new ObjectMapper();
+        
+        List<Sorting> sortingList = null;
+        List<Order> sortOrders = new ArrayList<>();
+        if (sorting != null && !sorting.equals("[]")) {
+            try {
+                sortingList = mapper.readValue(sorting, 
+                    new TypeReference<ArrayList<Sorting>>() {});
+                for (Sorting s: sortingList) {
+                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                }
+            } catch (JsonProcessingException e) {
+                throw new InternalError("sorting parameter is invalid " + sorting, e);
+            }
+        }
+        
+        Page<Publication> publications = publicationRepository.listPublications(datasetId, globalFilter, PageRequest.of(start, size, Sort.by(sortOrders)));
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("objects", publications.getContent());
+        response.put("currentPage", publications.getNumber());
+        response.put("totalItems", publications.getTotalElements());
+        response.put("totalPages", publications.getTotalPages());
+        
+        return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "publications retrieved"), HttpStatus.OK);
+	}
+	
+    public static DatasetView createDatasetView(Dataset d, String versionString, GlycanImageRepository imageRepository, String imageLocation, Boolean noData) {
     	boolean head = false;
     	if (versionString == null || versionString.isEmpty()) 
     		head = true;
@@ -920,7 +964,7 @@ public class DatasetController {
     			dv.setVersion(version.getVersion());
     			dv.setVersionDate(version.getVersionDate());
     			dv.setVersionComment(version.getComment());
-    			if (version.getData() != null) {
+    			/*if (!noData && version.getData() != null) {
     				dv.setData(new ArrayList<>());
     				Map<String, List<DatasetMetadata>> rowMap = new HashMap<>();
     				for (DatasetMetadata m: version.getData()) {
@@ -947,7 +991,7 @@ public class DatasetController {
     					dv.getData().add(row);
     				}
     			}
-    			if (version.getGlycoproteinData() != null) {   
+    			if (!noData && version.getGlycoproteinData() != null) {   
     				dv.setGlycoproteinData(new ArrayList<>());
     				Map<String, List<DatasetGlycoproteinMetadata>> rowMap = new HashMap<>();
     				for (DatasetGlycoproteinMetadata m: version.getGlycoproteinData()) {
@@ -976,7 +1020,7 @@ public class DatasetController {
     			}
     			
     			int noGlycans = 0;
-    			if (version.getData() != null) {
+    			if (!noData && version.getData() != null) {
     				String glytoucanId =  null;
     				for (DatasetMetadata meta: version.getData()) {
     					if (meta.getGlycanColumn() != null && meta.getGlycanColumn() == GlycanColumns.GLYTOUCANID) {
@@ -992,7 +1036,7 @@ public class DatasetController {
     			
     			// calculate no of proteins
     			int noProteins = 0;
-    			if (version.getGlycoproteinData() != null) { 
+    			if (!noData && version.getGlycoproteinData() != null) { 
 	    			String uniprotId = null;
 	    			for (DatasetGlycoproteinMetadata meta : version.getGlycoproteinData()) {
 	    				if (meta.getGlycoproteinColumn() != null && meta.getGlycoproteinColumn() == GlycoproteinColumns.UNIPROTID) {
@@ -1004,8 +1048,8 @@ public class DatasetController {
 	    			}
     			}
     			dv.setNoProteins(noProteins);
-    			if (version.getPublications() != null) dv.setPublications(new ArrayList<>(version.getPublications()));
-    			break;
+    			if (!noData && version.getPublications() != null) dv.setPublications(new ArrayList<>(version.getPublications()));
+    		*/	break;
     		} 
     	}
     	
@@ -1061,7 +1105,7 @@ public class DatasetController {
 					for (GlycanInCollection g: collection.getGlycans()) {
 						if (g.getGlycan().getGlytoucanID() == null) {
 							// error
-							errorList.add(new DatasetError("Glycan " + g.getGlycan().getGlycanId() + " in collection " + col.getName() + " does not have a value for GlytoucanID.", 1));
+							errorList.add(new DatasetError("Glycan " + g.getGlycan().getGlycanId() + " in collection " + collection.getName() + " does not have a value for GlytoucanID.", 1));
 						}
 					}
 					break;
@@ -1076,10 +1120,11 @@ public class DatasetController {
 				switch (col.getProteinColumn()) {
 				case AMINOACID:
 					for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+						String name = gp.getGlycoprotein().getName() != null ? gp.getGlycoprotein().getName() : gp.getGlycoprotein().getUniprotId();
 						for (Site s: gp.getGlycoprotein().getSites()) {
 							if (s.getType() !=GlycoproteinSiteType.UNKNOWN && (s.getPositionString() == null || s.getPositionString().length() == 0)) {
 								// error
-								errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for Amino Acid.", 1));
+								errorList.add(new DatasetError("Glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for Amino Acid.", 1));
 							}
 							else if (s.getPositionString() != null) {
 		        				ObjectMapper om = new ObjectMapper();
@@ -1087,13 +1132,13 @@ public class DatasetController {
 									s.setPosition(om.readValue(s.getPositionString(), SitePosition.class));
 									for (Position pos: s.getPosition().getPositionList()) {
 										if (pos.getAminoAcid() == null) {
-											errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for Amino Acid.", 1));
+											errorList.add(new DatasetError("Glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for Amino Acid.", 1));
 										}
 									}
 								} catch (JsonProcessingException e) {
 									logger.warn ("Position string is invalid: " + s.getPositionString());
 									// error
-									errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for Amino Acid.", 1));
+									errorList.add(new DatasetError("Glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for Amino Acid.", 1));
 								}
 		        			}
 							
@@ -1106,11 +1151,13 @@ public class DatasetController {
 					break;
 				case GLYTOUCANID:
 					for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+						String name = gp.getGlycoprotein().getName() != null ? gp.getGlycoprotein().getName() : gp.getGlycoprotein().getUniprotId();
 						for (Site s: gp.getGlycoprotein().getSites()) {
 							for (GlycanInSite g: s.getGlycans()) {
 								if (g.getGlycan() != null && g.getGlycan().getGlytoucanID() == null) {
 									// error
-									errorList.add(new DatasetError("Glycan " + g.getGlycan().getGlycanId() + " in a glycoprotein in collection " + col.getName() + " does not have a value for GlytoucanID.", 1));
+									errorList.add(new DatasetError("Glycan " + g.getGlycan().getGlycanId() + " in glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for GlytoucanID.", 1));
+											
 								}
 							}
 						}
@@ -1118,19 +1165,21 @@ public class DatasetController {
 					break;
 				case SITE:
 					for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+						String name = gp.getGlycoprotein().getName() != null ? gp.getGlycoprotein().getName() : gp.getGlycoprotein().getUniprotId();
 						for (Site s: gp.getGlycoprotein().getSites()) {
 							if (s.getType () != GlycoproteinSiteType.UNKNOWN && (s.getPositionString() == null || s.getPositionString().length() == 0)) {
 								// error
-								errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for Site/Location.", 1));
+								errorList.add(new DatasetError("Glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for Site/Location.", 1));
 							}
 						}
 					}
 					break;
 				case UNIPROTID:
 					for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+						String name = gp.getGlycoprotein().getName() != null ? gp.getGlycoprotein().getName() : gp.getGlycoprotein().getProteinName();
 						if (gp.getGlycoprotein().getUniprotId() == null) {
 							// error
-							errorList.add(new DatasetError("Glycoprotein " + gp.getId() + " in collection " + col.getName() + " does not have a value for UniprotID.", 1));
+							errorList.add(new DatasetError("Glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for UniprotID.", 1));
 						}
 					}
 					break;

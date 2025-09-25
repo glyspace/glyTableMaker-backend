@@ -10,11 +10,15 @@ import java.util.Map;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
+import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
+import org.glygen.tablemaker.persistence.dataset.Publication;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
+import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.view.DatasetTableDownloadView;
@@ -61,6 +65,7 @@ public class PublicDataController {
 	final private DatasetRepository datasetRepository;
 	final private GlycanImageRepository glycanImageRepository;
 	final private TemplateRepository templateRepository;
+	final private PublicationRepository publicationRepository;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -68,10 +73,201 @@ public class PublicDataController {
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
 	
-	public PublicDataController(DatasetRepository datasetRepository, GlycanImageRepository glycanImageRepository, TemplateRepository templateRepository) {
+	public PublicDataController(DatasetRepository datasetRepository, GlycanImageRepository glycanImageRepository, TemplateRepository templateRepository, PublicationRepository publicationRepository) {
 		this.datasetRepository = datasetRepository;
 		this.glycanImageRepository = glycanImageRepository;
 		this.templateRepository = templateRepository;
+		this.publicationRepository = publicationRepository;
+	}
+	
+	@Operation(summary = "Get public dataset's publications")
+    @GetMapping("/getdatasetpublications")
+    public ResponseEntity<SuccessResponse<Map<String, Object>>> getDatasetPublications(
+    		@RequestParam(required=false, name="versionid")
+            Long versionId,
+            @RequestParam(required=false, name="datasetid")
+            String datasetId,
+            @RequestParam("start")
+            Integer start, 
+            @RequestParam("size")
+            Integer size,
+            @RequestParam("filters")
+            String filters,
+            @RequestParam("globalFilter")
+            String globalFilter,
+            @RequestParam("sorting")
+            String sorting) {
+		
+		if (versionId == null && datasetId == null) {
+			throw new IllegalArgumentException("One of versionid or datasetid should be provided");
+		}
+		// parse filters and sorting
+        ObjectMapper mapper = new ObjectMapper();
+        
+        List<Sorting> sortingList = null;
+        List<Order> sortOrders = new ArrayList<>();
+        if (sorting != null && !sorting.equals("[]")) {
+            try {
+                sortingList = mapper.readValue(sorting, 
+                    new TypeReference<ArrayList<Sorting>>() {});
+                for (Sorting s: sortingList) {
+                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                }
+            } catch (JsonProcessingException e) {
+                throw new InternalError("sorting parameter is invalid " + sorting, e);
+            }
+        }
+        
+        Page<Publication> publications = null;
+        if (versionId != null) {
+        	publications = publicationRepository.listPublications(versionId, globalFilter, PageRequest.of(start, size, Sort.by(sortOrders)));
+        } else {
+        	publications = publicationRepository.listPublications(datasetId, globalFilter, PageRequest.of(start, size, Sort.by(sortOrders)));
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("objects", publications.getContent());
+        response.put("currentPage", publications.getNumber());
+        response.put("totalItems", publications.getTotalElements());
+        response.put("totalPages", publications.getTotalPages());
+        
+        return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "publications retrieved"), HttpStatus.OK);
+	}
+	
+	@Operation(summary = "Get public dataset's metadata")
+    @GetMapping("/getdatasetdata")
+    public ResponseEntity<SuccessResponse<Map<String, Object>>> getDatasetData(
+    		@RequestParam(required=false, name="versionid")
+            Long versionId,
+            @RequestParam(required=false, name="datasetid")
+            String datasetId,
+            @RequestParam("type")
+            String type,
+            @RequestParam("start")
+            Integer start, 
+            @RequestParam("size")
+            Integer size,
+            @RequestParam("filters")
+            String filters,
+            @RequestParam("globalFilter")
+            String globalFilter,
+            @RequestParam("sorting")
+            String sorting) {
+		
+		if (versionId == null && datasetId == null) {
+			throw new IllegalArgumentException("One of versionid or datasetid should be provided");
+		}
+		
+		// parse filters and sorting
+        ObjectMapper mapper = new ObjectMapper();
+        List<Filter> filterList = null;
+        if (filters != null && !filters.equals("[]")) {
+            try {
+                filterList = mapper.readValue(filters, 
+                    new TypeReference<ArrayList<Filter>>() {});
+            } catch (JsonProcessingException e) {
+                throw new InternalError("filter parameter is invalid " + filters, e);
+            }
+        }
+        List<Sorting> sortingList = null;
+        List<Order> sortOrders = new ArrayList<>();
+        if (sorting != null && !sorting.equals("[]")) {
+            try {
+                sortingList = mapper.readValue(sorting, 
+                    new TypeReference<ArrayList<Sorting>>() {});
+                for (Sorting s: sortingList) {
+                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                }
+            } catch (JsonProcessingException e) {
+                throw new InternalError("sorting parameter is invalid " + sorting, e);
+            }
+        }
+        
+        if (type.equalsIgnoreCase("glycoprotein")) { 	
+        	Page<String> rows = null;
+        	if (versionId != null) {
+        		rows = datasetRepository.getGlycoproteinDataByVersion(versionId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
+            } else {
+            	rows = datasetRepository.getGlycoproteinData(datasetId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
+            }
+        	List<DatasetGlycoproteinMetadata> data = datasetRepository.findGlycoproteinByRowIdIn(rows.getContent());
+        	
+        	Map<String, List<DatasetGlycoproteinMetadata>> rowMap = new HashMap<>();
+			for (DatasetGlycoproteinMetadata m: data) {
+				if (rowMap.get(m.getRowId()) == null) {
+					rowMap.put(m.getRowId(), new ArrayList<>());
+				}
+				rowMap.get(m.getRowId()).add(m);
+			}
+			
+			List<GlygenProteinMetadataRow> result = new ArrayList<>();
+			for (String key: rowMap.keySet()) {
+				GlygenProteinMetadataRow row = new GlygenProteinMetadataRow();
+				row.setRowId(key);
+				row.setColumns(rowMap.get(key));
+				for (DatasetGlycoproteinMetadata col: row.getColumns()) {
+					if (col.getGlycoproteinColumn() != null && col.getGlycoproteinColumn() == GlycoproteinColumns.GLYTOUCANID) {
+						try {
+							byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), glycanImageRepository, imageLocation);
+							row.setCartoon(cartoon);
+						} catch (Exception e) {
+							logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
+						}
+						break;
+					}
+				}
+				result.add(row);
+			}
+        	
+        	Map<String, Object> response = new HashMap<>();
+            response.put("objects", result);
+            response.put("currentPage", rows.getNumber());
+            response.put("totalItems", rows.getTotalElements());
+            response.put("totalPages", rows.getTotalPages());
+            
+            return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
+        } else {
+        	Page<String> rows = null;
+        	if (versionId != null) {
+        		rows = datasetRepository.getDataByVersion(versionId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
+            } else {
+            	rows = datasetRepository.getData(datasetId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
+            }
+        	List<DatasetMetadata> data = datasetRepository.findByRowIdIn(rows.getContent());
+        	Map<String, List<DatasetMetadata>> rowMap = new HashMap<>();
+			for (DatasetMetadata m: data) {
+				if (rowMap.get(m.getRowId()) == null) {
+					rowMap.put(m.getRowId(), new ArrayList<>());
+				}
+				rowMap.get(m.getRowId()).add(m);
+			}
+			List<GlygenMetadataRow> result = new ArrayList<>();
+			for (String key: rowMap.keySet()) {
+				GlygenMetadataRow row = new GlygenMetadataRow();
+				row.setRowId(key);
+				row.setColumns(rowMap.get(key));
+				for (DatasetMetadata col: row.getColumns()) {
+					if (col.getGlycanColumn() != null && col.getGlycanColumn() == GlycanColumns.GLYTOUCANID) {
+						try {
+							byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), glycanImageRepository, imageLocation);
+							row.setCartoon(cartoon);
+						} catch (Exception e) {
+							logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
+						}
+						break;
+					}
+				}
+				result.add(row);
+			}
+			
+        	Map<String, Object> response = new HashMap<>();
+            response.put("objects", result);
+            response.put("currentPage", rows.getNumber());
+            response.put("totalItems", rows.getTotalElements());
+            response.put("totalPages", rows.getTotalPages());
+            
+            return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
+        }
 	}
 	
 	@Operation(summary = "Get public datasets")
@@ -202,7 +398,14 @@ public class PublicDataController {
             throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier);
         }
         
-        DatasetView dv = DatasetController.createDatasetView (existing, version, glycanImageRepository, imageLocation);
+        DatasetView dv = DatasetController.createDatasetView (existing, version, glycanImageRepository, imageLocation, true);
+        int proteinCount = 0;
+        if (version != null) {
+        	proteinCount = datasetRepository.getProteinCountByVersion(version);
+        } else {
+        	proteinCount = datasetRepository.getProteinCount(existing.getDatasetId());
+        }
+    	dv.setNoProteins(proteinCount);
         return dv;
 	}
 	

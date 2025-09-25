@@ -10,6 +10,14 @@ public class GlygenMetadataRow {
 	List<DatasetMetadata> columns;
 	byte[] cartoon;
 	
+	public GlygenMetadataRow() {
+	}
+	
+	public GlygenMetadataRow(String rowId, List<DatasetMetadata> columns) {
+		this.rowId = rowId;
+		this.columns = columns;
+	}
+	
 	public String getRowId() {
 		return rowId;
 	}

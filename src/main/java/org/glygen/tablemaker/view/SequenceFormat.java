@@ -4,5 +4,6 @@ public enum SequenceFormat {
     GLYCOCT,
     WURCS,
     GWS,
-    LINEARCODE;
+    LINEARCODE,
+    PPCOMPOSITION;
 }

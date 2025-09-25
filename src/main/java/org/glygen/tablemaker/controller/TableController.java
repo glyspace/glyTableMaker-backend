@@ -593,7 +593,7 @@ public class TableController {
         workbook.close();
 	}
 	
-	private static BufferedImage scale(BufferedImage before, double scale) {
+	public static BufferedImage scale(BufferedImage before, double scale) {
 	    int w = before.getWidth();
 	    int h = before.getHeight();
 	    // Create a new image of the proper size

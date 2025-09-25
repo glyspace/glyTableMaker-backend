@@ -97,7 +97,7 @@ public class DatasetVersion {
 		this.dataset = dataset;
 	}
 	
-	@OneToMany(mappedBy = "dataset", cascade=CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(mappedBy = "dataset", cascade=CascadeType.ALL, orphanRemoval = true, fetch=FetchType.LAZY)
 	public Collection<DatasetMetadata> getData() {
 		return data;
 	}
@@ -105,7 +105,7 @@ public class DatasetVersion {
 		this.data = data;
 	}
 	
-	@OneToMany(mappedBy = "dataset", cascade=CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(mappedBy = "dataset", cascade=CascadeType.ALL, orphanRemoval = true, fetch=FetchType.LAZY)
 	public Collection<DatasetGlycoproteinMetadata> getGlycoproteinData() {
 		return glycoproteinData;
 	}
@@ -114,7 +114,7 @@ public class DatasetVersion {
 		this.glycoproteinData = glycoproteinData;
 	}
 	
-	@ManyToMany
+	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(
 		    name="datasetversion_publications",
 		    joinColumns=@JoinColumn(name="versionid"),

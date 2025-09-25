@@ -4,9 +4,13 @@ import java.util.List;
 
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
+import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
+import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
 import org.glygen.tablemaker.persistence.dataset.License;
+import org.glygen.tablemaker.view.Filter;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,7 +18,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpecificationExecutor<DatasetProjection> {
+public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpecificationExecutor<DatasetProjection>, DatasetRepositoryCustom {
 	
 	//public Page<Dataset> findAllByUser(UserEntity user, Pageable pageable);
 	@Query("SELECT d.name as name, d.description as description, d.dateCreated as dateCreated, d.datasetIdentifier as datasetIdentifier, d.datasetId as datasetId, d.user as user FROM Dataset d")
@@ -32,6 +36,9 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	
 	@Query ("select count(distinct(element(dv.glycoproteinData).value)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true and element(dv.glycoproteinData).glycoproteinColumn='UNIPROTID'")
 	public int getProteinCount (@Param("datasetId")Long datasetId);
+	
+	@Query ("select count(distinct(element(dv.glycoproteinData).value)) from DatasetVersion dv WHERE dv.version = :version and element(dv.glycoproteinData).glycoproteinColumn='UNIPROTID'")
+	public int getProteinCountByVersion (@Param("version")String version);
 	
 	@Query ("select count(distinct(element(dv.data).value)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true and element(dv.data).glycanColumn='GLYTOUCANID'")
 	public int getGlycanCount (@Param("datasetId")Long datasetId);
@@ -55,5 +62,12 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	
 	@Query("Select DISTINCT d.datasetId FROM Dataset d JOIN d.grants g WHERE LOWER(g.fundingOrganization) = :fundingOrg")
 	public List<Long> getAllDatasetIdsByFundingOrganization (@Param("fundingOrg") String fundingOrg);
+	
+
+	@Query("SELECT m FROM DatasetMetadata m WHERE m.rowId IN :rowIds")
+	List<DatasetMetadata> findByRowIdIn(@Param("rowIds") List<String> rowIds);
+	
+	@Query("SELECT m FROM DatasetGlycoproteinMetadata m WHERE m.rowId IN :rowIds")
+	List<DatasetGlycoproteinMetadata> findGlycoproteinByRowIdIn(@Param("rowIds") List<String> rowIds);
 
 }

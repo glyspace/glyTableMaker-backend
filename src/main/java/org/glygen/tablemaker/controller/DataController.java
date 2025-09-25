@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
@@ -131,6 +132,7 @@ import org.glygen.tablemaker.service.GlycanManagerImpl;
 import org.glygen.tablemaker.service.ScheduledTasksService;
 import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
+import org.glygen.tablemaker.util.ProteinProspector;
 import org.glygen.tablemaker.util.SequenceUtils;
 import org.glygen.tablemaker.view.CollectionView;
 import org.glygen.tablemaker.view.FileWrapper;
@@ -1687,50 +1689,57 @@ public class DataController {
 					compo = SequenceUtils.getWurcsCompositionFromCondensed(g.getComposition().trim());
 					strWURCS = CompositionConverter.toWURCS(compo);
 					break;
+				case PROTEINPROSPECTOR:
+					g.setSequence(g.getComposition().trim());
+					g.setFormat(SequenceFormat.PPCOMPOSITION);
+					parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user);
+					break;
 				default:
 					break;
                 }
-                glycan.setWurcs(strWURCS);
-                // recode the sequence
-                WURCSValidator validator = new WURCSValidator();
-                validator.start(glycan.getWurcs());
-                if (validator.getReport().hasError()) {
-                    String errorMessage = "";
-                    for (String error: validator.getReport().getErrors()) {
-                        errorMessage += error + ", ";
-                    }
-                    errorMessage = errorMessage.substring(0, errorMessage.lastIndexOf(","));
-                    throw new IllegalArgumentException ("WURCS parse error. Details: " + errorMessage);
-                } else {
-                    glycan.setWurcs(validator.getReport().getStandardString());
-                    try {
-                    	glycan.setMass(SequenceUtils.computeMassFromWurcs(glycan.getWurcs()));
-                    } catch (Exception e) {
-                        logger.error("could not calculate mass for wurcs sequence ", e);
-                        glycan.setError("Could not calculate mass. Reason: " + e.getMessage());
-                    }
-                }
-                List<Glycan> existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
-                if (existing != null && existing.size() > 0) {
-                    throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs(), null, existing.get(0));
-                }
-                try {
-                	SequenceUtils.getWurcsAndGlytoucanID(glycan, null);
-                	if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
-                    	SequenceUtils.registerGlycan(glycan);
-                    }
-                } catch (GlytoucanAPIFailedException e) {
-                	glycan.setStatus(RegistrationStatus.NOT_SUBMITTED_YET);
-                	//glycan.setError("Cannot retrieve glytoucan id. Reason: " + e.getMessage());
-                	// report the error through email
-                	ErrorReportEntity error = new ErrorReportEntity();
-    				error.setMessage(e.getMessage());
-    				error.setDetails("Error occurred in AddGlycan");
-    				error.setDateReported(new Date());
-    				error.setTicketLabel("GlytoucanAPI");
-    				errorReportingService.reportError(error);
-                }
                 
+                if (compositionType != CompositionType.PROTEINPROSPECTOR) {
+	                glycan.setWurcs(strWURCS);
+	                // recode the sequence
+	                WURCSValidator validator = new WURCSValidator();
+	                validator.start(glycan.getWurcs());
+	                if (validator.getReport().hasError()) {
+	                    String errorMessage = "";
+	                    for (String error: validator.getReport().getErrors()) {
+	                        errorMessage += error + ", ";
+	                    }
+	                    errorMessage = errorMessage.substring(0, errorMessage.lastIndexOf(","));
+	                    throw new IllegalArgumentException ("WURCS parse error. Details: " + errorMessage);
+	                } else {
+	                    glycan.setWurcs(validator.getReport().getStandardString());
+	                    try {
+	                    	glycan.setMass(SequenceUtils.computeMassFromWurcs(glycan.getWurcs()));
+	                    } catch (Exception e) {
+	                        logger.error("could not calculate mass for wurcs sequence ", e);
+	                        glycan.setError("Could not calculate mass. Reason: " + e.getMessage());
+	                    }
+	                }
+	                List<Glycan> existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
+	                if (existing != null && existing.size() > 0) {
+	                    throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs(), null, existing.get(0));
+	                }
+	                try {
+	                	SequenceUtils.getWurcsAndGlytoucanID(glycan, null);
+	                	if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
+	                    	SequenceUtils.registerGlycan(glycan);
+	                    }
+	                } catch (GlytoucanAPIFailedException e) {
+	                	glycan.setStatus(RegistrationStatus.NOT_SUBMITTED_YET);
+	                	//glycan.setError("Cannot retrieve glytoucan id. Reason: " + e.getMessage());
+	                	// report the error through email
+	                	ErrorReportEntity error = new ErrorReportEntity();
+	    				error.setMessage(e.getMessage());
+	    				error.setDetails("Error occurred in AddGlycan");
+	    				error.setDateReported(new Date());
+	    				error.setTicketLabel("GlytoucanAPI");
+	    				errorReportingService.reportError(error);
+	                }
+                }
             } catch (DictionaryException | CompositionParseException | ConversionException | WURCSException e1) {
                 throw new IllegalArgumentException (e1.getMessage());
             } catch (GlycoVisitorException e1) {
@@ -1766,7 +1775,7 @@ public class DataController {
         return new ResponseEntity<>(new SuccessResponse<Glycan>(glycan, "glycan added"), HttpStatus.OK);
     }
     
-    private static String toUnknownForm(String strWURCS) throws WURCSException {
+    public static String toUnknownForm(String strWURCS) throws WURCSException {
 
         WURCSFactory factory = new WURCSFactory(strWURCS);
         WURCSArray array = factory.getArray();
@@ -2507,7 +2516,7 @@ public class DataController {
 	        @RequestBody
     		FileWrapper fileWrapper, 
     		@Parameter(required=true, name="filetype", description="type of the file", schema = @Schema(type = "string",
-    		allowableValues= {"GWS", "WURCS", "EXCEL"})) 
+    		allowableValues= {"GWS", "WURCS", "EXCEL", "PPCOMPOSITION"})) 
 	        @RequestParam(required=true, value="filetype") String fileType,
 	        @RequestParam(required=false, value="tag") String tag) {
     	
@@ -2581,6 +2590,9 @@ public class DataController {
                     	} else {
                     		response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, "\\n", tag);
                     	}
+                    	break;
+                    case PPCOMPOSITION:
+                    	response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, "\\n", tag);
                     	break;
 					default:
 						break;
@@ -3467,9 +3479,18 @@ public class DataController {
         Sugar sugar = null;
         try {
             switch (g.getFormat()) {
-            case WURCS:
-                glycan.setWurcs(g.getSequence().trim());
-                // recode the sequence
+            case PPCOMPOSITION:
+            	String output = ProteinProspector.parseModification(g.getSequence().trim());
+            	try {
+	            	Composition compo = CompositionUtils.parse(output);
+	     	       	String wurcs = CompositionConverter.toWURCS(compo);
+			        wurcs = DataController.toUnknownForm(wurcs);
+			        glycan.setWurcs(wurcs);
+	        	} catch (Exception e) {
+            		throw new IllegalArgumentException("ProteinProspector sequence is not valid. Reason: " + e.getMessage());
+            	}
+            	
+            	// recode the sequence
                 WURCSValidator validator = new WURCSValidator();
                 validator.start(glycan.getWurcs());
                 if (validator.getReport().hasError()) {
@@ -3488,8 +3509,35 @@ public class DataController {
                         glycan.setError("Could not calculate mass. Reason: " + e.getMessage());
                     }
                 }
+            	
+            	List<Glycan> existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
+                if (existing != null && existing.size() > 0) {
+                    throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs(), null, existing.get(0));
+                }
+                break;
+            case WURCS:
+                glycan.setWurcs(g.getSequence().trim());
+                // recode the sequence
+                validator = new WURCSValidator();
+                validator.start(glycan.getWurcs());
+                if (validator.getReport().hasError()) {
+                    String errorMessage = "";
+                    for (String error: validator.getReport().getErrors()) {
+                        errorMessage += error + ", ";
+                    }
+                    errorMessage = errorMessage.substring(0, errorMessage.lastIndexOf(","));
+                    throw new IllegalArgumentException ("WURCS parse error. Details: " + errorMessage);
+                } else {
+                    glycan.setWurcs(validator.getReport().getStandardString());
+                    try {
+                    	glycan.setMass(SequenceUtils.computeMassFromWurcs(glycan.getWurcs()));
+                    } catch (Exception e) {
+                        logger.error("could not calculate mass for wurcs sequence ", e);
+                        glycan.setError("Could not calculate mass. Reason: " + e.getMessage());
+                    }
+                }
                 
-                List<Glycan> existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
+                existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
                 if (existing != null && existing.size() > 0) {
                     throw new DuplicateException ("There is already a glycan with WURCS " + glycan.getWurcs(), null, existing.get(0));
                 }

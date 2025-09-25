@@ -5,5 +5,6 @@ public enum CompositionType {
 	GLYGEN,
 	DEFINED,
 	COMPACT,
-	BYONIC; 
+	BYONIC,
+	PROTEINPROSPECTOR; 
 }
