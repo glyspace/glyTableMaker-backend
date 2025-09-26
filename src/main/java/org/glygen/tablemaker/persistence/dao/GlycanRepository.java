@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface GlycanRepository extends JpaRepository<Glycan, Long>,  JpaSpecificationExecutor<Glycan>, GlycanRepositoryCustom {
     
@@ -27,4 +28,6 @@ public interface GlycanRepository extends JpaRepository<Glycan, Long>,  JpaSpeci
     
 	@Query("SELECT DISTINCT g.glytoucanID FROM Glycan g")
     public List<String> findDistinctGlytoucanId();
+	
+	long countByGlytoucanIDInAndStatus(List<String> glytoucanids, RegistrationStatus status);
 }

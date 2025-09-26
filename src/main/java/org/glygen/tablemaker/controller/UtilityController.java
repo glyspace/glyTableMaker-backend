@@ -693,11 +693,17 @@ public class UtilityController {
         StatisticsView stats = new StatisticsView();
         stats.setUserCount(userRepository.count());
         stats.setDatasetCount(datasetRepository.count());
-        stats.setGlycanCount((long)glycanRepository.findDistinctGlytoucanId().size());
-        stats.setProteinCount((long)glycoproteinRepository.findDistinctUniprotId().size());
+        
+        stats.setGlycanCount((long)datasetRepository.getAllGlycanCount());
+        stats.setProteinCount((long)datasetRepository.getAllGlycoproteinCount()); 
+        //stats.setGlycanCount((long)glycanRepository.findDistinctGlytoucanId().size());
+        //stats.setProteinCount((long)glycoproteinRepository.findDistinctUniprotId().size());
+        List<String> publicGlycans = datasetRepository.getAllPublicGlytoucanIds();
         stats.setNewGlycanCount(
-        		glycanRepository.countByStatus(RegistrationStatus.NEWLY_REGISTERED) + 
-        		glycanRepository.countByStatus(RegistrationStatus.NEWLY_SUBMITTED_FOR_REGISTRATION));
+        		glycanRepository.countByGlytoucanIDInAndStatus(publicGlycans, RegistrationStatus.NEWLY_REGISTERED) + 
+        		glycanRepository.countByGlytoucanIDInAndStatus(publicGlycans, RegistrationStatus.NEWLY_SUBMITTED_FOR_REGISTRATION));
+        
+        //stats.setNewGlycanCount((long)glycanRepository.getRegisteredGlycanCount(publicGlycans));
         return new ResponseEntity<>(new SuccessResponse<StatisticsView>(stats, "Statistics retrieved"), HttpStatus.OK); 
     }
 	
