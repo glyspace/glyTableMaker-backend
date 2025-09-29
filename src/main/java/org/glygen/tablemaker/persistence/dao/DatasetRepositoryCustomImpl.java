@@ -54,7 +54,7 @@ public class DatasetRepositoryCustomImpl implements DatasetRepositoryCustom {
 		String baseQuery = "SELECT distinct d.rowId FROM DatasetVersion dv JOIN dv.data d "
 				+ "WHERE dv.versionId = :versionId";
 		String countQuery = "SELECT count(distinct d.rowId) FROM DatasetVersion dv JOIN dv.data d "
-				+ "WHERE dv.versionId = :datasetId";
+				+ "WHERE dv.versionId = :versionId";
 	
         Map<String, Object> params = new HashMap<>();
         
@@ -69,7 +69,7 @@ public class DatasetRepositoryCustomImpl implements DatasetRepositoryCustom {
 		String baseQuery = "SELECT distinct d.rowId FROM DatasetVersion dv JOIN dv.glycoproteinData d "
 				+ "WHERE dv.versionId = :versionId";
 		String countQuery = "SELECT count(distinct d.rowId) FROM DatasetVersion dv JOIN dv.glycoproteinData d "
-				+ "WHERE dv.versionId = :datasetId";
+				+ "WHERE dv.versionId = :versionId";
 	
         Map<String, Object> params = new HashMap<>();
         
