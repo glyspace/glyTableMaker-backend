@@ -148,7 +148,7 @@ public class SearchController {
                 Page<Dataset> datasets = datasetRepository.findByDatasetIdIn(ids, PageRequest.of(offset, limit, Sort.by(sortOrders)));
                 
                 for (Dataset set: datasets.getContent()) {
-                	searchDatasets.add(DatasetController.createDatasetView(set, null, glycanImageRepository, imageLocation, true));
+                	searchDatasets.add(DatasetController.createDatasetView(set, null, glycanImageRepository, imageLocation));
                 }
             }
             

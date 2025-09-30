@@ -398,7 +398,7 @@ public class PublicDataController {
             throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier);
         }
         
-        DatasetView dv = DatasetController.createDatasetView (existing, version, glycanImageRepository, imageLocation, true);
+        DatasetView dv = DatasetController.createDatasetView (existing, version, glycanImageRepository, imageLocation);
         int proteinCount = 0;
         if (version != null) {
         	proteinCount = datasetRepository.getProteinCountByVersion(version);

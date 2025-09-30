@@ -378,7 +378,7 @@ public class DatasetController {
         version.setDataset(newDataset);
         
         Dataset saved = datasetManager.saveDataset (newDataset);
-        DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation, false);
+        DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation);
         return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset has been published"), HttpStatus.OK);
 	}
 	
@@ -853,7 +853,7 @@ public class DatasetController {
     	
 		Dataset saved = datasetManager.saveDataset(existing);
     	
-    	DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation, false);
+    	DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation);
     	return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset updated"), HttpStatus.OK);
 	}
 	
@@ -889,7 +889,7 @@ public class DatasetController {
             throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier + " for the user");
         }
         
-        DatasetView dv = createDatasetView (existing, version, glycanImageRepository, imageLocation, false);
+        DatasetView dv = createDatasetView (existing, version, glycanImageRepository, imageLocation);
         
         return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset retrieved"), HttpStatus.OK);
     }
@@ -938,7 +938,7 @@ public class DatasetController {
         return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "publications retrieved"), HttpStatus.OK);
 	}
 	
-    public static DatasetView createDatasetView(Dataset d, String versionString, GlycanImageRepository imageRepository, String imageLocation, Boolean noData) {
+    public static DatasetView createDatasetView(Dataset d, String versionString, GlycanImageRepository imageRepository, String imageLocation) {
     	boolean head = false;
     	if (versionString == null || versionString.isEmpty()) 
     		head = true;
@@ -964,92 +964,7 @@ public class DatasetController {
     			dv.setVersion(version.getVersion());
     			dv.setVersionDate(version.getVersionDate());
     			dv.setVersionComment(version.getComment());
-    			/*if (!noData && version.getData() != null) {
-    				dv.setData(new ArrayList<>());
-    				Map<String, List<DatasetMetadata>> rowMap = new HashMap<>();
-    				for (DatasetMetadata m: version.getData()) {
-    					if (rowMap.get(m.getRowId()) == null) {
-    						rowMap.put(m.getRowId(), new ArrayList<>());
-    					}
-    					rowMap.get(m.getRowId()).add(m);
-    				}
-    				for (String key: rowMap.keySet()) {
-    					GlygenMetadataRow row = new GlygenMetadataRow();
-    					row.setRowId(key);
-    					row.setColumns(rowMap.get(key));
-    					for (DatasetMetadata col: row.getColumns()) {
-    						if (col.getGlycanColumn() != null && col.getGlycanColumn() == GlycanColumns.GLYTOUCANID) {
-    							try {
-    								byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), imageRepository, imageLocation);
-    								row.setCartoon(cartoon);
-    							} catch (Exception e) {
-    								logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
-    							}
-    							break;
-    						}
-    					}
-    					dv.getData().add(row);
-    				}
-    			}
-    			if (!noData && version.getGlycoproteinData() != null) {   
-    				dv.setGlycoproteinData(new ArrayList<>());
-    				Map<String, List<DatasetGlycoproteinMetadata>> rowMap = new HashMap<>();
-    				for (DatasetGlycoproteinMetadata m: version.getGlycoproteinData()) {
-    					if (rowMap.get(m.getRowId()) == null) {
-    						rowMap.put(m.getRowId(), new ArrayList<>());
-    					}
-    					rowMap.get(m.getRowId()).add(m);
-    				}
-    				for (String key: rowMap.keySet()) {
-    					GlygenProteinMetadataRow row = new GlygenProteinMetadataRow();
-    					row.setRowId(key);
-    					row.setColumns(rowMap.get(key));
-    					for (DatasetGlycoproteinMetadata col: row.getColumns()) {
-    						if (col.getGlycoproteinColumn() != null && col.getGlycoproteinColumn() == GlycoproteinColumns.GLYTOUCANID) {
-    							try {
-    								byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), imageRepository, imageLocation);
-    								row.setCartoon(cartoon);
-    							} catch (Exception e) {
-    								logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
-    							}
-    							break;
-    						}
-    					}
-    					dv.getGlycoproteinData().add(row);
-    				}
-    			}
-    			
-    			int noGlycans = 0;
-    			if (!noData && version.getData() != null) {
-    				String glytoucanId =  null;
-    				for (DatasetMetadata meta: version.getData()) {
-    					if (meta.getGlycanColumn() != null && meta.getGlycanColumn() == GlycanColumns.GLYTOUCANID) {
-    						if (glytoucanId == null || !meta.getValue().equalsIgnoreCase(glytoucanId)) {
-    							glytoucanId = meta.getValue();
-    							noGlycans++;
-    						}
-    					}
-    				}
-    			}
-    			
-    			dv.setNoGlycans(noGlycans);
-    			
-    			// calculate no of proteins
-    			int noProteins = 0;
-    			if (!noData && version.getGlycoproteinData() != null) { 
-	    			String uniprotId = null;
-	    			for (DatasetGlycoproteinMetadata meta : version.getGlycoproteinData()) {
-	    				if (meta.getGlycoproteinColumn() != null && meta.getGlycoproteinColumn() == GlycoproteinColumns.UNIPROTID) {
-	    					if (uniprotId == null || !meta.getValue().equals (uniprotId)) {
-	    						uniprotId = meta.getValue();
-	    						noProteins++;
-	    					} 
-	    				}
-	    			}
-    			}
-    			dv.setNoProteins(noProteins);
-    			if (!noData && version.getPublications() != null) dv.setPublications(new ArrayList<>(version.getPublications()));
-    		*/	break;
+    			break;
     		} 
     	}
     	
