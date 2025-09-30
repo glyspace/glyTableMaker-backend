@@ -179,5 +179,25 @@ public class Publication {
         this.number = number;
     }
 	
+    
+    @Override
+    public boolean equals(Object obj) {
+    	if (obj instanceof Publication) {
+    		if (this.pubmedId != null) {
+    			return this.pubmedId.equals(((Publication) obj).getPubmedId());
+    		} else if (this.doiId != null) {
+    			return this.doiId.equalsIgnoreCase(((Publication) obj).getDoiId());
+    		}
+    	}
+    	
+    	return super.equals(obj);
+    }
+    
+    @Override
+    public int hashCode() {
+    	if (this.pubmedId != null) return pubmedId.hashCode();
+    	else if (this.doiId != null) return doiId.hashCode();
+    	return super.hashCode();
+    }
 
 }
