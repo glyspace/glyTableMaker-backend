@@ -4,7 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 @SuppressWarnings("serial")
-@ResponseStatus(value=HttpStatus.PARTIAL_CONTENT, reason="The task has been interrupted") 
+@ResponseStatus(value=HttpStatus.NO_CONTENT, reason="The task has been interrupted") 
 public class UploadNotFinishedException extends RuntimeException {
 	public UploadNotFinishedException() { super(); }
 	public UploadNotFinishedException(String s) { super(s); }

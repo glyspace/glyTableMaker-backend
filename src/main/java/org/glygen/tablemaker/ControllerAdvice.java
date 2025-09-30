@@ -73,10 +73,10 @@ public class ControllerAdvice {
     }
     
     @ExceptionHandler({UploadNotFinishedException.class})
-    @ResponseStatus(HttpStatus.PARTIAL_CONTENT)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public ErrorResponse uploadNotFinishedException(Exception ex) {
         log.debug(ex.getMessage(), ex.getCause());
-        return new ErrorResponse(String.valueOf(HttpStatus.PARTIAL_CONTENT.value()), ex.getMessage(), TIMESTAMP);
+        return new ErrorResponse(String.valueOf(HttpStatus.NO_CONTENT.value()), ex.getMessage(), TIMESTAMP);
 
     }
     

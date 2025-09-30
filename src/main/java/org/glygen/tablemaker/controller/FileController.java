@@ -101,7 +101,7 @@ public class FileController {
             file.setIdentifier(info.resumableFilePath.substring(info.resumableFilePath.lastIndexOf(File.separator) + 1, index));
             return new ResponseEntity<>(new SuccessResponse<FileWrapper>(file, "file uploaded"), HttpStatus.OK);
         } else {
-        	return new ResponseEntity<>(new SuccessResponse<FileWrapper>(file, "file uploaded"), HttpStatus.ACCEPTED);
+        	return new ResponseEntity<>(new SuccessResponse<FileWrapper>(file, "file uploaded"), HttpStatus.OK);
         }
 	}
 	
