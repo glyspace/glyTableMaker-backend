@@ -963,12 +963,18 @@ public class DatasetController {
     			dv.setLicense(version.getLicense());
     			dv.setVersion(version.getVersion());
     			dv.setVersionDate(version.getVersionDate());
-    			dv.setVersionComment(version.getComment());
+    			dv.setVersionComment(version.getComment());	
     			break;
     		} 
     	}
     	
     	if (d.getVersions() != null) dv.setVersions(new ArrayList<>(d.getVersions()));
+    	// clear the data from the versions
+    	for (DatasetVersion v: dv.getVersions()) {
+    		v.setPublications(null);
+    		v.setData(null);
+    		v.setGlycoproteinData(null);
+    	}
 		return dv;
 	}
 
