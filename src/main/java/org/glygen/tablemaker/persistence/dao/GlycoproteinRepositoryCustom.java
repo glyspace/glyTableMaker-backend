@@ -8,7 +8,7 @@ import org.springframework.data.domain.Pageable;
 public interface GlycoproteinRepositoryCustom {
 
 	Page<Glycoprotein> searchGlycoproteins(String tagKeyword, String uniprotId, String name, String proteinName,
-			String seqVersion, String siteNo, UserEntity user, boolean orFilter, boolean orderByTags,
-			boolean orderBySites, Pageable pageable);
+			String seqVersion, UserEntity user, boolean orFilter, boolean orderByTags, boolean orderBySites,
+			Pageable pageable);
 
 }

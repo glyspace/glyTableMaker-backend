@@ -323,7 +323,7 @@ public class PublicDataController {
         	specificationList.add(new DatasetSpecification(new Filter ("dateCreated", globalFilter)));
         }
         
-        Specification<DatasetProjection> spec = null;
+        Specification<Dataset> spec = null;
         if (!specificationList.isEmpty()) {
         	spec = specificationList.get(0);
         	for (int i=1; i < specificationList.size(); i++) {
@@ -334,37 +334,55 @@ public class PublicDataController {
         	}
         }
         
-        Page<DatasetProjection> datasetsInPage = null;
+        Page<DatasetProjection> datasetProjectionsInPage = null;
+        Page<Dataset> datasetsInPage = null;
+        List<DatasetView> datasets = new ArrayList<>();
+        Map<String, Object> response = new HashMap<>();
         if (spec != null) {
         	try {
         		datasetsInPage = datasetRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
+        		for (Dataset d: datasetsInPage.getContent()) {
+                	DatasetView dv = new DatasetView();
+                	dv.setId(d.getDatasetId());
+                	dv.setName(d.getName());
+                	dv.setDatasetIdentifier(d.getDatasetIdentifier());
+                	dv.setDateCreated(d.getDateCreated());
+                	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
+                	dv.setUser (d.getUser());
+                	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
+                	dv.setNoProteins(proteinCount);
+                	datasets.add(dv);
+                }
         	} catch (Exception e) {
         		logger.error(e.getMessage(), e);
         		throw e;
         	}
+        	
+            response.put("objects", datasets);
+            response.put("currentPage", datasetsInPage.getNumber());
+            response.put("totalItems", datasetsInPage.getTotalElements());
+            response.put("totalPages", datasetsInPage.getTotalPages());
         } else {
-        	datasetsInPage = datasetRepository.findAllWithProjection(PageRequest.of(start, size, Sort.by(sortOrders)));
+        	datasetProjectionsInPage = datasetRepository.findAllBy(PageRequest.of(start, size, Sort.by(sortOrders)));
+        	for (DatasetProjection d: datasetProjectionsInPage.getContent()) {
+            	DatasetView dv = new DatasetView();
+            	dv.setId(d.getDatasetId());
+            	dv.setName(d.getName());
+            	dv.setDatasetIdentifier(d.getDatasetIdentifier());
+            	dv.setDateCreated(d.getDateCreated());
+            	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
+            	dv.setUser (d.getUser());
+            	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
+            	dv.setNoProteins(proteinCount);
+            	datasets.add(dv);
+            	response.put("objects", datasets);
+                response.put("currentPage", datasetProjectionsInPage.getNumber());
+                response.put("totalItems", datasetProjectionsInPage.getTotalElements());
+                response.put("totalPages", datasetProjectionsInPage.getTotalPages());
+            }
         }
+         
         
-        List<DatasetView> datasets = new ArrayList<>();
-        for (DatasetProjection d: datasetsInPage.getContent()) {
-        	DatasetView dv = new DatasetView();
-        	dv.setId(d.getDatasetId());
-        	dv.setName(d.getName());
-        	dv.setDatasetIdentifier(d.getDatasetIdentifier());
-        	dv.setDateCreated(d.getDateCreated());
-        	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
-        	dv.setUser (d.getUser());
-        	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
-        	dv.setNoProteins(proteinCount);
-        	datasets.add(dv);
-        }
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("objects", datasets);
-        response.put("currentPage", datasetsInPage.getNumber());
-        response.put("totalItems", datasetsInPage.getTotalElements());
-        response.put("totalPages", datasetsInPage.getTotalPages());
         
         return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "datasets retrieved"), HttpStatus.OK);
 	}

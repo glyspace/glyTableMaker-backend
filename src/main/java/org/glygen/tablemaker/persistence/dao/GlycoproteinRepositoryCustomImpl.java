@@ -23,128 +23,77 @@ public class GlycoproteinRepositoryCustomImpl implements GlycoproteinRepositoryC
 
 	@Override
 	public Page<Glycoprotein> searchGlycoproteins(String tagKeyword, String uniprotId, String name, String proteinName,
-			String seqVersion, String siteNo, UserEntity user, boolean orFilter, boolean orderByTags, boolean orderBySites,
+			String seqVersion, UserEntity user, boolean orFilter, boolean orderByTags, boolean orderBySites,
 			Pageable pageable) {
 		String baseQuery = "SELECT DISTINCT g FROM Glycoprotein g";
         String countQuery = "SELECT COUNT(DISTINCT g) FROM Glycoprotein g";
         
-        if (tagKeyword != null || orderByTags || siteNo != null || orderBySites) {
-        	if (siteNo == null && !orderBySites) {
+        Map<String, Object> params = new HashMap<>();
+        String groupByClause = "";
+        
+        if (tagKeyword != null || orderByTags || orderBySites) {
+        	if (!orderBySites) {
 	        	baseQuery = "SELECT DISTINCT g, t.label FROM Glycoprotein g LEFT JOIN g.tags t";
 	        	countQuery = "SELECT COUNT(DISTINCT g) FROM Glycoprotein g LEFT JOIN g.tags t";
         	} else if (tagKeyword == null && !orderByTags){
         		baseQuery = "SELECT DISTINCT g, COUNT(s) FROM Glycoprotein g LEFT JOIN g.sites s";
 	        	countQuery = "SELECT COUNT(DISTINCT g) FROM Glycoprotein g LEFT JOIN g.sites s";
+	        	groupByClause = " GROUP BY g, t.label";
         	} else {
         		baseQuery = "SELECT g, COUNT(s), t.label FROM Glycoprotein g LEFT JOIN g.sites s LEFT JOIN g.tags t";
         		countQuery = "SELECT COUNT(DISTINCT g) FROM Glycoprotein g LEFT JOIN g.sites s LEFT JOIN g.tags t";
+        		groupByClause = " GROUP BY g, t.label";
         	}
         }
         
         StringBuilder whereClause = new StringBuilder("");
-        Map<String, Object> params = new HashMap<>();
+        
+        
+        String where = "";
         
         if (tagKeyword != null) {
-        	whereClause.append( " WHERE LOWER(t.label) LIKE LOWER(:tagKeyword)");
+        	appendCondition(whereClause, "LOWER(t.label) LIKE LOWER(:tagKeyword)", orFilter);
         	params.put("tagKeyword", "%" + tagKeyword + "%");
         }
         
         if (uniprotId != null) {
-        	if (orFilter) {
-        		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE LOWER(g.uniprotId) like LOWER(:uniprotId)");
-        		} else {
-        			whereClause.append(" OR LOWER(g.uniprotId) like LOWER(:uniprotId)");
-        		}
-        	} else {
-        		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE LOWER(g.uniprotId) like LOWER(:uniprotId)");
-        		} else {
-        			whereClause.append(" AND LOWER(g.uniprotId) like LOWER(:uniprotId)");
-        		}
-        	}
+        	appendCondition(whereClause, "LOWER(g.uniprotId) like LOWER(:uniprotId)", orFilter);
             params.put("uniprotId", "%" + uniprotId + "%");
         }
         
         if (seqVersion != null) {
-        	if (orFilter) {
-        		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE LOWER(g.sequenceVersion) like LOWER(:sequenceVersion)");
-        		} else {
-        			whereClause.append(" OR LOWER(g.sequenceVersion) like LOWER(:sequenceVersion)");
-        		}
-        	} else {
-        		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE LOWER(g.sequenceVersion) like LOWER(:sequenceVersion)");
-        		} else {
-        			whereClause.append(" AND LOWER(g.sequenceVersion) like LOWER(:sequenceVersion)");
-        		}
-        	}
+        	appendCondition(whereClause, "LOWER(g.sequenceVersion) like LOWER(:sequenceVersion)", orFilter);
             params.put("sequenceVersion", "%" + seqVersion + "%");
         }
         
         if (name != null) {
-        	if (orFilter) {
-        		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE LOWER(g.name) like LOWER(:name)");
-        		} else {
-        			whereClause.append(" OR LOWER(g.name) like LOWER(:name)");
-        		}
-        	} else {
-        		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE LOWER(g.name) like LOWER(:name)");
-        		} else {
-        			whereClause.append(" AND LOWER(g.name) like LOWER(:name)");
-        		}
-        	}
+        	appendCondition(whereClause, "LOWER(g.name) like LOWER(:name)", orFilter);
             params.put("name", "%" + name + "%");
         }
         
         if (proteinName != null) {
-        	if (orFilter) {
-        		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE LOWER(g.proteinName) like LOWER(:proteinName)");
-        		} else {
-        			whereClause.append(" OR LOWER(g.proteinName) like LOWER(:proteinName)");
-        		}
-        	} else {
-        		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE LOWER(g.proteinName) like LOWER(:proteinName)");
-        		} else {
-        			whereClause.append(" AND LOWER(g.proteinName) like LOWER(:proteinName)");
-        		}
-        	}
+        	appendCondition(whereClause, "LOWER(g.proteinName) like LOWER(:proteinName)", orFilter);
             params.put("proteinName", "%" + proteinName + "%");
         }
         
-        if (siteNo != null) {
-        	if (orFilter) {
-        		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE CAST(COUNT(g.sites) AS string) like :siteNo");
-        		} else {
-        			whereClause.append(" OR CAST(COUNT(g.sites) AS string) like :siteNo");
-        		}
-        	} else {
-        		if (whereClause.isEmpty()) {
-        			whereClause.append(" WHERE CAST(COUNT(g.sites) AS string) like :siteNo");
-        		} else {
-        			whereClause.append(" AND CAST(COUNT(g.sites) AS string) like :siteNo");
-        		}
+        if (!whereClause.isEmpty()) {
+        	if (whereClause.toString().startsWith(" AND")) {
+        		where = " WHERE " + whereClause.substring(whereClause.indexOf(" AND") + 5);
+        	} else if (whereClause.toString().startsWith(" OR")) {
+        		where = " WHERE (" + whereClause.substring(whereClause.indexOf(" OR") + 4) + ") ";
         	}
-            params.put("siteNo", "%" + siteNo + "%");
         }
         
         if (user != null) {
-        	if (whereClause.isEmpty()) {
-        		whereClause.append(" WHERE g.user = :user");
+        	if (where.isEmpty()) {
+        		where += " WHERE g.user = :user";
         	} else {
-        		whereClause.append(" AND g.user = :user");
+        		where +=" AND g.user = :user";
         	}
         	params.put("user", user);
         }
         
         String orderBy = "";
-        String groupBy = "";
         // Apply sorting
         if (pageable.getSort().isSorted()) {
             for (Sort.Order order : pageable.getSort()) {
@@ -152,15 +101,14 @@ public class GlycoproteinRepositoryCustomImpl implements GlycoproteinRepositoryC
                 	orderBy = " ORDER BY t.label " + (order.isAscending() ? "ASC" : "DESC");
                 } else if (order.getProperty().contains("siteNo")) {
                 	orderBy = " ORDER BY COUNT(s) " + (order.isAscending() ? "ASC" : "DESC");
-                	groupBy = " GROUP BY g";
                 } else {
                 	orderBy = " ORDER BY " + order.getProperty() + " " + (order.isAscending() ? "ASC" : "DESC"); 
                 }
             }
         }
 
-        String finalQuery = baseQuery + whereClause.toString() + groupBy + orderBy;
-        String finalCountQuery = countQuery + whereClause.toString();
+        String finalQuery = baseQuery + where + groupByClause + orderBy;
+        String finalCountQuery = countQuery + where;
        
 		TypedQuery<Object[]> query = entityManager.createQuery(finalQuery, Object[].class);
 		TypedQuery<Long> count = entityManager.createQuery(finalCountQuery, Long.class);
@@ -181,5 +129,9 @@ public class GlycoproteinRepositoryCustomImpl implements GlycoproteinRepositoryC
 
         return new PageImpl<>(glycoproteins, pageable, count.getSingleResult());
 	}
+	
 
+	private void appendCondition(StringBuilder whereClause, String condition, boolean orFilter) {
+		whereClause.append(orFilter ? " OR " : " AND ").append(condition);    
+	}
 }

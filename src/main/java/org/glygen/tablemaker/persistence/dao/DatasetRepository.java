@@ -8,9 +8,7 @@ import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
 import org.glygen.tablemaker.persistence.dataset.License;
-import org.glygen.tablemaker.view.Filter;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,13 +16,11 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpecificationExecutor<DatasetProjection>, DatasetRepositoryCustom {
+public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpecificationExecutor<Dataset>, DatasetRepositoryCustom {
 	
-	//public Page<Dataset> findAllByUser(UserEntity user, Pageable pageable);
-	@Query("SELECT d.name as name, d.description as description, d.dateCreated as dateCreated, d.datasetIdentifier as datasetIdentifier, d.datasetId as datasetId, d.user as user FROM Dataset d")
-    Page<DatasetProjection> findAllWithProjection(Pageable pageable);
+    Page<DatasetProjection> findAllBy(Pageable pageable);
 	public Page<DatasetProjection> findAllByUser (UserEntity user, Pageable pageable);
-	public Page<DatasetProjection> findAll(Specification<DatasetProjection> spec, Pageable pageable);
+	public Page<Dataset> findAll(Specification<Dataset> spec, Pageable pageable);
 	public long countByDatasetIdentifier (String identifier);
 	public Dataset findByDatasetIdentifierAndUserAndVersions_version (String identifier, UserEntity user, String version);
 	public Dataset findByDatasetIdentifierAndUserAndVersions_head (String identifier, UserEntity user, Boolean head);

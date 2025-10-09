@@ -560,7 +560,7 @@ public class DataController {
 					}
 				}
 			}
-    		glycoproteinsInPage = glycoproteinRepository.searchGlycoproteins(tagValue, uniprotId, name, proteinName, seqVersion, siteNo, user, 
+    		glycoproteinsInPage = glycoproteinRepository.searchGlycoproteins(tagValue, uniprotId, name, proteinName, seqVersion, user, 
     				orFilter, orderByTags, orderBySites, PageRequest.of(start, size, Sort.by(sortOrders)));
     	} catch (Exception e) {
     		logger.error(e.getMessage(), e);
