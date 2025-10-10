@@ -1217,9 +1217,9 @@ public class DataController {
     		@Parameter(required=true, description="internal id of the file upload") 
             @PathVariable("uploadId")
     		Long batchUploadId,
-    		@RequestBody Object tag){
+    		@RequestBody String tag){
     	
-    	if (tag == null || !(tag instanceof String) || ((String)tag).isEmpty()) {
+    	if (tag == null || tag.isEmpty()) {
     		throw new IllegalArgumentException("Tag cannnot be empty");
     	}
     	
@@ -1238,7 +1238,7 @@ public class DataController {
             	for (GlycanInFile g: entity.getGlycans()) {
             		glycans.add(g.getGlycan());
             	}
-            	glycanManager.addTagToGlycans(glycans, (String)tag, user);
+            	glycanManager.addTagToGlycans(glycans, tag, user);
             }
             return new ResponseEntity<>(new SuccessResponse<BatchUploadEntity>(entity, "the tag is added to all glycans of this file upload"), HttpStatus.OK);
         }
