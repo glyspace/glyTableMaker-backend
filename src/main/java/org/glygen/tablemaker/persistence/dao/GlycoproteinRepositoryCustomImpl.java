@@ -38,7 +38,7 @@ public class GlycoproteinRepositoryCustomImpl implements GlycoproteinRepositoryC
         	} else if (tagKeyword == null && !orderByTags){
         		baseQuery = "SELECT DISTINCT g, COUNT(s) FROM Glycoprotein g LEFT JOIN g.sites s";
 	        	countQuery = "SELECT COUNT(DISTINCT g) FROM Glycoprotein g LEFT JOIN g.sites s";
-	        	groupByClause = " GROUP BY g, t.label";
+	        	groupByClause = " GROUP BY g";
         	} else {
         		baseQuery = "SELECT g, COUNT(s), t.label FROM Glycoprotein g LEFT JOIN g.sites s LEFT JOIN g.tags t";
         		countQuery = "SELECT COUNT(DISTINCT g) FROM Glycoprotein g LEFT JOIN g.sites s LEFT JOIN g.tags t";
