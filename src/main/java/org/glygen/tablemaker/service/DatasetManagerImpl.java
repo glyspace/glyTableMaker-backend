@@ -36,11 +36,9 @@ public class DatasetManagerImpl implements DatasetManager {
 
 	@Override
 	public Dataset saveDataset(Dataset d) {
-		if (d.getDatasetIdentifier() == null) {
-			String identifier = generateUniqueIdentifier ();
-			d.setDatasetIdentifier(identifier);
-		}
 		
+		
+		boolean protein = false;
 		for (DatasetVersion version: d.getVersions()) {
 			if (version.getPublications() != null) {
 				for (Publication p: version.getPublications()) {
@@ -50,6 +48,14 @@ public class DatasetManagerImpl implements DatasetManager {
 					}
 				}
 			}
+			if (version.getGlycoproteinData() != null && !version.getGlycoproteinData().isEmpty()) {
+				protein = true;
+			}
+		}
+		
+		if (d.getDatasetIdentifier() == null) {
+			String identifier = generateUniqueIdentifier (protein);
+			d.setDatasetIdentifier(identifier);
 		}
 		
 		if (d.getAssociatedPapers() != null) {
@@ -93,11 +99,17 @@ public class DatasetManagerImpl implements DatasetManager {
 		return datasetRepository.save(d);
 	}
 	
-	private String generateUniqueIdentifier () {
+	private String generateUniqueIdentifier (boolean protein) {
 		boolean unique = false;
 		String identifier = null;
+		String prefix = "";
 		do {
-			identifier = "TD" + (1000000 + random.nextInt(9999999));
+			if (protein) {
+				prefix = "TP";
+			} else {
+				prefix = "TG";
+			}
+			identifier = prefix + (1000000 + random.nextInt(9999999));
 			long resultSize = datasetRepository.countByDatasetIdentifier(identifier);
 			unique = resultSize == 0;
 		} while (!unique);
