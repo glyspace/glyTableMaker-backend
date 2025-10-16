@@ -296,7 +296,8 @@ public class DatasetController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
       
-        Map<String, Object> response = DataController.getCollectionsoOfCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, sorting);
+        Map<String, Object> response = DataController.getCollectionsoOfCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, 
+        		sorting);
         List<CollectionView> collections = (List<CollectionView>) response.get("objects");
         
         //populate errors/warnings
@@ -992,8 +993,13 @@ public class DatasetController {
     	}
 		return dv;
 	}
+    
+    public void getErrorsForCollection(CollectionView cv) {
+    	getErrorsForCollection(cv, templateRepository, datatypeCategoryRepository, collectionRepository);
+    }
 
-	public void getErrorsForCollection(CollectionView cv) {
+	public static void getErrorsForCollection(CollectionView cv, TemplateRepository templateRepository, 
+		DatatypeCategoryRepository datatypeCategoryRepository, CollectionRepository collectionRepository) {
 		
 		Long templateId = cv.getType() == null || cv.getType() == CollectionType.GLYCAN ? 1L : 2L;
 				
@@ -1031,7 +1037,7 @@ public class DatasetController {
 	}
 		
 		
-	void getErrorsForCollection (CollectionView cv, Collection collection, TableMakerTemplate template, DatatypeCategory glygenCategory) {
+	static void getErrorsForCollection (CollectionView cv, Collection collection, TableMakerTemplate template, DatatypeCategory glygenCategory) {
 		List<DatasetError> errorList = new ArrayList<>();
 		List<DatasetError> warningList = new ArrayList<>();
 		for (TableColumn col: template.getColumns()) {
@@ -1149,7 +1155,7 @@ public class DatasetController {
 		cv.setWarnings(warningList);
 	}
 
-	private boolean isMandatory(Datatype datatype, DatatypeCategory glygenCategory) {
+	private static boolean isMandatory(Datatype datatype, DatatypeCategory glygenCategory) {
 		for (DatatypeInCategory dc : glygenCategory.getDataTypes()) {
 			if (dc.getDatatype().getDatatypeId() == datatype.getDatatypeId())
 				return dc.getMandatory() == null ? false : dc.getMandatory();

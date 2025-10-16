@@ -91,6 +91,7 @@ import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
 import org.glygen.tablemaker.persistence.dao.CollectionTagRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
+import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
@@ -99,6 +100,7 @@ import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinSpecification;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
 import org.glygen.tablemaker.persistence.dao.TableReportRepository;
+import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
@@ -229,6 +231,8 @@ public class DataController {
     final private GlycoproteinRepository glycoproteinRepository;
     final private BatchUploadJobRepository batchUploadJobRepository;
     final private ErrorReportingService errorReportingService;
+    final private TemplateRepository templateRepository;
+	private final DatatypeCategoryRepository datatypeCategoryRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -242,7 +246,7 @@ public class DataController {
     		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, 
     		TableReportRepository reportRepository, NamespaceRepository namespaceRepository, 
     		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
-    		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository, ErrorReportingService errorReportingService, GlycanTagRepository glycanTagRepository, CollectionTagRepository collectionTagRepository) {
+    		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository, ErrorReportingService errorReportingService, GlycanTagRepository glycanTagRepository, CollectionTagRepository collectionTagRepository, TemplateRepository templateRepository, DatatypeCategoryRepository datatypeCategoryRepository) {
         this.glycanRepository = glycanRepository;
 		this.glycanTagRepository = glycanTagRepository;
 		this.collectionRepository = collectionRepository;
@@ -261,6 +265,8 @@ public class DataController {
 		this.glycoproteinRepository = glycoproteinRepository;
 		this.batchUploadJobRepository = batchUploadJobRepository;
 		this.errorReportingService = errorReportingService;
+		this.templateRepository = templateRepository;
+		this.datatypeCategoryRepository = datatypeCategoryRepository;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -385,9 +391,9 @@ public class DataController {
         // retrieve cartoon images
         for (Glycan g: pageGlycans) {
         	// generate optional byonic and condensed composition strings
-        	SequenceUtils.addCompositionInformation(g);
-        	//g.setByonicString(SequenceUtils.generateByonicString(g));
-        	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
+        	if (g.getCondensedString() == null || g.getCondensedString().isEmpty() || g.getByonicString() == null || g.getByonicString().isEmpty()) {
+        		SequenceUtils.addCompositionInformation(g);
+        	}
         	Optional<GlycanImageEntity> imageHandle = glycanImageRepository.findByGlycanId(g.getGlycanId());
         	if (!imageHandle.isPresent()) {
         		// create entry
@@ -600,7 +606,7 @@ public class DataController {
     	        		if (g != null) {
 	    	        		g.setGlycanCollections(null);
 	    	        		g.setSites(null);
-	    	        		SequenceUtils.addCompositionInformation(g);
+	    	        		//SequenceUtils.addCompositionInformation(g);
 	    	        		try {
 	    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 	    	                } catch (DataNotFoundException e) {
@@ -648,6 +654,12 @@ public class DataController {
         }
       
         Map<String, Object> response = getCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, sorting);
+        List<CollectionView> collections = (List<CollectionView>) response.get("objects");
+        
+        //populate errors/warnings
+        for (CollectionView col: collections) {
+        	DatasetController.getErrorsForCollection(col, templateRepository, datatypeCategoryRepository, collectionRepository);
+        }
         return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
     }
     
@@ -769,6 +781,7 @@ public class DataController {
         	collections.add(cv);
         }
         
+        
         Map<String, Object> response = new HashMap<>();
         response.put("objects", collections);
         response.put("currentPage", collectionsInPage.getNumber());
@@ -800,8 +813,14 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
         
-        Map<String, Object> response = getCollectionsoOfCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, sorting);
+        Map<String, Object> response = getCollectionsoOfCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, 
+        		sorting);
+        List<CollectionView> collections = (List<CollectionView>) response.get("objects");
         
+        //populate errors/warnings
+        for (CollectionView col: collections) {
+        	DatasetController.getErrorsForCollection(col, templateRepository, datatypeCategoryRepository, collectionRepository);
+        }
         return new ResponseEntity<>(new SuccessResponse(response, "collections of collections retrieved"), HttpStatus.OK);
     }
     
@@ -959,7 +978,7 @@ public class DataController {
 		    		Glycan g = gic.getGlycan();
 		    		g.setGlycanCollections(null);
 		    		g.setSites(null);
-		    		SequenceUtils.addCompositionInformation(g);
+		    		//SequenceUtils.addCompositionInformation(g);
 		    		//g.setByonicString(SequenceUtils.generateByonicString(g));
 		        	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
 		    		try {
@@ -982,7 +1001,7 @@ public class DataController {
 	    	        		if (g != null) {
 		    	        		g.setGlycanCollections(null);
 		    	        		g.setSites(null);
-		    	        		SequenceUtils.addCompositionInformation(g);
+		    	        		//SequenceUtils.addCompositionInformation(g);
 		    	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
 		    	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
 		    	        		try {
@@ -1017,7 +1036,7 @@ public class DataController {
 			        		Glycan g = gic.getGlycan();
 			        		g.setGlycanCollections(null);
 			        		g.setSites(null);
-			        		SequenceUtils.addCompositionInformation(g);
+			        		//SequenceUtils.addCompositionInformation(g);
 			        		try {
 			                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 			                } catch (DataNotFoundException e) {
@@ -1037,7 +1056,7 @@ public class DataController {
 		        	        		Glycan g = gic.getGlycan();
 		        	        		g.setGlycanCollections(null);
 		        	        		g.setSites(null);
-		        	        		SequenceUtils.addCompositionInformation(g);
+		        	        		//SequenceUtils.addCompositionInformation(g);
 		        	        		try {
 		        	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
 		        	                } catch (DataNotFoundException e) {
@@ -2049,7 +2068,7 @@ public class DataController {
 	        		if (g != null) {
     	        		g.setGlycanCollections(null);
     	        		g.setSites(null);
-    	        		SequenceUtils.addCompositionInformation(g);
+    	        		//SequenceUtils.addCompositionInformation(g);
     	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
     	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
     	        		try {
