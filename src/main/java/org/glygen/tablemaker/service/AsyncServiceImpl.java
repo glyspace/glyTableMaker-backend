@@ -10,9 +10,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import javax.imageio.ImageIO;
@@ -988,6 +990,7 @@ public class AsyncServiceImpl implements AsyncService {
 		try {
 			List<UploadErrorEntity> errors = new ArrayList<>();
 			List<Glycan> allGlycans = new ArrayList<>();
+			Set<String> added = new HashSet<>();
 			Workbook workbook = WorkbookFactory.create(file);
 			int sheetNo = 0;
 			int columnNo = 0;
@@ -1019,13 +1022,13 @@ public class AsyncServiceImpl implements AsyncService {
 	                String sheetName = workbook.getSheetName(i);
 	                boolean matches = sheetName.matches("^Sample_\\d+$");
 	                if (matches) {
-	                	ResultCount result = extractGlycansFromSheet(workbook, i, rowNo, columnNo, allGlycans, errors, user, upload);
+	                	ResultCount result = extractGlycansFromSheet(workbook, i, rowNo, columnNo, allGlycans, added, errors, user, upload);
 	                	total.count += result.count;
 	                	total.countSuccess += result.countSuccess;
 	                }
 	            }
 			} else {
-				total = extractGlycansFromSheet(workbook, sheetNo, rowNo, columnNo, allGlycans, errors, user, upload);
+				total = extractGlycansFromSheet(workbook, sheetNo, rowNo, columnNo, allGlycans, added, errors, user, upload);
 			}
 			
 			if (tag != null && !tag.trim().isEmpty()) {
@@ -1043,7 +1046,7 @@ public class AsyncServiceImpl implements AsyncService {
 	}  
 	
 	private ResultCount extractGlycansFromSheet (Workbook workbook, int sheetNo, int rowNo, int columnNo, 
-			List<Glycan> allGlycans, List<UploadErrorEntity> errors, UserEntity user, BatchUploadEntity upload) {
+			List<Glycan> allGlycans, Set<String> addedGlycans, List<UploadErrorEntity> errors, UserEntity user, BatchUploadEntity upload) {
 		Sheet sheet = workbook.getSheetAt(sheetNo);
 		Iterator<Row> rowIterator = sheet.iterator();
 		boolean started = false;
@@ -1061,7 +1064,12 @@ public class AsyncServiceImpl implements AsyncService {
             		break;
             	}
             	String comp = compositionCell.getStringCellValue();
+            	if (addedGlycans.contains(comp)) {
+            		// skip
+            		continue;
+            	}
             	try {
+            		addedGlycans.add(comp);
 					// parse and register glycans
             		Composition compo = SequenceUtils.getWurcsCompositionFromGlycoGenius(comp.trim());
 					String strWURCS = CompositionConverter.toWURCS(compo);
