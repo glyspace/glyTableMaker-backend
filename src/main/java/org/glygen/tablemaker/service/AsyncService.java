@@ -24,4 +24,7 @@ public interface AsyncService {
 
 	CompletableFuture<SuccessResponse<BatchUploadEntity>> addGlycoproteinFromExcelFile(File file,
 			BatchUploadEntity upload, UserEntity user, String tag, CompositionType compType);
+
+	CompletableFuture<SuccessResponse<BatchUploadEntity>> addGlycanFromGlycoGeniusFile(File file,
+			BatchUploadEntity saved, UserEntity user, ExcelFileWrapper excelParameters, String tag, SequenceFormat format);
 }

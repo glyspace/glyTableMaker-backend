@@ -1665,7 +1665,7 @@ public class DataController {
             parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user);
         } else { // composition
             try {
-                
+                boolean doNotRegister = false;
                 String strWURCS = null;
                 switch (compositionType) {
                 case BASE:
@@ -1713,6 +1713,11 @@ public class DataController {
 					g.setFormat(SequenceFormat.PPCOMPOSITION);
 					parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user);
 					break;
+				case GLYCOGENIUS:
+					compo = SequenceUtils.getWurcsCompositionFromGlycoGenius(g.getComposition().trim());
+					strWURCS = CompositionConverter.toWURCS(compo);
+					//TODO disable this for the production system
+					doNotRegister = true;
 				default:
 					break;
                 }
@@ -1744,7 +1749,7 @@ public class DataController {
 	                }
 	                try {
 	                	SequenceUtils.getWurcsAndGlytoucanID(glycan, null);
-	                	if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
+	                	if (!doNotRegister && (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty())) {
 	                    	SequenceUtils.registerGlycan(glycan);
 	                    }
 	                } catch (GlytoucanAPIFailedException e) {
@@ -2535,7 +2540,7 @@ public class DataController {
 	        @RequestBody
     		FileWrapper fileWrapper, 
     		@Parameter(required=true, name="filetype", description="type of the file", schema = @Schema(type = "string",
-    		allowableValues= {"GWS", "WURCS", "EXCEL", "PPCOMPOSITION"})) 
+    		allowableValues= {"GWS", "WURCS", "EXCEL", "PPCOMPOSITION, GLYCOGENIUSDB, GLYCOGENIUSRESULT"})) 
 	        @RequestParam(required=true, value="filetype") String fileType,
 	        @RequestParam(required=false, value="tag") String tag) {
     	
@@ -2613,6 +2618,10 @@ public class DataController {
                     case PPCOMPOSITION:
                     	response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, "\\n", tag);
                     	break;
+                    case GLYCOGENIUSDB:
+                    case GLYCOGENIUSRESULT:
+                    	response = batchUploadService.addGlycanFromGlycoGeniusFile(newFile, saved, user, fileWrapper.getExcelParameters(), tag, format);
+                    	break;
 					default:
 						break;
                     }
@@ -2634,7 +2643,11 @@ public class DataController {
                     			if (saved.getErrors() == null) {
                     				saved.setErrors(new ArrayList<>());
                     			}
-                    			UploadErrorEntity error = new UploadErrorEntity(null, e.getCause().getMessage(), null);
+                    			String errorMessage = e.getMessage();
+                    			if (e.getCause() != null) {
+                    				errorMessage = e.getCause().getMessage();
+                    			}
+                    			UploadErrorEntity error = new UploadErrorEntity(null, errorMessage, null);
                     			error.setUpload(saved);
                     			saved.getErrors().add(error);
                     		}
@@ -3493,6 +3506,9 @@ public class DataController {
     }
     
     public static void parseAndRegisterGlycan (Glycan glycan, GlycanView g, GlycanRepository glycanRepository, ErrorReportingService errorReportingService, UserEntity user) {
+    	parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user, false);
+    }
+    public static void parseAndRegisterGlycan (Glycan glycan, GlycanView g, GlycanRepository glycanRepository, ErrorReportingService errorReportingService, UserEntity user, boolean doNotRegister) {
     	org.eurocarbdb.application.glycanbuilder.Glycan glycanObject= null;
         FixGlycoCtUtil fixGlycoCT = new FixGlycoCtUtil();
         Sugar sugar = null;
@@ -3664,7 +3680,7 @@ public class DataController {
             if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().trim().isEmpty()) {
             	SequenceUtils.getWurcsAndGlytoucanID(glycan, sugar);
             }
-            if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
+            if (!doNotRegister && (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty())) {
             	SequenceUtils.registerGlycan(glycan);
             } 
         } catch (GlycoVisitorException e) {
@@ -3707,7 +3723,7 @@ public class DataController {
                             WURCS2Parser t_wurcsparser = new WURCS2Parser();
                             glycanObject = t_wurcsparser.readGlycan(seq, new MassOptions());
                         } catch (Exception e) {
-                            logger.error ("Glycan image cannot be generated with WURCS sequence", e);
+                            logger.error ("Glycan image cannot be generated with WURCS sequence. Reason: " + e);
                         }
                     }
                 }
@@ -3721,7 +3737,7 @@ public class DataController {
             } 
 
         } catch (Exception e) {
-            logger.error ("Glycan image cannot be generated", e);
+            logger.error ("Glycan image cannot be generated. Reason: " + e.getMessage());
             // check if there is glytoucan id
             if (glycan.getGlytoucanID() != null) {
                 String seq = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
@@ -3733,7 +3749,7 @@ public class DataController {
                             t_image = glycanWorkspace.getGlycanRenderer().getImage(glycanObject, true, false, true, 1.0D);
                         }
                     } catch (Exception e1) {
-                        logger.error ("Glycan image cannot be generated from WURCS", e);
+                        logger.error ("Glycan image cannot be generated from WURCS. Reason: " + e);
                     }
                 }
             }

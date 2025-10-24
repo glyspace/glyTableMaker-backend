@@ -5,5 +5,7 @@ public enum SequenceFormat {
     WURCS,
     GWS,
     LINEARCODE,
-    PPCOMPOSITION;
+    PPCOMPOSITION,
+    GLYCOGENIUSDB,
+    GLYCOGENIUSRESULT;
 }
