@@ -10,9 +10,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import javax.imageio.ImageIO;
@@ -979,7 +981,151 @@ public class AsyncServiceImpl implements AsyncService {
 				errors.add(new UploadErrorEntity(null, e.getMessage(), protein.getUniprotId()));
 			}
 		}
-	}   
+	}
+
+	@Override
+	public CompletableFuture<SuccessResponse<BatchUploadEntity>> addGlycanFromGlycoGeniusFile(File file,
+			BatchUploadEntity upload, UserEntity user, ExcelFileWrapper excelParameters,
+			String tag, SequenceFormat format) {
+		try {
+			List<UploadErrorEntity> errors = new ArrayList<>();
+			List<Glycan> allGlycans = new ArrayList<>();
+			Set<String> added = new HashSet<>();
+			Workbook workbook = WorkbookFactory.create(file);
+			int sheetNo = 0;
+			int columnNo = 0;
+			int rowNo = 0;
+			boolean allSamples = false;
+			if (excelParameters != null) {
+				if (excelParameters.getSheetNumber() != null) {
+					sheetNo = excelParameters.getSheetNumber()-1;   // 0 based index
+				} else if (excelParameters.getSheetName() != null && !excelParameters.getSheetName().isEmpty()) {
+					sheetNo = workbook.getSheetIndex(excelParameters.getSheetName().trim());
+				} else if (format == SequenceFormat.GLYCOGENIUSRESULT){
+					allSamples = true;
+				}
+	 			if (excelParameters.getColumnNo() != null) 
+					columnNo = excelParameters.getColumnNo()-1;
+				if (excelParameters.getStartRow() != null) 
+					rowNo = excelParameters.getStartRow()-1;
+			}
+			
+			if (format != SequenceFormat.GLYCOGENIUSRESULT && sheetNo == -1) {
+				errors.add(new UploadErrorEntity("-1", "Sheet name " + excelParameters.getSheetName() + " is invalid", null));
+			}
+			
+			ResultCount total = null;
+			if (allSamples) {
+				int numberOfSheets = workbook.getNumberOfSheets();
+				total = new ResultCount();
+	            for (int i = 0; i < numberOfSheets; i++) {	
+	                String sheetName = workbook.getSheetName(i);
+	                boolean matches = sheetName.matches("^Sample_\\d+$");
+	                if (matches) {
+	                	ResultCount result = extractGlycansFromSheet(workbook, i, rowNo, columnNo, allGlycans, added, errors, user, upload);
+	                	total.count += result.count;
+	                	total.countSuccess += result.countSuccess;
+	                }
+	            }
+			} else {
+				total = extractGlycansFromSheet(workbook, sheetNo, rowNo, columnNo, allGlycans, added, errors, user, upload);
+			}
+			
+			if (tag != null && !tag.trim().isEmpty()) {
+            	glycanManager.addTagToGlycans(allGlycans, tag, user);
+            }
+            if (!errors.isEmpty()) {
+            	return CompletableFuture.failedFuture(new BatchUploadException("There are errors in the file", errors));
+            }
+			return CompletableFuture.completedFuture (new SuccessResponse<BatchUploadEntity>(upload, total.countSuccess + " out of " + total.count + " glycans are added successfully"));
+		} catch (Exception e) {
+			List<UploadErrorEntity> errors = new ArrayList<>();
+			errors.add(new UploadErrorEntity(null, "File is not valid. Reason: " + e.getMessage(), null));
+            return CompletableFuture.failedFuture(new BatchUploadException("File is not valid.", errors));
+		}
+	}  
+	
+	private ResultCount extractGlycansFromSheet (Workbook workbook, int sheetNo, int rowNo, int columnNo, 
+			List<Glycan> allGlycans, Set<String> addedGlycans, List<UploadErrorEntity> errors, UserEntity user, BatchUploadEntity upload) {
+		Sheet sheet = workbook.getSheetAt(sheetNo);
+		Iterator<Row> rowIterator = sheet.iterator();
+		boolean started = false;
+		int count = 0;
+        int countSuccess = 0;
+        while (rowIterator.hasNext()) {
+            Row row = rowIterator.next();
+            if (row.getRowNum() == rowNo) {
+            	started = true;
+            }
+            if (started) {
+            	count++;
+            	Cell compositionCell = row.getCell(columnNo);
+            	if (compositionCell.getCellType() == CellType.BLANK) {
+            		break;
+            	}
+            	String comp = compositionCell.getStringCellValue();
+            	if (addedGlycans.contains(comp)) {
+            		// skip
+            		continue;
+            	}
+            	try {
+            		addedGlycans.add(comp);
+					// parse and register glycans
+            		Composition compo = SequenceUtils.getWurcsCompositionFromGlycoGenius(comp.trim());
+					String strWURCS = CompositionConverter.toWURCS(compo);
+                	//  parse and add glycan
+                	GlycanView g = new GlycanView();
+                	g.setFormat(SequenceFormat.WURCS);
+                	g.setSequence(strWURCS);
+                	Glycan glycan = new Glycan();
+                	DataController.parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user, true);
+                	// save the glycan
+                    glycan.setDateCreated(new Date());
+                    glycan.setUser(user);
+                    allGlycans.add(glycan);
+                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
+                    if (added != null) {
+                        BufferedImage t_image = DataController.createImageForGlycan(added);
+                        if (t_image != null) {
+                            String filename = added.getGlycanId() + ".png";
+                            //save the image into a file
+                            logger.debug("Adding image to " + imageLocation);
+                            File imageFile = new File(imageLocation + File.separator + filename);
+                            try {
+                                ImageIO.write(t_image, "png", imageFile);
+                            } catch (IOException e) {
+                                logger.error("could not write cartoon image to file", e);
+                            }
+                        } else {
+                            logger.warn ("Glycan image cannot be generated for glycan " + added.getGlycanId());
+                        }
+                    }
+                } catch (DuplicateException e) {
+                	//errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));
+                	if (e.getDuplicate() != null && e.getDuplicate() instanceof Glycan) {
+                		Glycan existing = (Glycan) e.getDuplicate();
+                		if (!allGlycans.contains(existing)) {
+                			glycanManager.addUploadToGlycan(existing, upload, false, user);
+                			allGlycans.add(existing);
+                		}
+                	}
+                } catch (Exception e) {
+                	errors.add(new UploadErrorEntity(count+"", e.getMessage(), comp));
+                }
+            	
+            }
+        }
+        
+        ResultCount result = new ResultCount();
+        result.count = count;
+        result.countSuccess = countSuccess;
+        return result;
+	}
+}
+
+class ResultCount {
+	int count=0;
+	int countSuccess=0;
 }
 
 class ByonicRow {

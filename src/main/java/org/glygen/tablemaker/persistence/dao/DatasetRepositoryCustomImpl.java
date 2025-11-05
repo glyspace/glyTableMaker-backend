@@ -116,7 +116,7 @@ public class DatasetRepositoryCustomImpl implements DatasetRepositoryCustom {
         	whereClause.append(")");
         }
         
-        if (globalFilter != null && !globalFilter.isEmpty()) {
+        if (globalFilter != null && !globalFilter.isEmpty() && !globalFilter.equalsIgnoreCase("undefined")) {
         	whereClause.append(" AND (");
             whereClause.append(" LOWER(d.value) LIKE '%" + globalFilter.toLowerCase() + "%' OR ");
             whereClause.append(" LOWER(d.valueUri) LIKE '%" + globalFilter.toLowerCase() + "%' OR ");

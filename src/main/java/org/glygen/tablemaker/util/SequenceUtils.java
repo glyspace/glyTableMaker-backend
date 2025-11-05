@@ -7,6 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eurocarbdb.MolecularFramework.io.SugarImporterException;
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarImporterGlycoCTCondensed;
@@ -39,6 +41,7 @@ public class SequenceUtils {
 	static org.slf4j.Logger logger = LoggerFactory.getLogger(SequenceUtils.class);
 	
 	static Map<String, String> singleLetterMapping = new HashMap<>();
+	static Map<String, String> glycoGeniusMapping = new HashMap<>();
 	static Map<String, String> singleLetterExportMapping = new HashMap<>();
 	static List<SearchQueryItem> queryList = new ArrayList<>();	
 	static Map<String, String> byonicMapping = new HashMap<>();
@@ -65,6 +68,18 @@ public class SequenceUtils {
 		singleLetterMapping.put("Gd", "Fuc");
 		singleLetterMapping.put("Ge", "Fuc");
 		singleLetterMapping.put("HexAe", "Fuc");*/
+		
+		glycoGeniusMapping.put("p", "P");
+		glycoGeniusMapping.put("s", "S");
+		glycoGeniusMapping.put("H", "Hex");
+		glycoGeniusMapping.put("HN", "HexN");
+		glycoGeniusMapping.put("N", "HexNAc");
+		glycoGeniusMapping.put("F", "Fuc");
+		glycoGeniusMapping.put("S", "Neu5Ac");
+		glycoGeniusMapping.put("G", "Neu5Gc");
+		glycoGeniusMapping.put("X", "Xyl");
+		glycoGeniusMapping.put("UA", "HexA");
+		
 		
 		// keys should match the the byonic queryList below, values should match the singleLetterMapping above
 		singleLetterExportMapping.put("Pent", "P");
@@ -313,6 +328,58 @@ public class SequenceUtils {
     		if (composition.endsWith("|"))
     			composition = composition.substring(0, composition.length()-1);
     		
+    		Composition compo = CompositionUtils.parse(composition);
+    		return compo;
+    	}
+    	
+    	return null;
+    }
+    public static Composition getWurcsCompositionFromGlycoGenius (String sequence) throws DictionaryException, CompositionParseException {
+    	if (sequence != null) {
+			// Split into prefix and suffix
+	        String[] parts = sequence.split("\\+", 2);
+	        sequence = parts[0];
+	        String suffix = parts.length > 1 ? parts[1] : "";
+
+	        String transformedSuffix = "";
+			if (!suffix.isEmpty()) {
+		        // Find all matches like 1(s), 1(p)
+		        Pattern pattern = Pattern.compile("(\\d+)\\((\\w+)\\)");
+		        Matcher matcher = pattern.matcher(suffix);
+	
+		        List<String> transformedParts = new ArrayList<>();
+		        while (matcher.find()) {
+		            String count = matcher.group(1);
+		            String label = matcher.group(2);
+		            transformedParts.add(glycoGeniusMapping.get(label) + ":" + count);
+		        }
+	
+		        transformedSuffix  = String.join("|", transformedParts);
+	        }
+    		
+    		String composition  = "";
+    		// split by numbers
+    		String splitRE = "(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)";
+    		String[] monoWithCountList = sequence.split(splitRE);
+    		boolean number = false;
+    		for (String item: monoWithCountList) {
+    			if (number) {
+    				composition += ":" + item + "|";
+    				number = false;
+    			} else {
+    				if (glycoGeniusMapping.get(item) != null)
+    					composition += glycoGeniusMapping.get(item);
+    				else {
+    					throw new CompositionParseException ("Unrecognized string " + item + " in GlycoGenius sequence");
+    				}
+    				number = true;
+    			}
+    		}
+    		
+    		if (composition.endsWith("|") && transformedSuffix.isEmpty())
+    			composition = composition.substring(0, composition.length()-1);
+    		
+    		composition += transformedSuffix;
     		Composition compo = CompositionUtils.parse(composition);
     		return compo;
     	}

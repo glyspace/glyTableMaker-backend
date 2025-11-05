@@ -1665,7 +1665,7 @@ public class DataController {
             parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user);
         } else { // composition
             try {
-                
+                boolean doNotRegister = false;
                 String strWURCS = null;
                 switch (compositionType) {
                 case BASE:
@@ -1713,6 +1713,11 @@ public class DataController {
 					g.setFormat(SequenceFormat.PPCOMPOSITION);
 					parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user);
 					break;
+				case GLYCOGENIUS:
+					compo = SequenceUtils.getWurcsCompositionFromGlycoGenius(g.getComposition().trim());
+					strWURCS = CompositionConverter.toWURCS(compo);
+					//TODO disable this for the production system
+					doNotRegister = true;
 				default:
 					break;
                 }
@@ -1744,7 +1749,7 @@ public class DataController {
 	                }
 	                try {
 	                	SequenceUtils.getWurcsAndGlytoucanID(glycan, null);
-	                	if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
+	                	if (!doNotRegister && (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty())) {
 	                    	SequenceUtils.registerGlycan(glycan);
 	                    }
 	                } catch (GlytoucanAPIFailedException e) {
@@ -2535,7 +2540,7 @@ public class DataController {
 	        @RequestBody
     		FileWrapper fileWrapper, 
     		@Parameter(required=true, name="filetype", description="type of the file", schema = @Schema(type = "string",
-    		allowableValues= {"GWS", "WURCS", "EXCEL", "PPCOMPOSITION"})) 
+    		allowableValues= {"GWS", "WURCS", "EXCEL", "PPCOMPOSITION, GLYCOGENIUSDB, GLYCOGENIUSRESULT"})) 
 	        @RequestParam(required=true, value="filetype") String fileType,
 	        @RequestParam(required=false, value="tag") String tag) {
     	
@@ -2613,6 +2618,10 @@ public class DataController {
                     case PPCOMPOSITION:
                     	response = batchUploadService.addGlycanFromTextFile(fileContent, saved, user, format, "\\n", tag);
                     	break;
+                    case GLYCOGENIUSDB:
+                    case GLYCOGENIUSRESULT:
+                    	response = batchUploadService.addGlycanFromGlycoGeniusFile(newFile, saved, user, fileWrapper.getExcelParameters(), tag, format);
+                    	break;
 					default:
 						break;
                     }
@@ -2634,7 +2643,11 @@ public class DataController {
                     			if (saved.getErrors() == null) {
                     				saved.setErrors(new ArrayList<>());
                     			}
-                    			UploadErrorEntity error = new UploadErrorEntity(null, e.getCause().getMessage(), null);
+                    			String errorMessage = e.getMessage();
+                    			if (e.getCause() != null) {
+                    				errorMessage = e.getCause().getMessage();
+                    			}
+                    			UploadErrorEntity error = new UploadErrorEntity(null, errorMessage, null);
                     			error.setUpload(saved);
                     			saved.getErrors().add(error);
                     		}
@@ -3493,6 +3506,9 @@ public class DataController {
     }
     
     public static void parseAndRegisterGlycan (Glycan glycan, GlycanView g, GlycanRepository glycanRepository, ErrorReportingService errorReportingService, UserEntity user) {
+    	parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user, false);
+    }
+    public static void parseAndRegisterGlycan (Glycan glycan, GlycanView g, GlycanRepository glycanRepository, ErrorReportingService errorReportingService, UserEntity user, boolean doNotRegister) {
     	org.eurocarbdb.application.glycanbuilder.Glycan glycanObject= null;
         FixGlycoCtUtil fixGlycoCT = new FixGlycoCtUtil();
         Sugar sugar = null;
@@ -3570,10 +3586,14 @@ public class DataController {
                 try {
                     // parse and convert to GlycoCT
                     glycanObject = org.eurocarbdb.application.glycanbuilder.Glycan.fromString(glycan.getGws());
-                    String glycoCT = glycanObject.toGlycoCTCondensed();
-                    glycoCT = fixGlycoCT.fixGlycoCT(glycoCT);
-                    glycan.setGlycoCT(glycoCT);
-                    glycan.setMass(SequenceUtils.computeMass(glycanObject));
+                    if (glycanObject != null) {
+	                    String glycoCT = glycanObject.toGlycoCTCondensed();
+	                    glycoCT = fixGlycoCT.fixGlycoCT(glycoCT);
+	                    glycan.setGlycoCT(glycoCT);
+	                    glycan.setMass(SequenceUtils.computeMass(glycanObject));
+                    } else {
+                    	throw new IllegalArgumentException("GWS sequence is not valid.");
+                    }
                 } catch (Exception e) {
                     throw new IllegalArgumentException("GWS sequence is not valid. Reason: " + e.getMessage());
                 }
@@ -3622,39 +3642,43 @@ public class DataController {
             case GLYCOCT:
             default:
             	glycan.setGlycoCT(g.getSequence().trim());
-                // parse and convert to WURCS
+            	// check to make sure GlycoCT valid without using GWB
+                SugarImporterGlycoCTCondensed importer = new SugarImporterGlycoCTCondensed();
                 try {
-                    glycanObject = org.eurocarbdb.application.glycanbuilder.Glycan.fromGlycoCTCondensed(glycan.getGlycoCT());
-                    if (glycanObject != null) {
-                        String glycoCT = glycanObject.toGlycoCTCondensed(); // required to fix formatting errors like extra line break etc.
+                    sugar = importer.parse(glycan.getGlycoCT());
+                    if (sugar == null) {
+                        logger.error("Cannot get Sugar object for sequence:\n" + glycan.getGlycoCT());
+                    } else {
+                        SugarExporterGlycoCTCondensed exporter = new SugarExporterGlycoCTCondensed();
+                        exporter.start(sugar);
+                        String glycoCT = exporter.getHashCode();
                         glycoCT = fixGlycoCT.fixGlycoCT(glycoCT);
                         glycan.setGlycoCT(glycoCT);
-                        glycan.setMass(SequenceUtils.computeMass(glycanObject));
+                        // calculate mass
+                        GlycoVisitorMass massVisitor = new GlycoVisitorMass();
+                        massVisitor.start(sugar);
+                        glycan.setMass(massVisitor.getMass(GlycoVisitorMass.DERIVATISATION_NONE));
                     }
-                } catch (Exception e) {
-                    logger.error("Glycan builder parse error", e.getMessage());
-                    // check to make sure GlycoCT valid without using GWB
-                    SugarImporterGlycoCTCondensed importer = new SugarImporterGlycoCTCondensed();
+                } catch (Exception pe) {
+                    logger.error("GlycoCT parsing failed " + pe.getMessage());
+                    // use GWB to calculate mass
                     try {
-                        sugar = importer.parse(glycan.getGlycoCT());
-                        if (sugar == null) {
-                            logger.error("Cannot get Sugar object for sequence:\n" + glycan.getGlycoCT());
-                        } else {
-                            SugarExporterGlycoCTCondensed exporter = new SugarExporterGlycoCTCondensed();
-                            exporter.start(sugar);
-                            String glycoCT = exporter.getHashCode();
+                        glycanObject = org.eurocarbdb.application.glycanbuilder.Glycan.fromGlycoCTCondensed(glycan.getGlycoCT());
+                        if (glycanObject != null) {
+                            String glycoCT = glycanObject.toGlycoCTCondensed(); // required to fix formatting errors like extra line break etc.
                             glycoCT = fixGlycoCT.fixGlycoCT(glycoCT);
                             glycan.setGlycoCT(glycoCT);
-                            // calculate mass
-                            GlycoVisitorMass massVisitor = new GlycoVisitorMass();
-                            massVisitor.start(sugar);
-                            glycan.setMass(massVisitor.getMass(GlycoVisitorMass.DERIVATISATION_NONE));
+                            glycan.setMass(SequenceUtils.computeMass(glycanObject));
+                        } else {
+                        	logger.error("Glycan builder parse error for " + glycan.getGlycoCT());
+                        	//throw new IllegalArgumentException ("GlycoCT parsing failed. Reason " + pe.getMessage());
                         }
-                    } catch (Exception pe) {
-                        logger.error("GlycoCT parsing failed", pe.getMessage());
-                        throw new IllegalArgumentException ("GlycoCT parsing failed. Reason " + pe.getMessage());
+                    } catch (Exception e) {
+                        logger.error("Glycan builder parse error for " + glycan.getGlycoCT() + "\nReason:" + e.getMessage());
+                        //throw new IllegalArgumentException ("GlycoCT parsing failed. Reason " + pe.getMessage());
                     }
                 }
+           
                 existing = glycanRepository.findByGlycoCTIgnoreCaseAndUser(glycan.getGlycoCT(), user);
                 if (existing != null && existing.size() > 0) {
                     throw new DuplicateException ("There is already a glycan with GlycoCT " + glycan.getGlycoCT(), null, existing.get(0));
@@ -3663,12 +3687,26 @@ public class DataController {
             // check if the glycan has an accession number in Glytoucan
             if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().trim().isEmpty()) {
             	SequenceUtils.getWurcsAndGlytoucanID(glycan, sugar);
+            	// check for duplicates again
+            	List<Glycan> existing = null;
+            	if (glycan.getGlytoucanID() != null) {
+            		existing = glycanRepository.findByGlytoucanIDIgnoreCaseAndUser(glycan.getGlytoucanID(), user);
+            		if (existing != null && !existing.isEmpty()) {
+                		throw new DuplicateException ("There is already a glycan with glytoucanId " + glycan.getGlytoucanID(), null, existing.get(0));
+                	}
+            	} else if (glycan.getWurcs() != null) {
+            		existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
+            		if (existing != null && !existing.isEmpty()) {
+                		throw new DuplicateException ("There is already a glycan with wurcs " + glycan.getWurcs(), null, existing.get(0));
+                	}
+            	}
             }
-            if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
+            if (!doNotRegister && (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty())) {
             	SequenceUtils.registerGlycan(glycan);
             } 
         } catch (GlycoVisitorException e) {
-            throw new IllegalArgumentException(e.getMessage());
+        	logger.error("GlycoVisiyorException in parseAndRegisterGlycan ", e);
+            throw new IllegalArgumentException(e);
         } catch (GlytoucanAPIFailedException e) {
         	glycan.setStatus(RegistrationStatus.NOT_SUBMITTED_YET);
         	//glycan.setError("Cannot retrieve glytoucan id. Reason: " + e.getMessage());
@@ -3696,7 +3734,11 @@ public class DataController {
         BufferedImage t_image = null;
         org.eurocarbdb.application.glycanbuilder.Glycan glycanObject = null;
         try {
-            if (glycan.getGlycoCT() != null && !glycan.getGlycoCT().isEmpty()) {
+        	if (glycan.getWurcs() != null && !glycan.getWurcs().isEmpty()) {
+                WURCS2Parser t_wurcsparser = new WURCS2Parser();
+                glycanObject = t_wurcsparser.readGlycan(glycan.getWurcs().trim(), new MassOptions());
+        	}
+        	else if (glycan.getGlycoCT() != null && !glycan.getGlycoCT().isEmpty()) {
                 glycanObject = 
                         org.eurocarbdb.application.glycanbuilder.Glycan.
                         fromGlycoCTCondensed(glycan.getGlycoCT().trim());
@@ -3707,21 +3749,19 @@ public class DataController {
                             WURCS2Parser t_wurcsparser = new WURCS2Parser();
                             glycanObject = t_wurcsparser.readGlycan(seq, new MassOptions());
                         } catch (Exception e) {
-                            logger.error ("Glycan image cannot be generated with WURCS sequence", e);
+                            logger.error ("Glycan image cannot be generated with WURCS sequence. Reason: " + e);
                         }
                     }
                 }
                 
-            } else if (glycan.getWurcs() != null && !glycan.getWurcs().isEmpty()) {
-                WURCS2Parser t_wurcsparser = new WURCS2Parser();
-                glycanObject = t_wurcsparser.readGlycan(glycan.getWurcs().trim(), new MassOptions());
-            }
+            } 
+        	
             if (glycanObject != null) {
                 t_image = glycanWorkspace.getGlycanRenderer().getImage(glycanObject, true, false, true, 1.0D);
             } 
 
         } catch (Exception e) {
-            logger.error ("Glycan image cannot be generated", e);
+            logger.error ("Glycan image cannot be generated. Reason: " + e.getMessage());
             // check if there is glytoucan id
             if (glycan.getGlytoucanID() != null) {
                 String seq = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
@@ -3733,7 +3773,7 @@ public class DataController {
                             t_image = glycanWorkspace.getGlycanRenderer().getImage(glycanObject, true, false, true, 1.0D);
                         }
                     } catch (Exception e1) {
-                        logger.error ("Glycan image cannot be generated from WURCS", e);
+                        logger.error ("Glycan image cannot be generated from WURCS. Reason: " + e);
                     }
                 }
             }
