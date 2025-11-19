@@ -2103,23 +2103,82 @@ public class DataController {
         }
         
         List<Glycan> existing = new ArrayList<>();
-        switch (g.getFormat()) {
-        case GLYCOCT:
-        	existing = glycanRepository.findByGlycoCTIgnoreCaseAndUser(g.getSequence(), user);
-        	break;
-        case WURCS:
-        	existing = glycanRepository.findByWurcsIgnoreCaseAndUser(g.getSequence(), user);
-        	break;
-        case GWS:
-        	existing = glycanRepository.findByGwsIgnoreCaseAndUser(g.getSequence(), user);
-        	break;
-		default:
-			break;
+        if (g.getGlytoucanID() != null) {
+        	existing = glycanRepository.findByGlytoucanIDIgnoreCaseAndUser(g.getGlytoucanID(), user);
+        } else {
+        	FixGlycoCtUtil fixGlycoCT = new FixGlycoCtUtil();
+	        WURCSValidator validator;
+			switch (g.getFormat()) {
+	        case GLYCOCT:
+	        	Sugar sugar = null;
+	        	// check to make sure GlycoCT valid without using GWB
+                SugarImporterGlycoCTCondensed importer = new SugarImporterGlycoCTCondensed();
+                try {
+                    sugar = importer.parse(g.getSequence().trim());
+                    if (sugar == null) {
+                        logger.error("Cannot get Sugar object for sequence:\n" + g.getSequence());
+                    } else {
+                        SugarExporterGlycoCTCondensed exporter = new SugarExporterGlycoCTCondensed();
+                        exporter.start(sugar);
+                        String glycoCT = exporter.getHashCode();
+                        glycoCT = fixGlycoCT.fixGlycoCT(glycoCT);
+                        g.setSequence(glycoCT);
+                    }
+                } catch (Exception pe) {
+                    logger.error("GlycoCT parsing failed " + pe.getMessage());
+                    // use GWB to calculate mass
+                    try {
+                        org.eurocarbdb.application.glycanbuilder.Glycan glycanObject = org.eurocarbdb.application.glycanbuilder.Glycan.fromGlycoCTCondensed(g.getSequence().trim());
+                        if (glycanObject != null) {
+                            String glycoCT = glycanObject.toGlycoCTCondensed(); // required to fix formatting errors like extra line break etc.
+                            glycoCT = fixGlycoCT.fixGlycoCT(glycoCT);
+                            g.setSequence(glycoCT);
+                        } 
+                    } catch (Exception e) {
+                        logger.error("Glycan builder parse error for " + g.getSequence() + "\nReason:" + e.getMessage());
+                        //throw new IllegalArgumentException ("GlycoCT parsing failed. Reason " + pe.getMessage());
+                    }
+                }
+                
+                existing = glycanRepository.findByGlycoCTIgnoreCaseAndUser(g.getSequence(), user);
+                
+                if (existing.isEmpty()) {
+                	Glycan glycan = new Glycan();
+                	glycan.setGlycoCT(g.getSequence());
+                	try {
+                		SequenceUtils.getWurcsAndGlytoucanID(glycan, sugar);
+	                	// check for duplicates again
+	                	if (glycan.getGlytoucanID() != null) {
+	                		existing = glycanRepository.findByGlytoucanIDIgnoreCaseAndUser(glycan.getGlytoucanID(), user);
+	                	} else if (glycan.getWurcs() != null) {
+	                		existing = glycanRepository.findByWurcsIgnoreCaseAndUser(glycan.getWurcs(), user);
+	                	}
+                	} catch (Exception e) {
+                		logger.error("Wurcs conversion error for " + g.getSequence() + "\nReason:" + e.getMessage());
+                	}
+                }
+	        	break;
+	        case WURCS:
+	        	// recode the sequence
+	        	String wurcs = g.getSequence();
+                validator = new WURCSValidator();
+                validator.start(wurcs);
+                if (!validator.getReport().hasError()) {
+                    wurcs = validator.getReport().getStandardString();
+                }
+	        	existing = glycanRepository.findByWurcsIgnoreCaseAndUser(wurcs, user);
+	        	break;
+	        case GWS:
+	        	existing = glycanRepository.findByGwsIgnoreCaseAndUser(g.getSequence(), user);
+	        	break;
+			default:
+				break;
+	        }
         }
         
         if (existing.isEmpty()) {
         	throw new EntityNotFoundException("glycan with the given sequence does not exist!");
-        }
+        } 
         
         return new ResponseEntity<>(new SuccessResponse<Glycan>(existing.get(0), "glycan retrieved"), HttpStatus.OK);
     }

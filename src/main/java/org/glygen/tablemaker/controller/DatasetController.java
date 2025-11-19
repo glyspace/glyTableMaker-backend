@@ -331,7 +331,7 @@ public class DatasetController {
         
         // save the dataset
         
-        if (!user.getUsername().equalsIgnoreCase("cfgdata")) {
+        if (!user.getUsername().equalsIgnoreCase("cfgdata") && !user.getUsername().equalsIgnoreCase("carbbank")) {
 	        // check for errors in the collections
 	        StringBuffer errorMessage = new StringBuffer();
 	        for (CollectionView cv: d.getCollections()) {
