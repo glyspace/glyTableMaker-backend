@@ -496,6 +496,7 @@ public class DataController {
         ObjectMapper mapper = new ObjectMapper();
         List<Filter> filterList = null;
         if (filters != null && !filters.equals("[]")) {
+        	filters = URLDecoder.decode(filters, StandardCharsets.UTF_8);
             try {
                 filterList = mapper.readValue(filters, 
                     new TypeReference<ArrayList<Filter>>() {});
@@ -638,19 +639,23 @@ public class DataController {
     public ResponseEntity<SuccessResponse> getCollections(
             @RequestParam("start")
             Integer start, 
-            @RequestParam("size")
+            @RequestParam(required=false, value="size")
             Integer size,
-            @RequestParam("filters")
+            @RequestParam(required=false, value="filters")
             String filters,
-            @RequestParam("globalFilter")
+            @RequestParam(required=false, value="globalFilter")
             String globalFilter,
-            @RequestParam("sorting")
+            @RequestParam(required=false, value="sorting")
             String sorting) {
         // get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
         if (auth != null) { 
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        if (size == null) {   // get all
+        	size = Integer.MAX_VALUE;
         }
       
         Map<String, Object> response = getCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, sorting);
@@ -670,6 +675,7 @@ public class DataController {
         ObjectMapper mapper = new ObjectMapper();
         List<Filter> filterList = null;
         if (filters != null && !filters.equals("[]")) {
+        	filters = URLDecoder.decode(filters, StandardCharsets.UTF_8);
             try {
                 filterList = mapper.readValue(filters, 
                     new TypeReference<ArrayList<Filter>>() {});
@@ -798,19 +804,23 @@ public class DataController {
     public ResponseEntity<SuccessResponse> getCollectionsOfCollections(
             @RequestParam("start")
             Integer start, 
-            @RequestParam("size")
+            @RequestParam(required=false, value="size")
             Integer size,
-            @RequestParam("filters")
+            @RequestParam(required=false, value="filters")
             String filters,
-            @RequestParam("globalFilter")
+            @RequestParam(required=false, value="globalFilter")
             String globalFilter,
-            @RequestParam("sorting")
+            @RequestParam(required=false, value="sorting")
             String sorting) {
         // get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
         if (auth != null) { 
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        if (size == null) {   // get all
+        	size = Integer.MAX_VALUE;
         }
         
         Map<String, Object> response = getCollectionsoOfCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, 
@@ -831,6 +841,7 @@ public class DataController {
         ObjectMapper mapper = new ObjectMapper();
         List<Filter> filterList = null;
         if (filters != null && !filters.equals("[]")) {
+        	filters = URLDecoder.decode(filters, StandardCharsets.UTF_8);
             try {
                 filterList = mapper.readValue(filters, 
                     new TypeReference<ArrayList<Filter>>() {});
