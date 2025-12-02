@@ -87,25 +87,25 @@ public class DatasetRepositoryCustomImpl implements DatasetRepositoryCustom {
         	for (Filter filter: filterList) {
         		if (filter.getId().equalsIgnoreCase(GlycanColumns.GLYTOUCANID.name())) {
         			if (glycoprotein) {
-        				whereClause.append(" (d.glycoproteinColumn = 'GLYTOUCANID' AND LOWER(d.value) LIKE '%" + filter.getValue() + "%')");
+        				whereClause.append(" (d.glycoproteinColumn = 'GLYTOUCANID' AND LOWER(d.value) LIKE '%" + filter.getValue().toLowerCase()+ "%')");
         			} else {
-        				whereClause.append(" (d.glycanColumn = 'GLYTOUCANID' AND LOWER(d.value) LIKE '%" + filter.getValue() + "%')");
+        				whereClause.append(" (d.glycanColumn = 'GLYTOUCANID' AND LOWER(d.value) LIKE '%" + filter.getValue().toLowerCase() + "%')");
         			}
         		} else if (filter.getId().equalsIgnoreCase(GlycoproteinColumns.UNIPROTID.name())) { 
-        			whereClause.append(" (d.glycoproteinColumn = 'UNIPROTID' AND LOWER(d.value) LIKE '%" + filter.getValue() + "%')");
+        			whereClause.append(" (d.glycoproteinColumn = 'UNIPROTID' AND LOWER(d.value) LIKE '%" + filter.getValue().toLowerCase() + "%')");
         		} else if (filter.getId().equalsIgnoreCase(GlycoproteinColumns.AMINOACID.name())) { 
-        			whereClause.append(" (d.glycoproteinColumn = 'AMINOACID' AND LOWER(d.value) LIKE '%" + filter.getValue() + "%')");
+        			whereClause.append(" (d.glycoproteinColumn = 'AMINOACID' AND LOWER(d.value) LIKE '%" + filter.getValue().toLowerCase() + "%')");
         		} else if (filter.getId().equalsIgnoreCase(GlycoproteinColumns.SITE.name())) { 
-        			whereClause.append(" (d.glycoproteinColumn = 'SITE' AND LOWER(d.value) LIKE '%" + filter.getValue() + "%')");
+        			whereClause.append(" (d.glycoproteinColumn = 'SITE' AND LOWER(d.value) LIKE '%" + filter.getValue().toLowerCase() + "%')");
         		} else if (filter.getId().equalsIgnoreCase(GlycoproteinColumns.GLYCOSYLATIONTYPE.name())) { 
-        			whereClause.append(" (d.glycoproteinColumn = 'GLYCOSYLATIONTYPE' AND LOWER(d.value) LIKE '%" + filter.getValue() + "%')");
+        			whereClause.append(" (d.glycoproteinColumn = 'GLYCOSYLATIONTYPE' AND LOWER(d.value) LIKE '%" + filter.getValue().toLowerCase() + "%')");
         		} else if (filter.getId().equalsIgnoreCase(GlycoproteinColumns.GLYCOSYLATIONSUBTYPE.name())) { 
-        			whereClause.append(" (d.glycoproteinColumn = 'GLYCOSYLATIONSUBTYPE' AND LOWER(d.value) LIKE '%" + filter.getValue() + "%')");
+        			whereClause.append(" (d.glycoproteinColumn = 'GLYCOSYLATIONSUBTYPE' AND LOWER(d.value) LIKE '%" + filter.getValue().toLowerCase() + "%')");
         		} else if (filter.getId().contains("-ID")) {
         			String datatype = filter.getId().substring(0, filter.getId().indexOf("-"));
-        			whereClause.append(" (d.datatype.datatypeId = " + datatype + " AND LOWER(d.valueId) LIKE '%" + filter.getValue() + "%')");
+        			whereClause.append(" (d.datatype.datatypeId = " + datatype + " AND LOWER(d.valueId) LIKE '%" + filter.getValue().toLowerCase() + "%')");
         		} else {
-        			whereClause.append(" (d.datatype.datatypeId = " + filter.getId() + " AND LOWER(d.value) LIKE '%" + filter.getValue() + "%')");
+        			whereClause.append(" (d.datatype.datatypeId = " + filter.getId() + " AND LOWER(d.value) LIKE '%" + filter.getValue().toLowerCase() + "%')");
         		}
         		
         		i++;
