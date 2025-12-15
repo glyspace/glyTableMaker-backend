@@ -418,6 +418,7 @@ public class DataController {
                         } catch (IOException e) {
                             logger.error("could not write cartoon image to file", e);
                         }
+                        g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
                     } else {
                         logger.warn ("Glycan image cannot be generated for glycan " + g.getGlycanId());
                     }
