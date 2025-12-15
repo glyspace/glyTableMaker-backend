@@ -405,6 +405,23 @@ public class DataController {
         	}
             try {
                 g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+                if (g.getCartoon() == null) {
+                	// create the image
+                	BufferedImage t_image = createImageForGlycan(g);
+                    if (t_image != null) {
+                        String filename = g.getGlycanId() + ".png";
+                        //save the image into a file
+                        logger.debug("Adding image to " + imageLocation);
+                        File imageFile = new File(imageLocation + File.separator + filename);
+                        try {
+                            ImageIO.write(t_image, "png", imageFile);
+                        } catch (IOException e) {
+                            logger.error("could not write cartoon image to file", e);
+                        }
+                    } else {
+                        logger.warn ("Glycan image cannot be generated for glycan " + g.getGlycanId());
+                    }
+                }
                 if (g.getGlytoucanID() == null && g.getGlytoucanHash() != null && g.getWurcs() != null) {
                 	try {
                 		// registered, try to get the accession number
