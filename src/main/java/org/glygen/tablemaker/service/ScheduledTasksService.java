@@ -137,7 +137,7 @@ public class ScheduledTasksService {
         		glycanImageRepository.save(entity);
         	}
             try {
-            	glycan.setCartoon(DataController.getImageForGlycan(imageLocation, glycan.getGlycanId()));
+            	DataController.getImageForGlycan(imageLocation, glycan);
                 if (glycan.getGlytoucanID() != null) {
             		List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(glycan.getGlytoucanID());
         			if (images == null || images.isEmpty()) {

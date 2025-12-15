@@ -217,9 +217,7 @@ public class TableController {
 					if (c.getGlycans() != null) {
 						for (GlycanInCollection g: c.getGlycans()) {
 							try {
-				                g.getGlycan().setCartoon(
-				                		DataController.getImageForGlycan(
-				                				imageLocation, g.getGlycan().getGlycanId()));
+				               DataController.getImageForGlycan(imageLocation, g.getGlycan());
 							} catch (DataNotFoundException e) {
 								// do nothing, warning will be added later
 							}
