@@ -750,8 +750,10 @@ public class UtilityController {
         	if (images != null && images.size() > 0) {
         		GlycanImageEntity image = images.get(0);
         		Long glycanId = images.get(0).getGlycanId();
-        		byte[] cartoon = DataController.getImageForGlycan(imageLocation, glycanId);
-        		if (cartoon == null) {
+        		try {
+        			byte[] cartoon = DataController.getImageForGlycan(imageLocation, glycanId);
+        			return cartoon;
+        		} catch (DataNotFoundException e) {
         			// generate and save
         			Glycan glycan = new Glycan();
         			glycan.setWurcs(image.getWurcs());
@@ -764,25 +766,17 @@ public class UtilityController {
                         File imageFile = new File(imageLocation + File.separator + filename);
                         try {
                             ImageIO.write(t_image, "png", imageFile);
-                        } catch (IOException e) {
-                            logger.error("could not write cartoon image to file", e);
+                        } catch (IOException e1) {
+                            logger.error("could not write cartoon image to file", e1);
                         }
                     } else {
                         logger.warn ("Glycan image cannot be generated for glycan " + glycanId);
                     }
-                    GlycanImageEntity imageEntity = new GlycanImageEntity();
-                    imageEntity.setGlycanId(glycanId);
-                    imageEntity.setGlytoucanId(glycan.getGlytoucanID());
-                    imageEntity.setWurcs(glycan.getWurcs());
-                    glycanImageRepository.save(imageEntity);
-        		}
-            	return cartoon;
-        		
+        			return DataController.getImageForGlycan(imageLocation, glycanId);             
+        		}	
         	} else {
         		throw new DataNotFoundException("Invalid Input: Glycan with the given glytoucan id cannot be located");
-        	}
-        	
-        	
+        	}	
         } catch (Exception e) {    
         	logger.error("Error getting cartoon for " + glytoucanId, e);
             throw new IllegalArgumentException("Invalid Input: Not a valid glytoucan id");

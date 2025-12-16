@@ -74,5 +74,9 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	
 	@Query("SELECT m FROM DatasetGlycoproteinMetadata m WHERE m.rowId IN :rowIds")
 	List<DatasetGlycoproteinMetadata> findGlycoproteinByRowIdIn(@Param("rowIds") List<String> rowIds);
+	
+	@Query("Select DISTINCT d.datasetId FROM Dataset d JOIN d.integratedIn g WHERE LOWER(g.resource.name) = :resource")
+	List<Dataset> getDatasetsIntegratedIn (@Param("resource")String resourceName);
+	
 
 }

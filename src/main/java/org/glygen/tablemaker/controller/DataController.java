@@ -404,7 +404,7 @@ public class DataController {
         		glycanImageRepository.save(entity);
         	}
             try {
-                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+                getImageForGlycan(imageLocation, g);
                 if (g.getGlytoucanID() == null && g.getGlytoucanHash() != null && g.getWurcs() != null) {
                 	try {
                 		// registered, try to get the accession number
@@ -609,7 +609,7 @@ public class DataController {
 	    	        		g.setSites(null);
 	    	        		//SequenceUtils.addCompositionInformation(g);
 	    	        		try {
-	    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+	    	                    getImageForGlycan(imageLocation, g);
 	    	                } catch (DataNotFoundException e) {
 	    	                    // ignore
 	    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
@@ -993,7 +993,7 @@ public class DataController {
 		    		//g.setByonicString(SequenceUtils.generateByonicString(g));
 		        	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
 		    		try {
-		                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+		                getImageForGlycan(imageLocation, g);
 		            } catch (DataNotFoundException e) {
 		                // ignore
 		                logger.warn ("no image found for glycan " + g.getGlycanId());
@@ -1016,7 +1016,7 @@ public class DataController {
 		    	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
 		    	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
 		    	        		try {
-		    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+		    	                    getImageForGlycan(imageLocation, g);
 		    	                } catch (DataNotFoundException e) {
 		    	                    // ignore
 		    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
@@ -1049,7 +1049,7 @@ public class DataController {
 			        		g.setSites(null);
 			        		//SequenceUtils.addCompositionInformation(g);
 			        		try {
-			                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+			                    getImageForGlycan(imageLocation, g);
 			                } catch (DataNotFoundException e) {
 			                    // ignore
 			                    logger.warn ("no image found for glycan " + g.getGlycanId());
@@ -1069,7 +1069,7 @@ public class DataController {
 		        	        		g.setSites(null);
 		        	        		//SequenceUtils.addCompositionInformation(g);
 		        	        		try {
-		        	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+		        	                    getImageForGlycan(imageLocation, g);
 		        	                } catch (DataNotFoundException e) {
 		        	                    // ignore
 		        	                    logger.warn ("no image found for glycan " + g.getGlycanId());
@@ -2088,7 +2088,7 @@ public class DataController {
     	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
     	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
     	        		try {
-    	                    g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+    	                    getImageForGlycan(imageLocation, g);
     	                } catch (DataNotFoundException e) {
     	                    // ignore
     	                    logger.warn ("no image found for glycan " + g.getGlycanId());
@@ -3513,9 +3513,7 @@ public class DataController {
 	    		row[1] = glycan.getStatus().name();
 	    		// retrieve/generate the cartoon
 	    		try {
-	                glycan.setCartoon(
-	                		DataController.getImageForGlycan(
-	                				imageLocation, glycan.getGlycanId()));
+	                DataController.getImageForGlycan(imageLocation, glycan);
 				} catch (DataNotFoundException e) {
 					// do nothing, warning will be added later
 				}
@@ -3850,6 +3848,31 @@ public class DataController {
             
         }
         return t_image;
+    }
+    
+    public static void getImageForGlycan (String imageLocation, Glycan g) {
+    	try {
+    		g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+    	} catch (DataNotFoundException e) {
+    		// try to recreate
+        	BufferedImage t_image = createImageForGlycan(g);
+            if (t_image != null) {
+                String filename = g.getGlycanId() + ".png";
+                //save the image into a file
+                logger.debug("Adding image to " + imageLocation);
+                File imageFile = new File(imageLocation + File.separator + filename);
+                try {
+                    ImageIO.write(t_image, "png", imageFile);
+                } catch (IOException e1) {
+                    logger.error("could not write cartoon image to file", e1);
+                }
+                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
+            } else {
+                logger.warn ("Glycan image cannot be generated for glycan " + g.getGlycanId());
+                throw new DataNotFoundException("Image for glycan " + g.getGlycanId() + " is not available");
+            }
+    	}
+    	
     }
     
     public static byte[] getImageForGlycan (String imageLocation, Long glycanId) {

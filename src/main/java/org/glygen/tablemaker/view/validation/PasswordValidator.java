@@ -27,4 +27,10 @@ public class PasswordValidator implements ConstraintValidator<Password, String>{
 		matcher = pattern.matcher(password);
 		return matcher.matches();
 	}
+	
+	public static void main(String[] args) {
+		PasswordValidator validator = new PasswordValidator();
+		validator.initialize(null);
+		System.out.println (validator.isValid("GW?&B9N%!aF6RkT", null));
+	}
 }

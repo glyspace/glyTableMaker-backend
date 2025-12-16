@@ -195,4 +195,14 @@ public class MailService implements EmailManager {
          }
 	}
 
+	@Override
+	public void sendDatasetRemovedFromGlyGenNotice(UserEntity user, String datasetIdentifier, String glygenRelease) {
+		String subject = "Dataset Removed from GlyGen in release " + glygenRelease;
+        String message = "Your dataset " + datasetIdentifier + " has been removed from Glygen in the recent release: " + glygenRelease;
+        message += "\n\nPlease contact GlyGen if you need more information";
+       
+        sendMessage(user.getEmail(), subject, message);
+		
+	}
+
 }

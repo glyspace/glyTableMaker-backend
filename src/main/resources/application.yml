@@ -56,3 +56,5 @@ glygen:
       host: localhost:3000
       basePath: /
       emailVerificationPage: emailConfirmation
+  releaseURL: https://data.glygen.org/ln2data/releases/data/current/tablemaker/url_list.json
+  versionURL: https://api.glygen.org/misc/verlist
