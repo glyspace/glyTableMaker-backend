@@ -16,6 +16,7 @@ import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
+import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Publication;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
@@ -393,13 +394,13 @@ public class PublicDataController {
     		@Parameter(required=true, description="id of the dataset to be retrieved") 
     		@PathVariable("datasetIdentifier") String datasetIdentifier) {
     	
-        DatasetView dv = getDatasetFromRepository(datasetIdentifier);
+        DatasetView dv = getDatasetFromRepository(datasetIdentifier, null);
         return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset retrieved"), HttpStatus.OK);
     }
 	
-	DatasetView getDatasetFromRepository (String datasetIdentifier) {
+	DatasetView getDatasetFromRepository (String datasetIdentifier, String selectedVersion) {
 		String identifier = datasetIdentifier;
-        String version = null;
+        String version = selectedVersion != null && !selectedVersion.equalsIgnoreCase("latest") ? selectedVersion : null;
         // check if the identifier contains a version
         String[] split = datasetIdentifier.split("-");
         if (split.length > 1) {
@@ -433,21 +434,23 @@ public class PublicDataController {
 		String filename = table.getFilename() != null ? table.getFilename() : "GlygenDataset";
 		File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ".csv");
 		
+		
 		try {
 			if (table.getData() != null && !table.getData().isEmpty()) {
 				// get GlygenTemplate
 				TableMakerTemplate glygenTemplate = templateRepository.findById(1L).get();
-				String[] header = new String[glygenTemplate.getColumns().size()];
+				String[] header = new String[glygenTemplate.getColumns().size()+1];
 				for (TableColumn col: glygenTemplate.getColumns()) {
 					header[col.getOrder()-1] = col.getName();
 				}
+				header[header.length-1] = "version";
 				List<String[]> rows = new ArrayList<>();
 				// generate rows from the data
 				rows.add(header);
 				List<GlygenMetadataRow> data = table.getData();
 				if (data != null) {
 					for (GlygenMetadataRow r: data) {
-						String[] row = new String[glygenTemplate.getColumns().size()];
+						String[] row = new String[glygenTemplate.getColumns().size()+1];
 						for (TableColumn col: glygenTemplate.getColumns()) {
 							for (DatasetMetadata c: r.getColumns()) {
 								if (col.getGlycanColumn() != null && col.getGlycanColumn().equals(c.getGlycanColumn())) {
@@ -477,6 +480,7 @@ public class PublicDataController {
 								}
 							}
 						}
+						row[row.length-1] = table.getVersion();
 						rows.add(row);
 					}
 				}
@@ -484,17 +488,18 @@ public class PublicDataController {
 			} else if (table.getGlycoproteinData() != null && !table.getGlycoproteinData().isEmpty()) {
 				// get GlygenTemplate
 				TableMakerTemplate glygenTemplate = templateRepository.findById(2L).get();   // glycoprotein template
-				String[] header = new String[glygenTemplate.getColumns().size()];
+				String[] header = new String[glygenTemplate.getColumns().size()+1];
 				for (TableColumn col: glygenTemplate.getColumns()) {
 					header[col.getOrder()-1] = col.getName();
 				}
+				header[header.length-1] = "version";
 				List<String[]> rows = new ArrayList<>();
 				// generate rows from the data
 				rows.add(header);
 				List<GlygenProteinMetadataRow> data = table.getGlycoproteinData();
 				if (data != null) {
 					for (GlygenProteinMetadataRow r: data) {
-						String[] row = new String[glygenTemplate.getColumns().size()];
+						String[] row = new String[glygenTemplate.getColumns().size()+1];
 						for (TableColumn col: glygenTemplate.getColumns()) {
 							for (DatasetGlycoproteinMetadata c: r.getColumns()) {
 								if (col.getProteinColumn() != null && col.getProteinColumn().equals(c.getGlycoproteinColumn())) {
@@ -524,6 +529,7 @@ public class PublicDataController {
 								}
 							}
 						}
+						row[row.length-1] = table.getVersion();
 						rows.add(row);
 					}
 				}
@@ -548,14 +554,36 @@ public class PublicDataController {
     		@PathVariable("datasetIdentifier") String datasetIdentifier,
     		@Parameter(required=false, description="filename to save the downloaded file as. If not provided, it will be automatically generated") 
     		@RequestParam(required=false, value="filename")
-            String fileName) {
+            String fileName,
+            @RequestParam(required=false, value="version")
+            String version) {
 		
-		DatasetView dv = getDatasetFromRepository(datasetIdentifier);
+		DatasetView dv = getDatasetFromRepository(datasetIdentifier, version);
+		String type = "glycan";
+		if (dv.getNoProteins() != null && dv.getNoProteins() > 0)  {
+			type = "glycoprotein";
+		}
+		
+		ResponseEntity<SuccessResponse<Map<String, Object>>> data = null;
+		if (version != null && !version.equalsIgnoreCase("latest")) {
+			// find version id
+			for (DatasetVersion v: dv.getVersions()) {
+				if (v.getVersion().equalsIgnoreCase(version)) {
+					data = getDatasetData(v.getVersionId(), null, type, 0, Integer.MAX_VALUE, null, null, null);
+				}
+			}
+		} else {
+			data = getDatasetData(null, datasetIdentifier, type, 0, Integer.MAX_VALUE, null, null, null);
+		}
 		
 		DatasetTableDownloadView downloadView = new DatasetTableDownloadView();
 		downloadView.setFilename(fileName);
-		downloadView.setData(dv.getData());
-		downloadView.setGlycoproteinData(dv.getGlycoproteinData());
+		if (type.equalsIgnoreCase("glycoprotein")) {
+			downloadView.setGlycoproteinData((List<GlygenProteinMetadataRow>) data.getBody().getData().get("objects"));
+		} else {
+			downloadView.setData((List<GlygenMetadataRow>) data.getBody().getData().get("objects"));
+		}
+		downloadView.setVersion(dv.getVersion());
 		
 		return downloadTable(downloadView);
 	}
