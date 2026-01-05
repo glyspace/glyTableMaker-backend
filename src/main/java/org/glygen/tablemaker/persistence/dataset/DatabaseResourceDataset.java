@@ -23,7 +23,6 @@ public class DatabaseResourceDataset {
 	@GeneratedValue
 	Long databaseResourceId;
 	
-	@JsonIgnore
     @ManyToOne(targetEntity = DatabaseResource.class)
     @JoinColumn(name = "resourceid")  
 	DatabaseResource resource;
