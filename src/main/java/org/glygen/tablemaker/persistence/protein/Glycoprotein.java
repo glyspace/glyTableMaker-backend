@@ -34,6 +34,9 @@ public class Glycoprotein {
 	String sequence;
 	String sequenceVersion;
 	
+	String glycombAccessionNumber;
+	String glycombReceiptNumber;
+	
 	Date dateCreated;
     UserEntity user;
     
@@ -172,5 +175,21 @@ public class Glycoprotein {
 	}
 	public void setSequenceVersion(String sequenceVersion) {
 		this.sequenceVersion = sequenceVersion;
+	}
+	
+	@Column
+	public String getGlycombAccessionNumber() {
+		return glycombAccessionNumber;
+	}
+	public void setGlycombAccessionNumber(String glycombAccessionNumber) {
+		this.glycombAccessionNumber = glycombAccessionNumber;
+	}
+	
+	@Column
+	public String getGlycombReceiptNumber() {
+		return glycombReceiptNumber;
+	}
+	public void setGlycombReceiptNumber(String glycombReceiptNumber) {
+		this.glycombReceiptNumber = glycombReceiptNumber;
 	}
 }

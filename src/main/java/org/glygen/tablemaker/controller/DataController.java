@@ -3538,15 +3538,17 @@ public class DataController {
 		
 		switch (format) {
 		case GWS:
-			String content = fileContent.substring(0, fileContent.length()-1);
-	        
-	        try {
-		        FileWriter writer = new FileWriter(newFile);
-		        writer.write(content);
-		        writer.close();  
-	        } catch (IOException e) {
-	        	throw new BadRequestException ("Glycan download failed", e);
-	        }
+			if (fileContent.length() > 0) {
+				String content = fileContent.substring(0, fileContent.length()-1);
+		        
+		        try {
+			        FileWriter writer = new FileWriter(newFile);
+			        writer.write(content);
+			        writer.close();  
+		        } catch (IOException e) {
+		        	throw new BadRequestException ("Glycan download failed", e);
+		        }
+			}
 	        break;
 		case EXCEL: 
 			try {
@@ -3560,10 +3562,11 @@ public class DataController {
 		try {
         	if (report.getErrors() != null && report.getErrors().size() > 0) {
         		report.setSuccess(false);
+        		report.setMessage("Errors occurred in glycan download");
         	} else {
         		report.setSuccess(true);
+        		report.setMessage("Glycan download successful");
         	}
-			report.setMessage("Glycan download successful");
 			String reportJson = new ObjectMapper().writeValueAsString(report);
 			tableReport.setReportJSON(reportJson);
 			TableReport saved = reportRepository.save(tableReport);
