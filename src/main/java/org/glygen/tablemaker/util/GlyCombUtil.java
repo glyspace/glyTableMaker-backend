@@ -1,19 +1,14 @@
 package org.glygen.tablemaker.util;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.HttpMultipartMode;
@@ -31,7 +26,6 @@ import org.glygen.tablemaker.persistence.protein.Site;
 import org.glygen.tablemaker.persistence.protein.SitePosition;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -254,7 +248,7 @@ public class GlyCombUtil {
 		
 		try {
 			GlyCombUtil util = GlyCombUtil.getInstance();
-			util.setApiKey("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI4NDFhMmVmMC0zMWU1LTM0OWEtOWViZC1hNTQ2NjMxZjNkZTAiLCJpc3MiOiJnbHljb21iIiwiZXhwIjoxNzY3OTEyNTc3fQ.FxClVKscxqQBiTTH0-0jRxPhcSCzTFglq2lv_Mf0Y0w");
+			util.setApiKey("<API-KEY>");  //TODO paste APi key for testing
 			//util.requestRegistration(gp);
 			gp.setGlycombReceiptNumber("b1f8690d-ce09-4a83-a376-3738c377a66d");
 			util.publish(gp);
