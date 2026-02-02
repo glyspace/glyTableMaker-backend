@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.glygen.tablemaker.exception.DuplicateException;
+import org.glygen.tablemaker.persistence.RoleEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
@@ -15,6 +16,7 @@ import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
+import org.glygen.tablemaker.persistence.dao.RetractionRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
@@ -25,11 +27,13 @@ import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Grant;
 import org.glygen.tablemaker.persistence.dataset.Publication;
+import org.glygen.tablemaker.persistence.dataset.Retraction;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
+import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.protein.GlycanInSite;
@@ -73,6 +77,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -82,6 +87,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
@@ -98,6 +105,7 @@ public class DatasetController {
 	private final DatasetManager datasetManager;
 	private final PublicationRepository publicationRepository;
 	private final GlycanImageRepository glycanImageRepository;
+	private final RetractionRepository retractionRepository;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -108,7 +116,7 @@ public class DatasetController {
 	@Value("${ncbi.api-key}")
 	String apiKey;
 	
-	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository) {
+	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository, RetractionRepository retractionRepository) {
 		this.datasetRepository = datasetRepository;
 		this.userRepository = userRepository;
 		this.templateRepository = templateRepository;
@@ -117,6 +125,7 @@ public class DatasetController {
 		this.datasetManager = datasetManager;
 		this.publicationRepository = publicationRepository;
 		this.glycanImageRepository = glycanImageRepository;
+		this.retractionRepository = retractionRepository;
 	}
 	
 	@Operation(summary = "Get user's public datasets", security = { @SecurityRequirement(name = "bearer-key") })
@@ -200,7 +209,10 @@ public class DatasetController {
         if (spec != null) {
         	try {
         		datasetsInPage = datasetRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
+        		
         		for (Dataset d: datasetsInPage.getContent()) {
+        			// find retraction iformation
+            		Optional<Retraction> retracted = retractionRepository.findByDataset(d);
                 	DatasetView dv = new DatasetView();
                 	dv.setId(d.getDatasetId());
                 	dv.setName(d.getName());
@@ -208,6 +220,14 @@ public class DatasetController {
                 	dv.setDateCreated(d.getDateCreated());
                 	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
                 	dv.setUser (d.getUser());
+                	if (retracted.isPresent()) {
+                		dv.setRetraction(retracted.get());
+                		if (dv.getRetraction().getRemoved()) {
+                			dv.setRemoved(true);
+                		} else {
+                			dv.setRetracted(true);
+                		}
+                	}
                 	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
                 	dv.setNoProteins(proteinCount);
                 	datasets.add(dv);
@@ -223,6 +243,8 @@ public class DatasetController {
         } else {
         	datasetProjectionsInPage = datasetRepository.findAllByUser(user, PageRequest.of(start, size, Sort.by(sortOrders)));
         	for (DatasetProjection d: datasetProjectionsInPage.getContent()) {
+        		// find retraction iformation
+        		Optional<Retraction> retracted = retractionRepository.findByDatasetId(d.getDatasetId());
             	DatasetView dv = new DatasetView();
             	dv.setId(d.getDatasetId());
             	dv.setName(d.getName());
@@ -230,6 +252,14 @@ public class DatasetController {
             	dv.setDateCreated(d.getDateCreated());
             	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
             	dv.setUser (d.getUser());
+            	if (retracted.isPresent()) {
+            		dv.setRetraction(retracted.get());
+            		if (dv.getRetraction().getRemoved()) {
+            			dv.setRemoved(true);
+            		} else {
+            			dv.setRetracted(true);
+            		}
+            	}
             	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
             	dv.setNoGlycans(datasetRepository.getGlycanCount(d.getDatasetId()));
             	dv.setNoProteins(proteinCount);
@@ -394,7 +424,7 @@ public class DatasetController {
         version.setDataset(newDataset);
         
         Dataset saved = datasetManager.saveDataset (newDataset);
-        DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation);
+        DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation, retractionRepository);
         return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset has been published"), HttpStatus.OK);
 	}
 	
@@ -578,6 +608,97 @@ public class DatasetController {
         	
         }
         return metadata;
+	}
+	
+	@Operation(summary = "Retract dataset", security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value="/retractdataset/{datasetId}", method = RequestMethod.DELETE)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Dataset retracted successfully"), 
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to retract datasets"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse<String>> retractDataset (
+            @Parameter(required=true, description="internal id of the dataset to retract") 
+            @PathVariable("datasetId") String datasetIdentifier,
+            @Parameter(required=false, description="reason for retraction") 
+            @RequestParam(required=false, name="reason")
+            String reason) {
+        
+        // get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        Boolean admin = false;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+            if (user.hasRole(RoleEntity.ADMIN)) {
+            	admin = true;
+            }
+        }
+        Dataset existing = null;
+        if (!admin) {
+        	existing = datasetRepository.findByDatasetIdentifierAndUserAndVersions_head(datasetIdentifier, user, true);
+        } else {
+        	existing = datasetRepository.findByDatasetIdentifierAndVersions_head(datasetIdentifier, true);
+        }
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier + " for the user");
+        }
+        
+        Retraction retraction = new Retraction();
+        retraction.setDataset(existing);
+        retraction.setRemoved(admin);
+        retraction.setRetractionDate(new Date());
+        retraction.setReason(reason);
+        retractionRepository.save(retraction);
+        
+        existing.setRetracted(true);
+        datasetRepository.save(existing);
+        return new ResponseEntity<>(new SuccessResponse<String>(datasetIdentifier, "Dataset retracted successfully"), HttpStatus.OK);
+	}
+	
+	@Operation(summary = "Recover dataset (after retraction)", security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value="/recoverdataset/{datasetId}", method = RequestMethod.POST)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Dataset retracted successfully"), 
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to retract datasets"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse<String>> recoverDataset (
+            @Parameter(required=true, description="internal id of the dataset to retract") 
+            @PathVariable("datasetId") String datasetId) {
+		
+		// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        Boolean admin = false;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+            if (user.hasRole(RoleEntity.ADMIN)) {
+            	admin = true;
+            }
+        }
+        Dataset existing = null;
+        if (!admin) {
+        	existing = datasetRepository.findByDatasetIdentifierAndUserAndVersions_head(datasetId, user, true);
+        } else {
+        	existing = datasetRepository.findByDatasetIdentifierAndVersions_head(datasetId, true);
+        }
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given dataset " + datasetId + " for the user");
+        }
+        
+        Optional<Retraction> retraction = retractionRepository.findByDataset(existing);
+        if (retraction.isPresent()) {
+        	Retraction ret = retraction.get();
+        	if (ret.getRemoved()) {
+        		// cannot recover dataset since admin has removed it
+        		throw new IllegalArgumentException("Admin has removed the dataset, cannot recover");
+        	}
+        	retractionRepository.delete(ret);
+        }
+        existing.setRetracted(false);
+        datasetRepository.save(existing);
+		return new ResponseEntity<>(new SuccessResponse<String>(datasetId, "Dataset recovered successfully"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "update dataset", security = { @SecurityRequirement(name = "bearer-key") })
@@ -869,7 +990,7 @@ public class DatasetController {
     	
 		Dataset saved = datasetManager.saveDataset(existing);
     	
-    	DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation);
+    	DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation, retractionRepository);
     	return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset updated"), HttpStatus.OK);
 	}
 	
@@ -905,7 +1026,7 @@ public class DatasetController {
             throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier + " for the user");
         }
         
-        DatasetView dv = createDatasetView (existing, version, glycanImageRepository, imageLocation);
+        DatasetView dv = createDatasetView (existing, version, glycanImageRepository, imageLocation, retractionRepository);
         
         return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset retrieved"), HttpStatus.OK);
     }
@@ -954,11 +1075,13 @@ public class DatasetController {
         return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "publications retrieved"), HttpStatus.OK);
 	}
 	
-    public static DatasetView createDatasetView(Dataset d, String versionString, GlycanImageRepository imageRepository, String imageLocation) {
+    public static DatasetView createDatasetView(Dataset d, String versionString, GlycanImageRepository imageRepository, String imageLocation, RetractionRepository retractionRepository) {
     	boolean head = false;
     	if (versionString == null || versionString.isEmpty()) 
     		head = true;
     	
+    	// find retraction iformation
+		Optional<Retraction> retracted = retractionRepository.findByDataset(d);
     	DatasetView dv = new DatasetView();
     	dv.setId(d.getDatasetId());
     	dv.setDatasetIdentifier(d.getDatasetIdentifier());
@@ -968,6 +1091,14 @@ public class DatasetController {
     	dv.setRetracted(d.getRetracted());
     	dv.setDateCreated(d.getDateCreated());
     	dv.setUser(d.getUser());
+    	if (retracted.isPresent()) {
+    		dv.setRetraction(retracted.get());
+    		if (dv.getRetraction().getRemoved()) {
+    			dv.setRemoved(true);
+    		} else {
+    			dv.setRetracted(true);
+    		}
+    	}
     	if (d.getAssociatedDatasources() != null) dv.setAssociatedDatasources(new ArrayList<>(d.getAssociatedDatasources()));
     	if (d.getGrants() != null) dv.setGrants(new ArrayList<>(d.getGrants()));
     	if (d.getAssociatedPapers() != null) dv.setAssociatedPapers(new ArrayList<>(d.getAssociatedPapers()));

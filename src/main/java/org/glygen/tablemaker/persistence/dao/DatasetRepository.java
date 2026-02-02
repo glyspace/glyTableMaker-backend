@@ -27,6 +27,7 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	public Dataset findByDatasetIdentifierAndVersions_version (String identifier, String version);
 	public Dataset findByDatasetIdentifierAndVersions_head (String identifier, Boolean head);
 	public Dataset findByDatasetIdAndUser (Long id, UserEntity user);
+	public Dataset findByDatasetId(Long id);
 	public List<Dataset> findAllByNameAndUser (String name, UserEntity user);
 	public List<Dataset> findByNameContainingIgnoreCase (String name);
 	
@@ -78,5 +79,4 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	@Query("Select DISTINCT d.datasetId FROM Dataset d JOIN d.integratedIn g WHERE LOWER(g.resource.name) = :resource")
 	List<Dataset> getDatasetsIntegratedIn (@Param("resource")String resourceName);
 	
-
 }

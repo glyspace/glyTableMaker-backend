@@ -185,6 +185,8 @@ public class ScheduledTasksService {
 						dataset.getIntegratedIn().add(resource);
 						
 						datasetManager.saveDataset(dataset);
+						
+						// TODO send email to the user with excluded records. Do we save the info into the database?
 					} else {
 						logger.error("Given dataset identifier " + id + " does not exist in the repository");
 					}

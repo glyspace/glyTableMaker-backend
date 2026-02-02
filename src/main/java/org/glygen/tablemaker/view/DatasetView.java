@@ -11,6 +11,7 @@ import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Grant;
 import org.glygen.tablemaker.persistence.dataset.License;
 import org.glygen.tablemaker.persistence.dataset.Publication;
+import org.glygen.tablemaker.persistence.dataset.Retraction;
 
 public class DatasetView {
 	
@@ -21,7 +22,10 @@ public class DatasetView {
 	String notes;
 	
 	Boolean retracted;
+	Boolean removed;
 	Date dateCreated;
+	
+	Retraction retraction;
 	
 	Integer noGlycans;
 	Integer noProteins = 0;
@@ -173,6 +177,18 @@ public class DatasetView {
 	}
 	public void setNotes(String notes) {
 		this.notes = notes;
+	}
+	public Boolean getRemoved() {
+		return removed;
+	}
+	public void setRemoved(Boolean removed) {
+		this.removed = removed;
+	}
+	public Retraction getRetraction() {
+		return retraction;
+	}
+	public void setRetraction(Retraction retraction) {
+		this.retraction = retraction;
 	}
 	
 	

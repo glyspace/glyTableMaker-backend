@@ -6,11 +6,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
+import org.glygen.tablemaker.persistence.dao.RetractionRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
@@ -18,6 +20,7 @@ import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Publication;
+import org.glygen.tablemaker.persistence.dataset.Retraction;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.persistence.table.TableColumn;
@@ -67,6 +70,7 @@ public class PublicDataController {
 	final private GlycanImageRepository glycanImageRepository;
 	final private TemplateRepository templateRepository;
 	final private PublicationRepository publicationRepository;
+	final private RetractionRepository retractionRepository;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -74,11 +78,12 @@ public class PublicDataController {
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
 	
-	public PublicDataController(DatasetRepository datasetRepository, GlycanImageRepository glycanImageRepository, TemplateRepository templateRepository, PublicationRepository publicationRepository) {
+	public PublicDataController(DatasetRepository datasetRepository, GlycanImageRepository glycanImageRepository, TemplateRepository templateRepository, PublicationRepository publicationRepository, RetractionRepository retractionRepository) {
 		this.datasetRepository = datasetRepository;
 		this.glycanImageRepository = glycanImageRepository;
 		this.templateRepository = templateRepository;
 		this.publicationRepository = publicationRepository;
+		this.retractionRepository = retractionRepository;
 	}
 	
 	@Operation(summary = "Get public dataset's publications")
@@ -343,6 +348,7 @@ public class PublicDataController {
         	try {
         		datasetsInPage = datasetRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
         		for (Dataset d: datasetsInPage.getContent()) {
+        			Optional<Retraction> retracted = retractionRepository.findByDataset(d);
                 	DatasetView dv = new DatasetView();
                 	dv.setId(d.getDatasetId());
                 	dv.setName(d.getName());
@@ -350,6 +356,14 @@ public class PublicDataController {
                 	dv.setDateCreated(d.getDateCreated());
                 	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
                 	dv.setUser (d.getUser());
+                	if (retracted.isPresent()) {
+                		dv.setRetraction(retracted.get());
+                		if (dv.getRetraction().getRemoved()) {
+                			dv.setRemoved(true);
+                		} else {
+                			dv.setRetracted(true);
+                		}
+                	}
                 	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
                 	dv.setNoProteins(proteinCount);
                 	datasets.add(dv);
@@ -366,6 +380,8 @@ public class PublicDataController {
         } else {
         	datasetProjectionsInPage = datasetRepository.findAllBy(PageRequest.of(start, size, Sort.by(sortOrders)));
         	for (DatasetProjection d: datasetProjectionsInPage.getContent()) {
+        		// find retraction iformation
+        		Optional<Retraction> retracted = retractionRepository.findByDatasetId(d.getDatasetId());
             	DatasetView dv = new DatasetView();
             	dv.setId(d.getDatasetId());
             	dv.setName(d.getName());
@@ -373,6 +389,14 @@ public class PublicDataController {
             	dv.setDateCreated(d.getDateCreated());
             	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
             	dv.setUser (d.getUser());
+            	if (retracted.isPresent()) {
+            		dv.setRetraction(retracted.get());
+            		if (dv.getRetraction().getRemoved()) {
+            			dv.setRemoved(true);
+            		} else {
+            			dv.setRetracted(true);
+            		}
+            	}
             	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
             	dv.setNoProteins(proteinCount);
             	datasets.add(dv);
@@ -417,7 +441,7 @@ public class PublicDataController {
             throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier);
         }
         
-        DatasetView dv = DatasetController.createDatasetView (existing, version, glycanImageRepository, imageLocation);
+        DatasetView dv = DatasetController.createDatasetView (existing, version, glycanImageRepository, imageLocation, retractionRepository);
         int proteinCount = 0;
         if (version != null) {
         	proteinCount = datasetRepository.getProteinCountByVersion(version);
