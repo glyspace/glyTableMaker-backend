@@ -30,6 +30,9 @@ import jakarta.xml.bind.annotation.XmlTransient;
 @JsonSerialize
 @JsonIgnoreProperties({"password"})
 public class UserEntity implements Comparable<UserEntity>{
+	
+	public final static String CURATOR="CURATOR";
+	public final static String INVESTIGATOR="INVESTIGATOR";
 
 	private Long userId;
 	private String username;
@@ -45,6 +48,7 @@ public class UserEntity implements Comparable<UserEntity>{
     private Boolean tempPassword;
     private UserLoginType loginType;
     private Collection<RoleEntity> roles;
+    private String type = INVESTIGATOR;
     
     @Id
     @Column(name="userid", unique = true, nullable = false)
@@ -245,5 +249,14 @@ public class UserEntity implements Comparable<UserEntity>{
 	@Override
 	public int compareTo(UserEntity o) {
 		return username.compareTo(o.username);
+	}
+
+	@Column
+	public String getType() {
+		return type;
+	}
+
+	public void setType(String type) {
+		this.type = type;
 	}
 }

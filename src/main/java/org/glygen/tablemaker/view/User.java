@@ -1,5 +1,6 @@
 package org.glygen.tablemaker.view;
 
+import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.view.validation.EmailWithTld;
 import org.glygen.tablemaker.view.validation.Password;
 import org.glygen.tablemaker.view.validation.Username;
@@ -20,7 +21,7 @@ public class User {
     private String affiliation;
     private String affiliationWebsite;
     private Boolean tempPassword = false;
-    private String userType;
+    private String userType = UserEntity.INVESTIGATOR;
     
 	/**
 	 * @return the userName
@@ -132,7 +133,7 @@ public class User {
 	
 	/**
 	 * 
-	 * @return the user type: LOCAL, GOOGLE etc.
+	 * @return the user type: curator, investigator etc
 	 */
 	public String getUserType() {
 		return userType;

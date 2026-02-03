@@ -34,6 +34,10 @@ public class TablemakerApplication {
 	        if (admin == null) roleRepository.save(new RoleEntity("ROLE_" + RoleEntity.ADMIN));
 	        RoleEntity user = roleRepository.findByRoleName ("ROLE_" + RoleEntity.USER);
 	        if (user == null) roleRepository.save(new RoleEntity("ROLE_" + RoleEntity.USER));
+	        RoleEntity software = roleRepository.findByRoleName ("ROLE_" + RoleEntity.SOFTWARE);
+	        if (software == null) roleRepository.save(new RoleEntity("ROLE_" + RoleEntity.SOFTWARE));
+	        RoleEntity moderator = roleRepository.findByRoleName ("ROLE_" + RoleEntity.MODERATOR);
+	        if (moderator == null) roleRepository.save(new RoleEntity("ROLE_" + RoleEntity.MODERATOR));
 	      };
 	}
 	

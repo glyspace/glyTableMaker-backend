@@ -138,6 +138,7 @@ public class UserController {
         userView.setUserType(user.getLoginType().name());
         userView.setGroupName(user.getGroupName());
         userView.setDepartment(user.getDepartment());
+        if (user.getType() != null) userView.setUserType(user.getType());
         return ResponseEntity.ok(new SuccessResponse<User>(userView, "User Information retrieved successfully"));
     }
     
@@ -205,6 +206,7 @@ public class UserController {
                 if (user.getFirstName() != null && !user.getFirstName().trim().isEmpty()) userEntity.setFirstName(user.getFirstName().trim());
                 if (user.getLastName() != null && !user.getLastName().trim().isEmpty()) userEntity.setLastName(user.getLastName().trim());
                 if (user.getTempPassword() != null) userEntity.setTempPassword(user.getTempPassword());
+                if (user.getUserType() != null) userEntity.setType(user.getUserType()); else userEntity.setType(UserEntity.INVESTIGATOR);
                 userRepository.save(userEntity);
             }
             else {
@@ -251,6 +253,7 @@ public class UserController {
         newUser.setTempPassword(false);
         newUser.setRoles(Arrays.asList(roleRepository.findByRoleName("ROLE_USER")));
         newUser.setLoginType(UserLoginType.LOCAL); 
+        if (user.getUserType() != null) newUser.setType(user.getUserType()); else newUser.setType(UserEntity.INVESTIGATOR);
         
         // clean up expired tokens if any
         userManager.cleanUpExpiredSignup();
