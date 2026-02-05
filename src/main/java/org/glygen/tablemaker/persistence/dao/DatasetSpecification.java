@@ -35,6 +35,15 @@ public class DatasetSpecification implements Specification<Dataset> {
 	    };
 	}
 	
+	public static Specification<Dataset> isNotRetracted() {
+	    return (root, query, criteriaBuilder) ->
+	        criteriaBuilder.or(
+	        	criteriaBuilder.isNull(root.get("retracted")),
+	            criteriaBuilder.isFalse(root.get("retracted"))
+	            
+	        );
+	}
+	
 	public static Specification<Dataset> hasUserWithUsername(String username) {
 	    return (root, query, criteriaBuilder) -> {
 	        Join<UserEntity, Dataset> datasetUser = root.join("user");

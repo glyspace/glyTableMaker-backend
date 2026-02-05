@@ -338,9 +338,11 @@ public class PublicDataController {
         	if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
         		spec = Specification.where(spec).or (DatasetSpecification.hasUserWithUsername(globalFilter));
         	}
+        	spec = Specification.where(spec).and(DatasetSpecification.isNotRetracted());  // do not include any retracted dataset
+        } else {
+        	spec = DatasetSpecification.isNotRetracted();    // do not include any retracted dataset
         }
         
-        Page<DatasetProjection> datasetProjectionsInPage = null;
         Page<Dataset> datasetsInPage = null;
         List<DatasetView> datasets = new ArrayList<>();
         Map<String, Object> response = new HashMap<>();
@@ -348,7 +350,6 @@ public class PublicDataController {
         	try {
         		datasetsInPage = datasetRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
         		for (Dataset d: datasetsInPage.getContent()) {
-        			Optional<Retraction> retracted = retractionRepository.findByDataset(d);
                 	DatasetView dv = new DatasetView();
                 	dv.setId(d.getDatasetId());
                 	dv.setName(d.getName());
@@ -356,14 +357,6 @@ public class PublicDataController {
                 	dv.setDateCreated(d.getDateCreated());
                 	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
                 	dv.setUser (d.getUser());
-                	if (retracted.isPresent()) {
-                		dv.setRetraction(retracted.get());
-                		if (dv.getRetraction().getRemoved()) {
-                			dv.setRemoved(true);
-                		} else {
-                			dv.setRetracted(true);
-                		}
-                	}
                 	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
                 	dv.setNoProteins(proteinCount);
                 	datasets.add(dv);
@@ -377,38 +370,8 @@ public class PublicDataController {
             response.put("currentPage", datasetsInPage.getNumber());
             response.put("totalItems", datasetsInPage.getTotalElements());
             response.put("totalPages", datasetsInPage.getTotalPages());
-        } else {
-        	datasetProjectionsInPage = datasetRepository.findAllBy(PageRequest.of(start, size, Sort.by(sortOrders)));
-        	for (DatasetProjection d: datasetProjectionsInPage.getContent()) {
-        		// find retraction iformation
-        		Optional<Retraction> retracted = retractionRepository.findByDatasetId(d.getDatasetId());
-            	DatasetView dv = new DatasetView();
-            	dv.setId(d.getDatasetId());
-            	dv.setName(d.getName());
-            	dv.setDatasetIdentifier(d.getDatasetIdentifier());
-            	dv.setDateCreated(d.getDateCreated());
-            	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
-            	dv.setUser (d.getUser());
-            	if (retracted.isPresent()) {
-            		dv.setRetraction(retracted.get());
-            		if (dv.getRetraction().getRemoved()) {
-            			dv.setRemoved(true);
-            		} else {
-            			dv.setRetracted(true);
-            		}
-            	}
-            	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
-            	dv.setNoProteins(proteinCount);
-            	datasets.add(dv);
-            	response.put("objects", datasets);
-                response.put("currentPage", datasetProjectionsInPage.getNumber());
-                response.put("totalItems", datasetProjectionsInPage.getTotalElements());
-                response.put("totalPages", datasetProjectionsInPage.getTotalPages());
-            }
-        }
+        } 
          
-        
-        
         return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "datasets retrieved"), HttpStatus.OK);
 	}
 	
