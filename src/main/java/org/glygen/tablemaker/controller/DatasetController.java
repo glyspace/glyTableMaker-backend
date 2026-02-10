@@ -781,7 +781,7 @@ public class DatasetController {
 	    	for (Publication dr: existing.getAssociatedPapers()) {
 	    		boolean found = false;
 	    		for (Publication d2: d.getAssociatedPapers()) {
-	    			if (d2.getId().equals(dr.getId())) {
+	    			if (d2.getId() != null && d2.getId().equals(dr.getId())) {
 	    				// keep it
 	    				found = true;
 	    			}
@@ -821,7 +821,7 @@ public class DatasetController {
 	    	for (Grant dr: existing.getGrants()) {
 	    		boolean found = false;
 	    		for (Grant d2: d.getGrants()) {
-	    			if (d2.getId().equals(dr.getId())) {
+	    			if (d2.getId() != null && d2.getId().equals(dr.getId())) {
 	    				// keep it
 	    				found = true;
 	    			}
