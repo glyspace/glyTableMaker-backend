@@ -741,7 +741,7 @@ public class DatasetController {
 	    	for (DatabaseResource dr: existing.getAssociatedDatasources()) {
 	    		boolean found = false;
 	    		for (DatabaseResource d2: d.getAssociatedDatasources()) {
-	    			if (d2.getId().equals(dr.getId())) {
+	    			if (d2.getId() != null && d2.getId().equals(dr.getId())) {
 	    				// keep it
 	    				found = true;
 	    			}
@@ -758,7 +758,7 @@ public class DatasetController {
     		for (DatabaseResource m: d.getAssociatedDatasources()) {
     			boolean exists = false;
     			for (DatabaseResource m2: existing.getAssociatedDatasources()) {
-        			if (m2.getId() != null && m2.getId().equals(m.getId())) {
+        			if (m2.getId() != null && m.getId() != null && m2.getId().equals(m.getId())) {
         				exists = true;
         				break;
         			}
