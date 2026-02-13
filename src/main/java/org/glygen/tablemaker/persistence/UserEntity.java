@@ -1,7 +1,7 @@
 package org.glygen.tablemaker.persistence;
 
 import java.util.Collection;
-
+import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -49,6 +49,9 @@ public class UserEntity implements Comparable<UserEntity>{
     private UserLoginType loginType;
     private Collection<RoleEntity> roles;
     private String type = INVESTIGATOR;
+    
+    private Date dateCreated;
+    private Date lastLoginDate;
     
     @Id
     @Column(name="userid", unique = true, nullable = false)
@@ -258,5 +261,23 @@ public class UserEntity implements Comparable<UserEntity>{
 
 	public void setType(String type) {
 		this.type = type;
+	}
+
+	@Column
+	public Date getDateCreated() {
+		return dateCreated;
+	}
+
+	public void setDateCreated(Date dateCreated) {
+		this.dateCreated = dateCreated;
+	}
+
+	@Column
+	public Date getLastLoginDate() {
+		return lastLoginDate;
+	}
+
+	public void setLastLoginDate(Date lastLoginDate) {
+		this.lastLoginDate = lastLoginDate;
 	}
 }

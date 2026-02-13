@@ -1,5 +1,6 @@
 package org.glygen.tablemaker.view;
 
+import org.glygen.tablemaker.persistence.RoleEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.view.validation.EmailWithTld;
 import org.glygen.tablemaker.view.validation.Password;
@@ -21,7 +22,8 @@ public class User {
     private String affiliation;
     private String affiliationWebsite;
     private Boolean tempPassword = false;
-    private String userType = UserEntity.INVESTIGATOR;
+    private String userType = UserEntity.CURATOR;
+    private String role = RoleEntity.USER;
     
 	/**
 	 * @return the userName
@@ -172,5 +174,12 @@ public class User {
     public void setDepartment(String department) {
         this.department = department;
     }
+    
+	public String getRole() {
+		return role;
+	}
+	public void setRole(String role) {
+		this.role = role;
+	}
 
 }

@@ -61,4 +61,10 @@ public class GlygenUser extends User {
     public String getEmail() {
 		return email;
 	}
+    
+    public boolean hasRole(String role) {
+        String roleName = "ROLE_" + role;
+        return this.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(roleName));
+    }
 }

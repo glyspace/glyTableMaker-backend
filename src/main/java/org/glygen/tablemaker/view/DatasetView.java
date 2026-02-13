@@ -30,6 +30,8 @@ public class DatasetView {
 	Integer noGlycans;
 	Integer noProteins = 0;
 	
+	Integer noRows;
+	
 	License license;
 	String version;
 	Date versionDate;
@@ -189,6 +191,12 @@ public class DatasetView {
 	}
 	public void setRetraction(Retraction retraction) {
 		this.retraction = retraction;
+	}
+	public Integer getNoRows() {
+		return noRows;
+	}
+	public void setNoRows(Integer noRows) {
+		this.noRows = noRows;
 	}
 	
 	

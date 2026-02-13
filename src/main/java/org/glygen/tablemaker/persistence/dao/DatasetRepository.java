@@ -1,5 +1,6 @@
 package org.glygen.tablemaker.persistence.dao;
 
+import java.sql.Date;
 import java.util.List;
 
 import org.glygen.tablemaker.persistence.UserEntity;
@@ -46,6 +47,12 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	@Query ("select count(distinct(element(dv.glycoproteinData).value)) from DatasetVersion dv WHERE dv.head = true and element(dv.glycoproteinData).glycoproteinColumn='UNIPROTID'")
 	public int getAllGlycoproteinCount ();
 	
+	@Query("select count(g)from DatasetMetadata g where g.dataset.head = true and g.dataset.dataset.datasetId = :datasetId")
+	public int getGlycanMetadataCount(@Param("datasetId")Long datasetId);
+	
+	@Query("select count(g) from DatasetGlycoproteinMetadata g where g.dataset.head = true and g.dataset.dataset.datasetId = :datasetId")
+	public int getGlycoproteinMetadataCount(@Param("datasetId")Long datasetId);
+	
 	@Query ("select distinct(element(dv.data).value) from DatasetVersion dv WHERE dv.head = true and element(dv.data).glycanColumn='GLYTOUCANID'")
 	public List<String> getAllPublicGlytoucanIds ();
 	
@@ -54,6 +61,12 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	
 	@Query("SELECT dv.license FROM DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true")
 	public License getLicenseByDatasetId (@Param("datasetId") Long datasetId);
+	
+	@Query("SELECT dv.version FROM DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true")
+	public String getLatestVersionByDatasetId (@Param("datasetId") Long datasetId);
+	
+	@Query("SELECT dv.versionDate FROM DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true")
+	public java.util.Date getLatestVersionDateByDatasetId (@Param("datasetId") Long datasetId);
 	
 	@Query("Select DISTINCT d.datasetId FROM Dataset d ")
 	public List<Long> getAllDatasetIds ();

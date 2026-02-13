@@ -5,12 +5,14 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.regex.Pattern;
 
 import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.GlygenUser;
+import org.glygen.tablemaker.persistence.RoleEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.UserLoginType;
 import org.glygen.tablemaker.persistence.dao.RoleRepository;
@@ -135,10 +137,10 @@ public class UserController {
         userView.setLastName(user.getLastName());
         userView.setTempPassword(user.getTempPassword());
         userView.setUserName(user.getUsername());
-        userView.setUserType(user.getLoginType().name());
         userView.setGroupName(user.getGroupName());
         userView.setDepartment(user.getDepartment());
         if (user.getType() != null) userView.setUserType(user.getType());
+        userView.setRole(user.hasRole(RoleEntity.ADMIN) ? "ADMIN" : user.hasRole(RoleEntity.SOFTWARE) ? "SOFTWARE" : user.hasRole(RoleEntity.MODERATOR) ? "MODERATOR" : "USER");
         return ResponseEntity.ok(new SuccessResponse<User>(userView, "User Information retrieved successfully"));
     }
     
@@ -253,6 +255,7 @@ public class UserController {
         newUser.setTempPassword(false);
         newUser.setRoles(Arrays.asList(roleRepository.findByRoleName("ROLE_USER")));
         newUser.setLoginType(UserLoginType.LOCAL); 
+        newUser.setDateCreated(new Date());
         if (user.getUserType() != null) newUser.setType(user.getUserType()); else newUser.setType(UserEntity.INVESTIGATOR);
         
         // clean up expired tokens if any
@@ -432,6 +435,16 @@ public class UserController {
             userView.setLastName(user.getLastName());
             userView.setTempPassword(user.getTempPassword());
             userView.setUserName(user.getUsername());
+            userView.setRole(user.hasRole(RoleEntity.ADMIN) ? "ADMIN" : user.hasRole(RoleEntity.SOFTWARE) ? "SOFTWARE" : user.hasRole(RoleEntity.MODERATOR) ? "MODERATOR" : "USER");
+            
+            UserEntity userEntity = userRepository.findByUsernameIgnoreCase(authentication.getName());
+            if (userEntity != null) {
+            	if (userEntity.getDateCreated() == null) {
+            		userEntity.setDateCreated(new Date());
+            	}
+            	userEntity.setLastLoginDate(new Date());
+            	userRepository.save(userEntity);
+            }
             
             LoginResponse resp = new LoginResponse(jwt, userView);
             return ResponseEntity.ok(new SuccessResponse<LoginResponse>(resp, "Login Successfully"));

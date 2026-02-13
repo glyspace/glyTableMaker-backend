@@ -273,6 +273,151 @@ public class DatasetController {
         return new ResponseEntity<>(new SuccessResponse(response, "datasets retrieved"), HttpStatus.OK);
     }
 	
+	@Operation(summary = "Get all public datasets", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getalldatasets")
+    public ResponseEntity<SuccessResponse<Map<String, Object>>> getAllDatasets(
+            @RequestParam("start")
+            Integer start, 
+            @RequestParam("size")
+            Integer size,
+            @RequestParam("filters")
+            String filters,
+            @RequestParam("globalFilter")
+            String globalFilter,
+            @RequestParam("sorting")
+            String sorting) {
+		// parse filters and sorting
+        ObjectMapper mapper = new ObjectMapper();
+        List<Filter> filterList = null;
+        if (filters != null && !filters.equals("[]")) {
+            try {
+                filterList = mapper.readValue(filters, 
+                    new TypeReference<ArrayList<Filter>>() {});
+            } catch (JsonProcessingException e) {
+                throw new InternalError("filter parameter is invalid " + filters, e);
+            }
+        }
+        List<Sorting> sortingList = null;
+        List<Order> sortOrders = new ArrayList<>();
+        if (sorting != null && !sorting.equals("[]")) {
+            try {
+                sortingList = mapper.readValue(sorting, 
+                    new TypeReference<ArrayList<Sorting>>() {});
+                for (Sorting s: sortingList) {
+                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
+                }
+            } catch (JsonProcessingException e) {
+                throw new InternalError("sorting parameter is invalid " + sorting, e);
+            }
+        }
+        
+        // apply filters
+        List<DatasetSpecification> specificationList = new ArrayList<>();
+        if (filterList != null) {
+	        for (Filter f: filterList) {
+	        	DatasetSpecification spec = new DatasetSpecification(f);
+	        	specificationList.add(spec);
+	        }
+        }
+        
+        if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+        	specificationList.add(new DatasetSpecification(new Filter ("name", globalFilter)));
+        	specificationList.add(new DatasetSpecification(new Filter ("datasetIdentifier", globalFilter)));
+        	specificationList.add(new DatasetSpecification(new Filter ("dateCreated", globalFilter)));
+        }
+        
+        Specification<Dataset> spec = null;
+        if (!specificationList.isEmpty()) {
+        	spec = specificationList.get(0);
+        	for (int i=1; i < specificationList.size(); i++) {
+        		spec = Specification.where(spec).or(specificationList.get(i)); 
+        	}
+        	if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
+        		spec = Specification.where(spec).or (DatasetSpecification.hasUserWithUsername(globalFilter));
+        	}
+        } 
+        
+        Page<DatasetProjection> datasetProjectionsInPage = null;
+        Page<Dataset> datasetsInPage = null;
+        List<DatasetView> datasets = new ArrayList<>();
+        Map<String, Object> response = new HashMap<>();
+        if (spec != null) {
+        	try {
+        		datasetsInPage = datasetRepository.findAll(spec, PageRequest.of(start, size, Sort.by(sortOrders)));
+        		for (Dataset d: datasetsInPage.getContent()) {
+        			Optional<Retraction> retracted = retractionRepository.findByDataset(d);
+                	DatasetView dv = new DatasetView();
+                	dv.setId(d.getDatasetId());
+                	dv.setName(d.getName());
+                	dv.setDatasetIdentifier(d.getDatasetIdentifier());
+                	dv.setDateCreated(d.getDateCreated());
+                	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
+                	dv.setUser (d.getUser());
+                	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
+                	dv.setNoProteins(proteinCount);
+                	dv.setNoGlycans(datasetRepository.getGlycanCount(d.getDatasetId()));
+                	dv.setVersion(datasetRepository.getLatestVersionByDatasetId(d.getDatasetId()));
+                	dv.setVersionDate(datasetRepository.getLatestVersionDateByDatasetId(d.getDatasetId()));
+                	if (retracted.isPresent()) {
+                		dv.setRetraction(retracted.get());
+                		if (dv.getRetraction().getRemoved()) {
+                			dv.setRemoved(true);
+                		} else {
+                			dv.setRetracted(true);
+                		}
+                	}
+                	datasets.add(dv);
+                }
+        	} catch (Exception e) {
+        		logger.error(e.getMessage(), e);
+        		throw e;
+        	}
+        	
+            response.put("objects", datasets);
+            response.put("currentPage", datasetsInPage.getNumber());
+            response.put("totalItems", datasetsInPage.getTotalElements());
+            response.put("totalPages", datasetsInPage.getTotalPages());
+        } else {
+        	datasetProjectionsInPage = datasetRepository.findAllBy(PageRequest.of(start, size, Sort.by(sortOrders)));
+        	for (DatasetProjection d: datasetProjectionsInPage.getContent()) {
+        		// find retraction information
+        		Optional<Retraction> retracted = retractionRepository.findByDatasetId(d.getDatasetId());
+            	DatasetView dv = new DatasetView();
+            	dv.setId(d.getDatasetId());
+            	dv.setName(d.getName());
+            	dv.setDatasetIdentifier(d.getDatasetIdentifier());
+            	dv.setDateCreated(d.getDateCreated());
+            	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
+            	dv.setUser (d.getUser());
+            	if (retracted.isPresent()) {
+            		dv.setRetraction(retracted.get());
+            		if (dv.getRetraction().getRemoved()) {
+            			dv.setRemoved(true);
+            		} else {
+            			dv.setRetracted(true);
+            		}
+            	}
+            	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
+            	dv.setNoProteins(proteinCount);
+            	dv.setNoGlycans(datasetRepository.getGlycanCount(d.getDatasetId()));
+            	if (proteinCount > 0) {
+            		dv.setNoRows(datasetRepository.getGlycoproteinMetadataCount(d.getDatasetId()));
+            	} else {
+            		dv.setNoRows(datasetRepository.getGlycanMetadataCount(d.getDatasetId()));
+            	}
+            	dv.setVersion(datasetRepository.getLatestVersionByDatasetId(d.getDatasetId()));
+            	dv.setVersionDate(datasetRepository.getLatestVersionDateByDatasetId(d.getDatasetId()));
+            	datasets.add(dv);
+            	response.put("objects", datasets);
+                response.put("currentPage", datasetProjectionsInPage.getNumber());
+                response.put("totalItems", datasetProjectionsInPage.getTotalElements());
+                response.put("totalPages", datasetProjectionsInPage.getTotalPages());
+            }
+        }
+         
+        return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "datasets retrieved"), HttpStatus.OK);
+	}
+	
 	@SuppressWarnings("unchecked")
 	@Operation(summary = "Get collections for dataset", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcollections")
