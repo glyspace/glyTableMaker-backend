@@ -610,9 +610,9 @@ public class PublicDataController {
 								GlycanDiseaseResult r = new GlycanDiseaseResult();
 								r.glyTouCanId = dm.getValue();
 								r.wurcs = wurcs;
-								if (findMetadata(v.getData(), dm.getRowId(), r)) {
+								//if (findMetadata(v.getData(), dm.getRowId(), r)) {
 									results.add(r);
-								}
+								//}
 							}
 						}
 					} catch (Exception e) {
