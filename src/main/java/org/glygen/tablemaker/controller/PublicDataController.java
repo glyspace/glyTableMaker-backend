@@ -588,7 +588,7 @@ public class PublicDataController {
 	public ResponseEntity<Resource> getDatasetGlycansWithDiseaseTissue () {
 		List<GlycanDiseaseResult> results = new ArrayList<>();
 		ObjectMapper mapper = new ObjectMapper();
-		File resultFile = new File ("glycanDiseaseTissue.json");
+		File resultFile = new File (uploadDir + File.separator + "glycanDiseaseTissue.json");
 		GlytoucanUtil glytoucanUtil = GlytoucanUtil.getInstance();
 		
 		List<Dataset> datasets = datasetRepository.findAll();
@@ -626,7 +626,7 @@ public class PublicDataController {
 		try {
 			mapper.writerWithDefaultPrettyPrinter().writeValue(resultFile, results);
 		} catch (Exception e) {
-			throw new IllegalArgumentException ("Failed to write to a file", e);
+			throw new IllegalArgumentException ("Failed to write to a file. Reason: " + e.getMessage());
 		}
 		return FileController.download(resultFile, "glycanDiseaseTissue.json", null);
 	}
