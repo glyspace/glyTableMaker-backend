@@ -585,10 +585,10 @@ public class PublicDataController {
     @GetMapping("/downloadglycanswithdiseaseandtissue")
 	@ApiResponses (value ={@ApiResponse(responseCode="200", description="File downloaded successfully"), 
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-	public ResponseEntity<Resource> getDatasetGlycansWithDiseaseTissue () {
+	public ResponseEntity<SuccessResponse<List<GlycanDiseaseResult>>> getDatasetGlycansWithDiseaseTissue () {
 		List<GlycanDiseaseResult> results = new ArrayList<>();
-		ObjectMapper mapper = new ObjectMapper();
-		File resultFile = new File (uploadDir + File.separator + "glycanDiseaseTissue.json");
+		//ObjectMapper mapper = new ObjectMapper();
+		//File resultFile = new File (uploadDir + File.separator + "glycanDiseaseTissue.json");
 		GlytoucanUtil glytoucanUtil = GlytoucanUtil.getInstance();
 		
 		List<Dataset> datasets = datasetRepository.findAll();
@@ -623,12 +623,13 @@ public class PublicDataController {
 			}
 		}
 		
-		try {
+		/*try {
 			mapper.writerWithDefaultPrettyPrinter().writeValue(resultFile, results);
 		} catch (Exception e) {
 			throw new IllegalArgumentException ("Failed to write to a file. Reason: " + e.getMessage());
 		}
-		return FileController.download(resultFile, "glycanDiseaseTissue.json", null);
+		return FileController.download(resultFile, "glycanDiseaseTissue.json", null);*/
+		return new ResponseEntity<>(new SuccessResponse<List<GlycanDiseaseResult>>(results, "glycans retrieved"), HttpStatus.OK);
 	}
 	
 	private boolean findMetadata(Collection<DatasetMetadata> metadata, String rowId, GlycanDiseaseResult r) {
@@ -694,17 +695,77 @@ public class PublicDataController {
 		String wurcs;
 		Labels labels;
 		Metadata metadata;
+		public String getGlyTouCanId() {
+			return glyTouCanId;
+		}
+		public void setGlyTouCanId(String glyTouCanId) {
+			this.glyTouCanId = glyTouCanId;
+		}
+		public String getWurcs() {
+			return wurcs;
+		}
+		public void setWurcs(String wurcs) {
+			this.wurcs = wurcs;
+		}
+		public Labels getLabels() {
+			return labels;
+		}
+		public void setLabels(Labels labels) {
+			this.labels = labels;
+		}
+		public Metadata getMetadata() {
+			return metadata;
+		}
+		public void setMetadata(Metadata metadata) {
+			this.metadata = metadata;
+		}
 	}
 	
 	class Labels {
 		int disease = 0; // 0 or 1
 		String diseaseName;
 		String tissue;
+		public int getDisease() {
+			return disease;
+		}
+		public void setDisease(int disease) {
+			this.disease = disease;
+		}
+		public String getDiseaseName() {
+			return diseaseName;
+		}
+		public void setDiseaseName(String diseaseName) {
+			this.diseaseName = diseaseName;
+		}
+		public String getTissue() {
+			return tissue;
+		}
+		public void setTissue(String tissue) {
+			this.tissue = tissue;
+		}
 	}
 	
 	class Metadata {
 		String source;
 		String evidence;
 		String organism;
+		public String getSource() {
+			return source;
+		}
+		public void setSource(String source) {
+			this.source = source;
+		}
+		public String getEvidence() {
+			return evidence;
+		}
+		public void setEvidence(String evidence) {
+			this.evidence = evidence;
+		}
+		public String getOrganism() {
+			return organism;
+		}
+		public void setOrganism(String organism) {
+			this.organism = organism;
+		}
 	}
 }
