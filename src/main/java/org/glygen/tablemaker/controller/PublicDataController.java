@@ -634,6 +634,7 @@ public class PublicDataController {
 	
 	private boolean findMetadata(Collection<DatasetMetadata> metadata, String rowId, GlycanDiseaseResult r) {
 		r.labels = new Labels();
+		r.labels.disease = 0;
 		r.metadata = new Metadata();
 		r.metadata.source = "GlyTableMaker";
 		String speciesId = null;
@@ -657,7 +658,7 @@ public class PublicDataController {
 			}
 		}
 		
-		if (speciesId != null && speciesId.equals ("9606") && (r.labels.diseaseName != null || r.labels.tissue != null)) {
+		if (speciesId != null && speciesId.equals ("9606")) {
 			logger.info ("including " + r.glyTouCanId  + " to the result set");
 			return true;
 		}
