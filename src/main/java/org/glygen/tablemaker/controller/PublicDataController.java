@@ -637,6 +637,7 @@ public class PublicDataController {
 		String speciesId = null;
 		for (DatasetMetadata dm: metadata) {
 			if (dm.getRowId().equals(rowId)) {
+				if (dm.getDatatype() == null) continue;  // skip these
 				if (dm.getDatatype().getDatatypeId() == 2L) {// evidence
 					r.metadata.source = dm.getValue();  // PMID or DOI
 				} else if (dm.getDatatype().getDatatypeId() == 3L) { // species
