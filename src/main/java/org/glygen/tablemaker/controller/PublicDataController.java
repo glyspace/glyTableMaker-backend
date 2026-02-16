@@ -656,7 +656,7 @@ public class PublicDataController {
 			}
 		}
 		
-		if (speciesId != null && speciesId.equals ("9605") && (r.labels.diseaseName != null || r.labels.tissue != null)) {
+		if (speciesId != null && speciesId.equals ("9606") && (r.labels.diseaseName != null || r.labels.tissue != null)) {
 			logger.info ("including " + r.glyTouCanId  + " to the result set");
 			return true;
 		}
