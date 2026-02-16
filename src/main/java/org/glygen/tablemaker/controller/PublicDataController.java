@@ -605,6 +605,7 @@ public class PublicDataController {
 								if (!fullyDefined) {
 									break;
 								}
+								logger.info("Found fully defined glycan: " + dm.getValue());
 								//get the rowid and find all metadata with that rowid
 								GlycanDiseaseResult r = new GlycanDiseaseResult();
 								r.glyTouCanId = dm.getValue();
@@ -641,11 +642,14 @@ public class PublicDataController {
 				if (dm.getDatatype().getDatatypeId() == 2L) {// evidence
 					r.metadata.source = dm.getValue();  // PMID or DOI
 				} else if (dm.getDatatype().getDatatypeId() == 3L) { // species
+					logger.info ("found species info: " + dm.getValue());
 					r.metadata.organism = dm.getValue();
 					speciesId = dm.getValueId();
 				} else if (dm.getDatatype().getDatatypeId() == 5L) { // tissue
+					logger.info ("found tissue info: " + dm.getValue());
 					r.labels.tissue = dm.getValue();
 				} else if (dm.getDatatype().getDatatypeId() == 7L) { // disease
+					logger.info ("found disease info: " + dm.getValue());
 					r.labels.disease = 1;
 					r.labels.diseaseName = dm.getValue();
 				}
