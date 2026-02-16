@@ -642,7 +642,7 @@ public class PublicDataController {
 			if (dm.getRowId().equals(rowId)) {
 				if (dm.getDatatype() == null) continue;  // skip these
 				if (dm.getDatatype().getDatatypeId() == 2L) {// evidence
-					r.metadata.source = dm.getValue();  // PMID or DOI
+					r.metadata.evidence = dm.getValue();  // PMID or DOI
 				} else if (dm.getDatatype().getDatatypeId() == 3L) { // species
 					logger.info ("found species info: " + dm.getValue());
 					r.metadata.organism = dm.getValue();
@@ -658,13 +658,13 @@ public class PublicDataController {
 			}
 		}
 		
-		if (speciesId != null && speciesId.equals ("9606")) {
+		//if (speciesId != null && speciesId.equals ("9606")) {
 			logger.info ("including " + r.glyTouCanId  + " to the result set");
 			return true;
-		}
+		//}
 		
-		logger.info ("excluding " + r.glyTouCanId + " from result set. Species: " + speciesId);
-		return false;
+		//logger.info ("excluding " + r.glyTouCanId + " from result set. Species: " + speciesId);
+		//return false;
 	}
 
 	boolean isGlycanFullyDefined (String wurcs) throws GlycoVisitorException, IOException {
