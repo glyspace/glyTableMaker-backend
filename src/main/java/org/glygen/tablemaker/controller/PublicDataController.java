@@ -593,13 +593,16 @@ public class PublicDataController {
 		
 		List<Dataset> datasets = datasetRepository.findAll();
 		for (Dataset d: datasets) {
+			logger.info ("processing dataset " + d.getName());
 			for (DatasetVersion v: d.getVersions()) {
 				if (!v.getHead()) continue;
 				if (v.getData() != null && v.getData().size() > 0) {
 					try {
+						int glycanCount = 0;
 						for (DatasetMetadata dm: v.getData()) {
 							if (dm.getGlycanColumn() != null && dm.getGlycanColumn() == GlycanColumns.GLYTOUCANID) {
 								// get the glycan sequence from glytoucan??
+								glycanCount++;
 								String wurcs = glytoucanUtil.retrieveGlycan(dm.getValue());
 								boolean fullyDefined = isGlycanFullyDefined(wurcs);
 								if (!fullyDefined) {
@@ -610,11 +613,12 @@ public class PublicDataController {
 								GlycanDiseaseResult r = new GlycanDiseaseResult();
 								r.glyTouCanId = dm.getValue();
 								r.wurcs = wurcs;
-								//if (findMetadata(v.getData(), dm.getRowId(), r)) {
+								if (findMetadata(v.getData(), dm.getRowId(), r)) {
 									results.add(r);
-								//}
+								}
 							}
 						}
+						logger.info ("processed " + glycanCount + " glycans");
 					} catch (Exception e) {
 						// cannot process this metadata
 						logger.error("cannot process the metadata for dataset: " + d.getDatasetIdentifier(), e);
