@@ -605,16 +605,15 @@ public class PublicDataController {
 								glycanCount++;
 								String wurcs = glytoucanUtil.retrieveGlycan(dm.getValue());
 								boolean fullyDefined = isGlycanFullyDefined(wurcs);
-								if (!fullyDefined) {
-									break;
-								}
-								logger.info("Found fully defined glycan: " + dm.getValue());
-								//get the rowid and find all metadata with that rowid
-								GlycanDiseaseResult r = new GlycanDiseaseResult();
-								r.glyTouCanId = dm.getValue();
-								r.wurcs = wurcs;
-								if (findMetadata(v.getData(), dm.getRowId(), r)) {
-									results.add(r);
+								if (fullyDefined) {
+									logger.info("Found fully defined glycan: " + dm.getValue());
+									//get the rowid and find all metadata with that rowid
+									GlycanDiseaseResult r = new GlycanDiseaseResult();
+									r.glyTouCanId = dm.getValue();
+									r.wurcs = wurcs;
+									if (findMetadata(v.getData(), dm.getRowId(), r)) {
+										results.add(r);
+									}
 								}
 							}
 						}
