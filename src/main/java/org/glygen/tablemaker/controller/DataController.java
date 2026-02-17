@@ -3904,6 +3904,9 @@ public class DataController {
 		File resultFile = new File (uploadDir + File.separator + "glycanDiseaseTissue.json");
 		GlytoucanUtil glytoucanUtil = GlytoucanUtil.getInstance();
 		
+		int diseaseCount = 0;
+		int tissueCount = 0;
+		int bothCount = 0;
 		List<Dataset> datasets = datasetRepository.findAll();
 		for (Dataset d: datasets) {
 			logger.info ("processing dataset " + d.getName());
@@ -3932,6 +3935,15 @@ public class DataController {
 									r.glyTouCanId = dm.getValue();
 									r.wurcs = wurcs;
 									if (findMetadata(v.getData(), dm.getRowId(), r)) {
+										if (r.labels.disease == 1 && r.labels.tissue != null) {
+											bothCount++;
+										}
+										else if (r.labels.disease == 1) {
+											diseaseCount++;
+										}
+										else if (r.labels.tissue != null) {
+											tissueCount++;
+										}
 										results.add(r);
 									}
 								}
@@ -3945,6 +3957,11 @@ public class DataController {
 				}
 			}
 		}
+		
+		logger.info ("Total number of fully defined, human glycans with disease or tissue information: " + results.size());
+		logger.info ("# of records with disease only: " + diseaseCount);
+		logger.info ("# of records with tissue only: " + tissueCount);
+		logger.info ("# of records with disease and tissue: " + bothCount);
 		
 		try {
 			mapper.writerWithDefaultPrettyPrinter().writeValue(resultFile, results);
