@@ -30,4 +30,6 @@ public interface GlycanRepository extends JpaRepository<Glycan, Long>,  JpaSpeci
     public List<String> findDistinctGlytoucanId();
 	
 	long countByGlytoucanIDInAndStatus(List<String> glytoucanids, RegistrationStatus status);
+	
+	public List<Glycan> findByGlytoucanIDIgnoreCase (String glytoucanID);
 }

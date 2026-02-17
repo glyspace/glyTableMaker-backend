@@ -3,14 +3,10 @@ package org.glygen.tablemaker.controller;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
-import org.eurocarbdb.MolecularFramework.sugar.Sugar;
-import org.eurocarbdb.MolecularFramework.util.visitor.GlycoVisitorException;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
@@ -20,15 +16,12 @@ import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
-import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Publication;
-import org.glygen.tablemaker.persistence.dataset.Retraction;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
-import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.view.DatasetTableDownloadView;
 import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.Filter;
@@ -36,7 +29,6 @@ import org.glygen.tablemaker.view.GlygenMetadataRow;
 import org.glygen.tablemaker.view.GlygenProteinMetadataRow;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
-import org.grits.toolbox.util.structure.glycan.filter.visitor.GlycoVisitorGlycanFeature;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -578,198 +570,5 @@ public class PublicDataController {
 		downloadView.setVersion(dv.getVersion());
 		
 		return downloadTable(downloadView);
-	}
-	
-	
-	@Operation(summary = "Download fully defined glycans from all public datasets with disease and tissue information")
-    @GetMapping("/downloadglycanswithdiseaseandtissue")
-	@ApiResponses (value ={@ApiResponse(responseCode="200", description="File downloaded successfully"), 
-            @ApiResponse(responseCode="500", description="Internal Server Error")})
-	public ResponseEntity<SuccessResponse<List<GlycanDiseaseResult>>> getDatasetGlycansWithDiseaseTissue () {
-		List<GlycanDiseaseResult> results = new ArrayList<>();
-		//ObjectMapper mapper = new ObjectMapper();
-		//File resultFile = new File (uploadDir + File.separator + "glycanDiseaseTissue.json");
-		GlytoucanUtil glytoucanUtil = GlytoucanUtil.getInstance();
-		
-		List<Dataset> datasets = datasetRepository.findAll();
-		for (Dataset d: datasets) {
-			logger.info ("processing dataset " + d.getName());
-			for (DatasetVersion v: d.getVersions()) {
-				if (!v.getHead()) continue;
-				if (v.getData() != null && v.getData().size() > 0) {
-					try {
-						int glycanCount = 0;
-						for (DatasetMetadata dm: v.getData()) {
-							if (dm.getGlycanColumn() != null && dm.getGlycanColumn() == GlycanColumns.GLYTOUCANID) {
-								// get the glycan sequence from glytoucan??
-								glycanCount++;
-								String wurcs = glytoucanUtil.retrieveGlycan(dm.getValue());
-								boolean fullyDefined = isGlycanFullyDefined(wurcs);
-								if (fullyDefined) {
-									logger.info("Found fully defined glycan: " + dm.getValue());
-									//get the rowid and find all metadata with that rowid
-									GlycanDiseaseResult r = new GlycanDiseaseResult();
-									r.glyTouCanId = dm.getValue();
-									r.wurcs = wurcs;
-									if (findMetadata(v.getData(), dm.getRowId(), r)) {
-										results.add(r);
-									}
-								}
-							}
-						}
-						logger.info ("processed " + glycanCount + " glycans");
-					} catch (Exception e) {
-						// cannot process this metadata
-						logger.error("cannot process the metadata for dataset: " + d.getDatasetIdentifier(), e);
-					}
-				}
-			}
-		}
-		
-		/*try {
-			mapper.writerWithDefaultPrettyPrinter().writeValue(resultFile, results);
-		} catch (Exception e) {
-			throw new IllegalArgumentException ("Failed to write to a file. Reason: " + e.getMessage());
-		}
-		return FileController.download(resultFile, "glycanDiseaseTissue.json", null);*/
-		return new ResponseEntity<>(new SuccessResponse<List<GlycanDiseaseResult>>(results, "glycans retrieved"), HttpStatus.OK);
-	}
-	
-	private boolean findMetadata(Collection<DatasetMetadata> metadata, String rowId, GlycanDiseaseResult r) {
-		r.labels = new Labels();
-		r.labels.disease = 0;
-		r.metadata = new Metadata();
-		r.metadata.source = "GlyTableMaker";
-		String speciesId = null;
-		for (DatasetMetadata dm: metadata) {
-			if (dm.getRowId().equals(rowId)) {
-				if (dm.getDatatype() == null) continue;  // skip these
-				if (dm.getDatatype().getDatatypeId() == 2L) {// evidence
-					r.metadata.evidence = dm.getValue();  // PMID or DOI
-				} else if (dm.getDatatype().getDatatypeId() == 3L) { // species
-					logger.info ("found species info: " + dm.getValue());
-					r.metadata.organism = dm.getValue();
-					speciesId = dm.getValueId();
-				} else if (dm.getDatatype().getDatatypeId() == 5L) { // tissue
-					logger.info ("found tissue info: " + dm.getValue());
-					r.labels.tissue = dm.getValue();
-				} else if (dm.getDatatype().getDatatypeId() == 7L) { // disease
-					logger.info ("found disease info: " + dm.getValue());
-					r.labels.disease = 1;
-					r.labels.diseaseName = dm.getValue();
-				}
-			}
-		}
-		
-		//if (speciesId != null && speciesId.equals ("9606")) {
-			logger.info ("including " + r.glyTouCanId  + " to the result set");
-			return true;
-		//}
-		
-		//logger.info ("excluding " + r.glyTouCanId + " from result set. Species: " + speciesId);
-		//return false;
-	}
-
-	boolean isGlycanFullyDefined (String wurcs) throws GlycoVisitorException, IOException {
-		// convert wurcs to Sugar
-		Sugar sugar = GlytoucanUtil.getSugarFromWURCS(wurcs);
-		GlycoVisitorGlycanFeature featureVisitor = new GlycoVisitorGlycanFeature();
-		featureVisitor.setReducingAlditolAllowed(true);
-		featureVisitor.setResidueSugAllowed(false);
-		featureVisitor.setUnconnectedTreeAllowed(false);
-		featureVisitor.setUnitCyclicAllowed(false);
-		featureVisitor.setUnitProbableAllowed(false);
-		featureVisitor.setUnitRepeatAllowed(false);
-		featureVisitor.setUnitUndAllowed(false);
-		featureVisitor.setUnknownAnomerAllowed(false);
-		featureVisitor.setUnknownBasetypeAllowed(false);
-		featureVisitor.setUnknownConfigurationAllowed(false);
-		featureVisitor.setUnknownLinkagePositionAllowed(false);
-		featureVisitor.setUnknownLinkageTypeAllowed(false);
-		featureVisitor.setUnknownModificationPositionAllowed(false);
-		featureVisitor.setUnknownRepeatAllowed(false);
-		featureVisitor.setUnknownRingsizeAllowed(false);
-		
-		featureVisitor.start(sugar);
-		return featureVisitor.isValid();
-	}
-	
-	class GlycanDiseaseResult {
-		String glyTouCanId;
-		String wurcs;
-		Labels labels;
-		Metadata metadata;
-		public String getGlyTouCanId() {
-			return glyTouCanId;
-		}
-		public void setGlyTouCanId(String glyTouCanId) {
-			this.glyTouCanId = glyTouCanId;
-		}
-		public String getWurcs() {
-			return wurcs;
-		}
-		public void setWurcs(String wurcs) {
-			this.wurcs = wurcs;
-		}
-		public Labels getLabels() {
-			return labels;
-		}
-		public void setLabels(Labels labels) {
-			this.labels = labels;
-		}
-		public Metadata getMetadata() {
-			return metadata;
-		}
-		public void setMetadata(Metadata metadata) {
-			this.metadata = metadata;
-		}
-	}
-	
-	class Labels {
-		int disease = 0; // 0 or 1
-		String diseaseName;
-		String tissue;
-		public int getDisease() {
-			return disease;
-		}
-		public void setDisease(int disease) {
-			this.disease = disease;
-		}
-		public String getDiseaseName() {
-			return diseaseName;
-		}
-		public void setDiseaseName(String diseaseName) {
-			this.diseaseName = diseaseName;
-		}
-		public String getTissue() {
-			return tissue;
-		}
-		public void setTissue(String tissue) {
-			this.tissue = tissue;
-		}
-	}
-	
-	class Metadata {
-		String source;
-		String evidence;
-		String organism;
-		public String getSource() {
-			return source;
-		}
-		public void setSource(String source) {
-			this.source = source;
-		}
-		public String getEvidence() {
-			return evidence;
-		}
-		public void setEvidence(String evidence) {
-			this.evidence = evidence;
-		}
-		public String getOrganism() {
-			return organism;
-		}
-		public void setOrganism(String organism) {
-			this.organism = organism;
-		}
 	}
 }
