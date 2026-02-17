@@ -3894,7 +3894,7 @@ public class DataController {
         }
     }
     
-    @Operation(summary = "Download fully defined glycans from all public datasets with disease and tissue information")
+    @Operation(summary = "Download fully defined glycans from all public datasets with disease and tissue information", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/downloadglycanswithdiseaseandtissue")
 	@ApiResponses (value ={@ApiResponse(responseCode="200", description="File downloaded successfully"), 
             @ApiResponse(responseCode="500", description="Internal Server Error")})
