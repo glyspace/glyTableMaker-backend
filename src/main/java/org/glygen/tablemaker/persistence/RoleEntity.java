@@ -23,10 +23,10 @@ import jakarta.xml.bind.annotation.XmlTransient;
 @JsonSerialize
 public class RoleEntity {
 	
-	public final static String ADMIN="ADMIN";
-	public final static String USER="USER";
-	public final static String MODERATOR="MODERATOR";
-	public final static String SOFTWARE="SOFTWARE";
+	public final static String ADMIN="ROLE_ADMIN";
+	public final static String USER="ROLE_USER";
+	public final static String MODERATOR="ROLE_MODERATOR";
+	public final static String SOFTWARE="ROLE_SOFTWARE";
 	
 	Integer roleId;
 	String roleName;

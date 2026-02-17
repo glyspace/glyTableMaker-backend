@@ -3974,14 +3974,16 @@ public class DataController {
 					logger.info ("found tissue info: " + dm.getValue());
 					r.labels.tissue = dm.getValue();
 				} else if (dm.getDatatype().getDatatypeId() == 7L) { // disease
-					logger.info ("found disease info: " + dm.getValue());
-					r.labels.disease = 1;
-					r.labels.diseaseName = dm.getValue();
+					if (dm.getValue() != null || dm.getValueId() != null) {
+						logger.info ("found disease info: " + dm.getValue());
+						r.labels.disease = 1;
+						r.labels.diseaseName = dm.getValue();
+					}
 				}
 			}
 		}
 		
-		if (speciesId != null && speciesId.equals ("9606")) {
+		if (speciesId != null && speciesId.equals ("9606") && (r.labels.diseaseName != null || r.labels.tissue != null)) {
 			logger.info ("including " + r.glyTouCanId  + " to the result set");
 			return true;
 		}

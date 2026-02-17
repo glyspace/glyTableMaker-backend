@@ -30,14 +30,14 @@ public class TablemakerApplication {
 	@Bean
 	InitializingBean sendDatabase() {
 	    return () -> {
-	        RoleEntity admin = roleRepository.findByRoleName ("ROLE_" + RoleEntity.ADMIN);
-	        if (admin == null) roleRepository.save(new RoleEntity("ROLE_" + RoleEntity.ADMIN));
-	        RoleEntity user = roleRepository.findByRoleName ("ROLE_" + RoleEntity.USER);
-	        if (user == null) roleRepository.save(new RoleEntity("ROLE_" + RoleEntity.USER));
-	        RoleEntity software = roleRepository.findByRoleName ("ROLE_" + RoleEntity.SOFTWARE);
-	        if (software == null) roleRepository.save(new RoleEntity("ROLE_" + RoleEntity.SOFTWARE));
-	        RoleEntity moderator = roleRepository.findByRoleName ("ROLE_" + RoleEntity.MODERATOR);
-	        if (moderator == null) roleRepository.save(new RoleEntity("ROLE_" + RoleEntity.MODERATOR));
+	        RoleEntity admin = roleRepository.findByRoleName (RoleEntity.ADMIN);
+	        if (admin == null) roleRepository.save(new RoleEntity(RoleEntity.ADMIN));
+	        RoleEntity user = roleRepository.findByRoleName (RoleEntity.USER);
+	        if (user == null) roleRepository.save(new RoleEntity(RoleEntity.USER));
+	        RoleEntity software = roleRepository.findByRoleName (RoleEntity.SOFTWARE);
+	        if (software == null) roleRepository.save(new RoleEntity(RoleEntity.SOFTWARE));
+	        RoleEntity moderator = roleRepository.findByRoleName (RoleEntity.MODERATOR);
+	        if (moderator == null) roleRepository.save(new RoleEntity(RoleEntity.MODERATOR));
 	      };
 	}
 	

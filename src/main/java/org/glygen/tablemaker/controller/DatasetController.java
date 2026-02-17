@@ -286,6 +286,17 @@ public class DatasetController {
             String globalFilter,
             @RequestParam("sorting")
             String sorting) {
+		// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        if (!user.hasRole(RoleEntity.ADMIN)) {
+        	throw new IllegalArgumentException("Only admin user has acess to this API");
+        }
+        
 		// parse filters and sorting
         ObjectMapper mapper = new ObjectMapper();
         List<Filter> filterList = null;

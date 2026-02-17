@@ -47,10 +47,10 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	@Query ("select count(distinct(element(dv.glycoproteinData).value)) from DatasetVersion dv WHERE dv.head = true and element(dv.glycoproteinData).glycoproteinColumn='UNIPROTID'")
 	public int getAllGlycoproteinCount ();
 	
-	@Query("select count(g)from DatasetMetadata g where g.dataset.head = true and g.dataset.dataset.datasetId = :datasetId")
+	@Query("select count(g)from DatasetMetadata g where g.dataset.head = true and g.dataset.dataset.datasetId = :datasetId and g.glycanColumn='GLYTOUCANID'")
 	public int getGlycanMetadataCount(@Param("datasetId")Long datasetId);
 	
-	@Query("select count(g) from DatasetGlycoproteinMetadata g where g.dataset.head = true and g.dataset.dataset.datasetId = :datasetId")
+	@Query("select count(g) from DatasetGlycoproteinMetadata g where g.dataset.head = true and g.dataset.dataset.datasetId = :datasetId and g.glycoproteinColumn='UNIPROTID'")
 	public int getGlycoproteinMetadataCount(@Param("datasetId")Long datasetId);
 	
 	@Query ("select distinct(element(dv.data).value) from DatasetVersion dv WHERE dv.head = true and element(dv.data).glycanColumn='GLYTOUCANID'")
