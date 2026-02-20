@@ -111,7 +111,7 @@ public class FeedbackEntity {
     /**
      * @return the message
      */
-    @Column(name="message", nullable=false)
+    @Column(name="message", nullable=false, columnDefinition="text")
     @NotEmpty
     public String getMessage() {
         return message;
