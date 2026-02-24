@@ -65,6 +65,9 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	@Query("SELECT dv.version FROM DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true")
 	public String getLatestVersionByDatasetId (@Param("datasetId") Long datasetId);
 	
+	@Query("SELECT dv.versionId FROM DatasetVersion dv WHERE dv.dataset.datasetIdentifier = :datasetId AND dv.head = true")
+	public Long getLatestVersionIdByDatasetIdentifier (@Param("datasetId") String datasetIdentifier);
+	
 	@Query("SELECT dv.versionDate FROM DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true")
 	public java.util.Date getLatestVersionDateByDatasetId (@Param("datasetId") Long datasetId);
 	
@@ -83,11 +86,11 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	public List<Long> getAllDatasetIdsByFundingOrganization (@Param("fundingOrg") String fundingOrg);
 	
 
-	@Query("SELECT m FROM DatasetMetadata m WHERE m.rowId IN :rowIds")
-	List<DatasetMetadata> findByRowIdIn(@Param("rowIds") List<String> rowIds);
+	@Query("SELECT m FROM DatasetMetadata m WHERE m.rowId IN :rowIds and m.dataset.versionId = :versionId")
+	List<DatasetMetadata> findByRowIdInWithVersion(@Param("rowIds") List<String> rowIds, @Param("versionId") Long versionId);
 	
-	@Query("SELECT m FROM DatasetGlycoproteinMetadata m WHERE m.rowId IN :rowIds")
-	List<DatasetGlycoproteinMetadata> findGlycoproteinByRowIdIn(@Param("rowIds") List<String> rowIds);
+	@Query("SELECT m FROM DatasetGlycoproteinMetadata m WHERE m.rowId IN :rowIds and m.dataset.versionId = :versionId")
+	List<DatasetGlycoproteinMetadata> findGlycoproteinByRowIdInWithVersion(@Param("rowIds") List<String> rowIds, @Param("versionId") Long versionId);
 	
 	@Query("Select DISTINCT d.datasetId FROM Dataset d JOIN d.integratedIn g WHERE LOWER(g.resource.name) = :resource")
 	List<Dataset> getDatasetsIntegratedIn (@Param("resource")String resourceName);
