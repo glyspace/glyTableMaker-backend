@@ -192,8 +192,9 @@ public class PublicDataController {
         		rows = datasetRepository.getGlycoproteinDataByVersion(versionId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
             } else {
             	rows = datasetRepository.getGlycoproteinData(datasetId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
+            	versionId = datasetRepository.getLatestVersionIdByDatasetIdentifier(datasetId);
             }
-        	List<DatasetGlycoproteinMetadata> data = datasetRepository.findGlycoproteinByRowIdIn(rows.getContent());
+        	List<DatasetGlycoproteinMetadata> data = datasetRepository.findGlycoproteinByRowIdInWithVersion(rows.getContent(), versionId);
         	
         	Map<String, List<DatasetGlycoproteinMetadata>> rowMap = new HashMap<>();
 			for (DatasetGlycoproteinMetadata m: data) {
@@ -235,8 +236,9 @@ public class PublicDataController {
         		rows = datasetRepository.getDataByVersion(versionId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
             } else {
             	rows = datasetRepository.getData(datasetId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
+            	versionId = datasetRepository.getLatestVersionIdByDatasetIdentifier(datasetId);
             }
-        	List<DatasetMetadata> data = datasetRepository.findByRowIdIn(rows.getContent());
+        	List<DatasetMetadata> data = datasetRepository.findByRowIdInWithVersion(rows.getContent(), versionId);
         	Map<String, List<DatasetMetadata>> rowMap = new HashMap<>();
 			for (DatasetMetadata m: data) {
 				if (rowMap.get(m.getRowId()) == null) {
