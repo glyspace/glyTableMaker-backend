@@ -4,8 +4,12 @@ import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
 import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.glygen.tablemaker.exception.BadRequestException;
@@ -38,6 +42,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -142,6 +147,104 @@ public class UserController {
         if (user.getType() != null) userView.setUserType(user.getType());
         userView.setRole(user.hasRole(RoleEntity.ADMIN) ? "ADMIN" : user.hasRole(RoleEntity.SOFTWARE) ? "SOFTWARE" : user.hasRole(RoleEntity.MODERATOR) ? "MODERATOR" : "USER");
         return ResponseEntity.ok(new SuccessResponse<User>(userView, "User Information retrieved successfully"));
+    }
+    
+    @GetMapping("/getusers")
+    @Operation(summary="Retrieve all users", security = { @SecurityRequirement(name = "bearer-key") })
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="Users retrieved successfully", content = {
+            @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))}), 
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse> getUsers () {
+        List<User> users = new ArrayList<>();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"))) {
+        	throw new AccessDeniedException("The user: " + auth.getName() + " is not authorized to access all users");
+        }
+        
+        List<UserEntity> userList = userRepository.findAll();
+        for (UserEntity user: userList) {
+        	if (!user.getUsername().equalsIgnoreCase(auth.getName())) {
+        		User u = new User();
+        		u.setUserName(user.getUsername());
+        		u.setAffiliation(user.getAffiliation());
+        		u.setAffiliationWebsite(user.getAffiliationWebsite());
+        		u.setDepartment(user.getDepartment());
+        		u.setEmail(user.getEmail());
+        		u.setFirstName(user.getFirstName());
+        		u.setLastName(user.getLastName());
+        		u.setGroupName(user.getGroupName());
+        		u.setRole(user.hasRole(RoleEntity.ADMIN) ? "ADMIN" : user.hasRole(RoleEntity.SOFTWARE) ? "SOFTWARE" : user.hasRole(RoleEntity.MODERATOR) ? "MODERATOR" : "USER");
+        		u.setEnabled(user.getEnabled());
+        		u.setDateCreated(user.getDateCreated());
+        		u.setLastLoginDate(user.getLastLoginDate());
+        		u.setTempPassword(user.getTempPassword());
+        		users.add(u);
+        	}
+        }
+
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("objects", users);
+        response.put("totalItems", users.size());
+        return ResponseEntity.ok(new SuccessResponse<>(response, "Users retrieved successfully"));
+    }
+    
+    @DeleteMapping("/disable/{userName}")
+    @Operation(summary="disable user", security = { @SecurityRequirement(name = "bearer-key") })
+    public ResponseEntity<SuccessResponse<Boolean>> disableUser (
+    		@Parameter(required=true, description="login name of the user")
+    		@PathVariable("userName")
+    		String userName) {
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"))) {
+        	throw new AccessDeniedException("The user: " + auth.getName() + " is not authorized to access all users");
+        }
+        
+        UserEntity user = userRepository.findByUsernameIgnoreCase(userName.trim());
+        if (user == null) {
+            // try with email
+            user = userRepository.findByEmailIgnoreCase(userName.trim());
+            if (user == null) {
+                throw new DataNotFoundException("A user with loginId " + userName + " does not exist");
+            }
+        }
+        if (user.getUsername().equalsIgnoreCase(auth.getName())) {
+        	throw new AccessDeniedException("The admin: " + auth.getName() + " is not authorized disable own user");
+        }
+        
+        user.setEnabled(false);
+        userRepository.save(user);
+        
+    	return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "Disabled successfully"));
+    }
+    
+    @PostMapping("/enable/{userName}")
+    @Operation(summary="enable", security = { @SecurityRequirement(name = "bearer-key") })
+    public ResponseEntity<SuccessResponse<Boolean>> enableUser (
+    		@Parameter(required=true, description="login name of the user")
+    		@PathVariable("userName")
+    		String userName) {
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"))) {
+        	throw new AccessDeniedException("The user: " + auth.getName() + " is not authorized to access all users");
+        }
+        
+        UserEntity user = userRepository.findByUsernameIgnoreCase(userName.trim());
+        if (user == null) {
+            // try with email
+            user = userRepository.findByEmailIgnoreCase(userName.trim());
+            if (user == null) {
+                throw new DataNotFoundException("A user with loginId " + userName + " does not exist");
+            }
+        }
+        
+        user.setEnabled(true);
+        userRepository.save(user);
+        
+        return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "Enabled successfully"));  
     }
     
     @PostMapping("/update/{userName}")

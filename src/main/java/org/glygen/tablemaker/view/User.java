@@ -1,5 +1,7 @@
 package org.glygen.tablemaker.view;
 
+import java.util.Date;
+
 import org.glygen.tablemaker.persistence.RoleEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.view.validation.EmailWithTld;
@@ -24,6 +26,9 @@ public class User {
     private Boolean tempPassword = false;
     private String userType = UserEntity.CURATOR;
     private String role = RoleEntity.USER;
+    private Boolean enabled = false;
+    private Date dateCreated;
+    private Date lastLoginDate;
     
 	/**
 	 * @return the userName
@@ -180,6 +185,24 @@ public class User {
 	}
 	public void setRole(String role) {
 		this.role = role;
+	}
+	public Boolean getEnabled() {
+		return enabled;
+	}
+	public void setEnabled(Boolean enabled) {
+		this.enabled = enabled;
+	}
+	public Date getDateCreated() {
+		return dateCreated;
+	}
+	public void setDateCreated(Date dateCreated) {
+		this.dateCreated = dateCreated;
+	}
+	public Date getLastLoginDate() {
+		return lastLoginDate;
+	}
+	public void setLastLoginDate(Date lastLoginDate) {
+		this.lastLoginDate = lastLoginDate;
 	}
 
 }
