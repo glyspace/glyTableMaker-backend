@@ -29,6 +29,7 @@ public class User {
     private Boolean enabled = false;
     private Date dateCreated;
     private Date lastLoginDate;
+    private Long datasetNo = 0L;
     
 	/**
 	 * @return the userName
@@ -203,6 +204,12 @@ public class User {
 	}
 	public void setLastLoginDate(Date lastLoginDate) {
 		this.lastLoginDate = lastLoginDate;
+	}
+	public Long getDatasetNo() {
+		return datasetNo;
+	}
+	public void setDatasetNo(long datasetNo) {
+		this.datasetNo = datasetNo;
 	}
 
 }

@@ -19,6 +19,7 @@ import org.glygen.tablemaker.persistence.GlygenUser;
 import org.glygen.tablemaker.persistence.RoleEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.UserLoginType;
+import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.RoleRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.security.TokenProvider;
@@ -76,12 +77,14 @@ public class UserController {
     private final AuthenticationManager authenticationManager;
     private final TokenProvider tokenProvider;
     private final EmailManager emailManager;
+    private final DatasetRepository datasetRepository;
     
     
     public UserController(UserManager userManager,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
-            TokenProvider tokenProvider, UserRepository userRepo, RoleRepository roleRepo, EmailManager emailManager) {
+            TokenProvider tokenProvider, UserRepository userRepo, RoleRepository roleRepo, 
+            EmailManager emailManager, DatasetRepository datasetRepository) {
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
         this.userManager = userManager;
@@ -89,6 +92,7 @@ public class UserController {
         this.userRepository = userRepo;
         this.roleRepository = roleRepo;
         this.emailManager = emailManager;
+		this.datasetRepository = datasetRepository;
     }
     
     
@@ -181,6 +185,7 @@ public class UserController {
         		u.setDateCreated(user.getDateCreated());
         		u.setLastLoginDate(user.getLastLoginDate());
         		u.setTempPassword(user.getTempPassword());
+        		u.setDatasetNo(datasetRepository.countByUser (user));
         		users.add(u);
         	}
         }

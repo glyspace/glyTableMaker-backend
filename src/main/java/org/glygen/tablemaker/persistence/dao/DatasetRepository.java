@@ -1,6 +1,5 @@
 package org.glygen.tablemaker.persistence.dao;
 
-import java.sql.Date;
 import java.util.List;
 
 import org.glygen.tablemaker.persistence.UserEntity;
@@ -23,6 +22,7 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	public Page<DatasetProjection> findAllByUser (UserEntity user, Pageable pageable);
 	public Page<Dataset> findAll(Specification<Dataset> spec, Pageable pageable);
 	public long countByDatasetIdentifier (String identifier);
+	public long countByUser (UserEntity user);
 	public Dataset findByDatasetIdentifierAndUserAndVersions_version (String identifier, UserEntity user, String version);
 	public Dataset findByDatasetIdentifierAndUserAndVersions_head (String identifier, UserEntity user, Boolean head);
 	public Dataset findByDatasetIdentifierAndVersions_version (String identifier, String version);
