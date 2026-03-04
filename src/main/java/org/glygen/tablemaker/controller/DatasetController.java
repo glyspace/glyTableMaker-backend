@@ -369,6 +369,7 @@ public class DatasetController {
                 	dv.setNoGlycans(datasetRepository.getGlycanCount(d.getDatasetId()));
                 	dv.setVersion(datasetRepository.getLatestVersionByDatasetId(d.getDatasetId()));
                 	dv.setVersionDate(datasetRepository.getLatestVersionDateByDatasetId(d.getDatasetId()));
+                	dv.setError(datasetRepository.getGlygenErrors(d.getDatasetId()));
                 	if (retracted.isPresent()) {
                 		dv.setRetraction(retracted.get());
                 		if (dv.getRetraction().getRemoved()) {
@@ -418,6 +419,7 @@ public class DatasetController {
             	}
             	dv.setVersion(datasetRepository.getLatestVersionByDatasetId(d.getDatasetId()));
             	dv.setVersionDate(datasetRepository.getLatestVersionDateByDatasetId(d.getDatasetId()));
+            	dv.setError(datasetRepository.getGlygenErrors(d.getDatasetId()));
             	datasets.add(dv);
             	response.put("objects", datasets);
                 response.put("currentPage", datasetProjectionsInPage.getNumber());

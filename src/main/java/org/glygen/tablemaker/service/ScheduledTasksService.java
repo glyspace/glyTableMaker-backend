@@ -186,7 +186,7 @@ public class ScheduledTasksService {
 						
 						datasetManager.saveDataset(dataset);
 						
-						// TODO send email to the user with excluded records. Do we save the info into the database?
+						
 					} else {
 						logger.error("Given dataset identifier " + id + " does not exist in the repository");
 					}
@@ -294,10 +294,18 @@ public class ScheduledTasksService {
 	        JSONObject obj = new JSONObject(json);
 	        JSONArray usage = obj.getJSONArray("usage");
 	        if (usage.length() > 0) {
-//	        if (!usage.isEmpty()) {
 	        	JSONObject u = usage.getJSONObject(0);
 	        	resource.setIdentifier(u.getString("bco_id"));
 	        	resource.setURL(u.getString("dataset_url"));
+	        	
+	        	JSONArray excluded = u.getJSONArray("excluded_records");
+	        	if (excluded.length() > 0) {
+	        		JSONObject flagDesc = obj.getJSONObject("exclusion_flag_desc");
+	        		JSONObject error = new JSONObject();
+	        		error.put("exclusion_flag_desc", flagDesc);
+	        		error.put("excluded_records", excluded);
+	        		dd.setErrorJson(error.toString());
+	        	}
 	        	
 	        	dd.setVersion("head");   //TODO get the version from the json file
 	        }

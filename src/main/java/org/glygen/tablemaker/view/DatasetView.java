@@ -30,6 +30,8 @@ public class DatasetView {
 	Integer noGlycans;
 	Integer noProteins = 0;
 	
+	String error; // error json reported by GlyGen if this dataset is integrated in GlyGen
+	
 	Integer noRows;
 	
 	License license;
@@ -197,6 +199,12 @@ public class DatasetView {
 	}
 	public void setNoRows(Integer noRows) {
 		this.noRows = noRows;
+	}
+	public String getError() {
+		return error;
+	}
+	public void setError(String error) {
+		this.error = error;
 	}
 	
 	

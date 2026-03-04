@@ -95,4 +95,7 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	@Query("Select DISTINCT d.datasetId FROM Dataset d JOIN d.integratedIn g WHERE LOWER(g.resource.name) = :resource")
 	List<Dataset> getDatasetsIntegratedIn (@Param("resource")String resourceName);
 	
+	@Query("Select DISTINCT g.errorJson FROM DatabaseResourceDataset g WHERE LOWER(g.resource.name) = 'glygen' and g.dataset.datasetId = :datasetId and g.errorJson is not null")
+	String getGlygenErrors (@Param("datasetId") Long datasetId);
+	
 }

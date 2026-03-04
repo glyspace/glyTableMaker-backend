@@ -37,6 +37,9 @@ public class DatabaseResourceDataset {
 	@Column
 	String versionInResource;   // version of the resource this data set was integrated in
 	
+	@Column(name="error_json", columnDefinition="text")
+	String errorJson;
+	
 	@JsonIgnore
     @ManyToOne(targetEntity=Dataset.class)
     @JoinColumn(name = "datasetId")
@@ -88,5 +91,13 @@ public class DatabaseResourceDataset {
 
 	public void setVersionInResource(String versionInResource) {
 		this.versionInResource = versionInResource;
+	}
+
+	public String getErrorJson() {
+		return errorJson;
+	}
+
+	public void setErrorJson(String errorJson) {
+		this.errorJson = errorJson;
 	}
 }
