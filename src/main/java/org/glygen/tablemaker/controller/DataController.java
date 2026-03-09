@@ -3941,6 +3941,7 @@ public class DataController {
 											tissueCount++;
 										}
 										r.iupac = convertToIUPACCondensed(wurcs);
+										r.metadata.datasetIdentifier = d.getDatasetIdentifier();
 										results.add(r);
 									}
 								}
@@ -4002,11 +4003,13 @@ public class DataController {
 				} else if (dm.getDatatype().getDatatypeId() == 5L) { // tissue
 					logger.info ("found tissue info: " + dm.getValue());
 					r.labels.tissue = dm.getValue();
+					r.labels.tissueId = dm.getValueId();
 				} else if (dm.getDatatype().getDatatypeId() == 7L) { // disease
 					if (dm.getValue() != null || dm.getValueId() != null) {
 						logger.info ("found disease info: " + dm.getValue());
 						r.labels.disease = 1;
 						r.labels.diseaseName = dm.getValue();
+						r.labels.diseaseId = dm.getValueId();
 					}
 				}
 			}
@@ -4091,7 +4094,9 @@ public class DataController {
 	class Labels {
 		int disease = 0; // 0 or 1
 		String diseaseName;
+		String diseaseId;
 		String tissue;
+		String tissueId;
 		public int getDisease() {
 			return disease;
 		}
@@ -4110,10 +4115,23 @@ public class DataController {
 		public void setTissue(String tissue) {
 			this.tissue = tissue;
 		}
+		public String getDiseaseId() {
+			return diseaseId;
+		}
+		public void setDiseaseId(String diseaseId) {
+			this.diseaseId = diseaseId;
+		}
+		public String getTissueId() {
+			return tissueId;
+		}
+		public void setTissueId(String tissueId) {
+			this.tissueId = tissueId;
+		}
 	}
 	
 	class GlycanMetadata {
 		String source;
+		String datasetIdentifier;
 		String evidence;
 		String organism;
 		public String getSource() {
@@ -4133,6 +4151,12 @@ public class DataController {
 		}
 		public void setOrganism(String organism) {
 			this.organism = organism;
+		}
+		public String getDatasetIdentifier() {
+			return datasetIdentifier;
+		}
+		public void setDatasetIdentifier(String datasetIdentifier) {
+			this.datasetIdentifier = datasetIdentifier;
 		}
 	}
 }
