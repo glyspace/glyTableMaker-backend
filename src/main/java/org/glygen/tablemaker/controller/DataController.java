@@ -52,6 +52,11 @@ import org.glycoinfo.GlycanCompositionConverter.structure.Composition;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionParseException;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionUtils;
 import org.glycoinfo.GlycanCompositionConverter.utils.DictionaryException;
+import org.glycoinfo.GlycanFormatconverter.Glycan.GlyContainer;
+import org.glycoinfo.GlycanFormatconverter.Glycan.GlycanException;
+import org.glycoinfo.GlycanFormatconverter.io.IUPAC.IUPACStyleDescriptor;
+import org.glycoinfo.GlycanFormatconverter.io.WURCS.WURCSImporter;
+import org.glycoinfo.GlycanFormatconverter.util.ExporterEntrance;
 import org.glycoinfo.GlycanFormatconverter.util.exchange.SugarToWURCSGraph.SugarToWURCSGraph;
 import org.glycoinfo.WURCSFramework.util.WURCSException;
 import org.glycoinfo.WURCSFramework.util.WURCSFactory;
@@ -3935,6 +3940,7 @@ public class DataController {
 										else if (r.labels.tissue != null) {
 											tissueCount++;
 										}
+										r.iupac = convertToIUPACCondensed(wurcs);
 										results.add(r);
 									}
 								}
@@ -3962,6 +3968,21 @@ public class DataController {
 		return FileController.download(resultFile, "glycanDiseaseTissue.json", null);
 		//return new ResponseEntity<>(new SuccessResponse<List<GlycanDiseaseResult>>(results, "glycans retrieved"), HttpStatus.OK);
 	}
+    
+    private String convertToIUPACCondensed (String wurcs) {
+    	
+    	try {
+    		WURCSImporter wi = new WURCSImporter();
+			GlyContainer gc = wi.start(wurcs);
+			ExporterEntrance ee = new ExporterEntrance(gc);
+			return ee.toIUPAC(IUPACStyleDescriptor.CONDENSED);
+
+		} catch (Exception e) {
+			logger.warn("Cannot export into IUPAC-condensed. " + e.getMessage());
+		} 
+    	
+		return null;
+    }
 	
 	private boolean findMetadata(java.util.Collection<DatasetMetadata> metadata, String rowId, GlycanDiseaseResult r) {
 		r.labels = new Labels();
@@ -4031,6 +4052,7 @@ public class DataController {
 	
 	class GlycanDiseaseResult {
 		String glyTouCanId;
+		String iupac;
 		String wurcs;
 		Labels labels;
 		GlycanMetadata metadata;
@@ -4057,6 +4079,12 @@ public class DataController {
 		}
 		public void setMetadata(GlycanMetadata metadata) {
 			this.metadata = metadata;
+		}
+		public String getIupac() {
+			return iupac;
+		}
+		public void setIupac(String iupac) {
+			this.iupac = iupac;
 		}
 	}
 	
