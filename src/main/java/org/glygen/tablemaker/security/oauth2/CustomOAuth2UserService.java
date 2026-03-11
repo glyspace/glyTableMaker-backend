@@ -7,10 +7,12 @@ import org.glygen.tablemaker.security.CustomUserDetails;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,10 +58,15 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             //user.setImageUrl(customUserDetails.getAvatarUrl());
             user.setLoginType(customUserDetails.getProvider());
             user.setRoles(Arrays.asList(roleRepository.findByRoleName("ROLE_USER")));
+            user.setDateCreated(new Date());
         } else {
             user.setEmail(customUserDetails.getEmail());
+            if (!user.getEnabled()) {
+                throw new OAuth2AuthenticationException("User account disabled");
+            }
             //user.setImageUrl(customUserDetails.getAvatarUrl());
         }
+        user.setLastLoginDate(new Date());
         return userService.save(user);
     }
 }

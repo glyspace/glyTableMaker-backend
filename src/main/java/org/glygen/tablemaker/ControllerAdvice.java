@@ -10,7 +10,9 @@ import org.glygen.tablemaker.view.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -61,6 +63,14 @@ public class ControllerAdvice {
     public ErrorResponse badCredentialsException (BadCredentialsException ex) {
         log.debug(ex.getMessage(), ex.getCause());
         return new ErrorResponse(String.valueOf(HttpStatus.UNAUTHORIZED.value()), ex.getMessage(), TIMESTAMP);
+
+    }
+    
+    @ExceptionHandler({AccessDeniedException.class, OAuth2AuthenticationException.class})
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse accessDeniedException (AccessDeniedException ex) {
+        log.debug(ex.getMessage(), ex.getCause());
+        return new ErrorResponse(String.valueOf(HttpStatus.FORBIDDEN.value()), ex.getMessage(), TIMESTAMP);
 
     }
 

@@ -3,6 +3,7 @@ package org.glygen.tablemaker.config;
 import org.glygen.tablemaker.security.AuthTokenFilter;
 import org.glygen.tablemaker.security.HandlerAccessDeniedHandler;
 import org.glygen.tablemaker.security.HandlerAuthenticationEntryPoint;
+import org.glygen.tablemaker.security.oauth2.CustomAuthenticationFailureHandler;
 import org.glygen.tablemaker.security.oauth2.CustomAuthenticationSuccessHandler;
 import org.glygen.tablemaker.security.oauth2.CustomOAuth2UserService;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +35,7 @@ public class SecurityConfig {
     private final AuthTokenFilter authTokenFilter;
     private final CustomOAuth2UserService customOauth2UserService;
     private final CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler;
+    private final CustomAuthenticationFailureHandler customAuthenticationFailureHandler;
     
     @Value("${glytoucan.api-key}")
     String apiKey;
@@ -43,11 +45,12 @@ public class SecurityConfig {
     
     public SecurityConfig(UserDetailsService userDetailsService, AuthTokenFilter authTokenFilter,
             CustomOAuth2UserService customOAuth2UserService, 
-            CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler) {
+            CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler, CustomAuthenticationFailureHandler customAuthenticationFailureHandler) {
         this.userDetailsService = userDetailsService;
         this.authTokenFilter = authTokenFilter;
         this.customAuthenticationSuccessHandler = customAuthenticationSuccessHandler;
         this.customOauth2UserService = customOAuth2UserService;
+		this.customAuthenticationFailureHandler = customAuthenticationFailureHandler;
     }
     
     @Bean // (1)
@@ -115,6 +118,7 @@ public class SecurityConfig {
                 .oauth2Login(oauth2Login -> oauth2Login
                         .userInfoEndpoint(userInfoEndpointConfig ->
                                 userInfoEndpointConfig.userService(customOauth2UserService))
+                        .failureHandler(customAuthenticationFailureHandler)
                         .successHandler(customAuthenticationSuccessHandler))
                 
                 .logout(l -> l.logoutSuccessUrl("/").permitAll());
