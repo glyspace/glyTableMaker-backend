@@ -10,16 +10,19 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.GlygenUser;
+import org.glygen.tablemaker.persistence.NotificationEntity;
 import org.glygen.tablemaker.persistence.RoleEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.UserLoginType;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
+import org.glygen.tablemaker.persistence.dao.NotificationRepository;
 import org.glygen.tablemaker.persistence.dao.RoleRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.security.TokenProvider;
@@ -61,6 +64,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 
 
@@ -78,13 +82,14 @@ public class UserController {
     private final TokenProvider tokenProvider;
     private final EmailManager emailManager;
     private final DatasetRepository datasetRepository;
+    private final NotificationRepository notificationRepository;
     
     
     public UserController(UserManager userManager,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             TokenProvider tokenProvider, UserRepository userRepo, RoleRepository roleRepo, 
-            EmailManager emailManager, DatasetRepository datasetRepository) {
+            EmailManager emailManager, DatasetRepository datasetRepository, NotificationRepository notificationRepository) {
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
         this.userManager = userManager;
@@ -93,6 +98,7 @@ public class UserController {
         this.roleRepository = roleRepo;
         this.emailManager = emailManager;
 		this.datasetRepository = datasetRepository;
+		this.notificationRepository = notificationRepository;
     }
     
     
@@ -561,5 +567,99 @@ public class UserController {
         }
         
     }
-
+    
+    @GetMapping("/inbox")
+    @Operation(summary="retrieve messages for the user", 
+    	description="Only authenticated user can see his/her messages", security = { @SecurityRequirement(name = "bearer-key") })
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="messages retrieved successfully", content = {
+        @Content(mediaType = "application/json", schema = @Schema(implementation = SuccessResponse.class))}), 
+        @ApiResponse(responseCode="401", description="Unauthorized"),
+        @ApiResponse(responseCode="403", description="Not enough privileges to see messages"),
+        @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse<List<NotificationEntity>>> getInbox() {
+    	
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) { 
+        	UserEntity user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        	return ResponseEntity.ok(new SuccessResponse<List<NotificationEntity>>(notificationRepository.findByRecipientOrderByCreatedAtDesc(user), "Messages retrieved successfully"));
+        }
+        
+        throw new BadCredentialsException ("The user has not been authenticated");
+    }
+    
+    @GetMapping("/inbox/unread-count")
+    @Operation(summary="retrieve unread message count for the user", 
+    	description="Only authenticated user can see his/her messages", security = { @SecurityRequirement(name = "bearer-key") })
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="messages retrieved successfully", content = {
+        @Content(mediaType = "application/json", schema = @Schema(implementation = SuccessResponse.class))}), 
+        @ApiResponse(responseCode="401", description="Unauthorized"),
+        @ApiResponse(responseCode="403", description="Not enough privileges to see messages"),
+        @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse<Long>> getInboxUnreadCount() {
+    	
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) { 
+        	UserEntity user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        	return ResponseEntity.ok(new SuccessResponse<Long>(notificationRepository.countByRecipientAndStatus(user, "UNREAD"), "Message count retrieved successfully"));
+        }
+        
+        throw new BadCredentialsException ("The user has not been authenticated");
+    }
+    
+    @PostMapping("/inbox/{id}/read")
+    @Operation(summary="mark message as read for the user", 
+	description="Only authenticated user can update his/her messages", security = { @SecurityRequirement(name = "bearer-key") })
+	@ApiResponses (value ={@ApiResponse(responseCode="200", description="message updated successfully", content = {
+	    @Content(mediaType = "application/json", schema = @Schema(implementation = SuccessResponse.class))}), 
+	    @ApiResponse(responseCode="401", description="Unauthorized"),
+	    @ApiResponse(responseCode="403", description="Not enough privileges to update messages"),
+	    @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse<Boolean>> readMessage (@PathVariable("id") Long messageId) {
+    	Optional<NotificationEntity> n = notificationRepository.findById(messageId);
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && n.isPresent()) { 
+        	UserEntity user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        	NotificationEntity notification = n.get();
+        	if (notification.getRecipient() != null && notification.getRecipient().getUserId().equals(user.getUserId())) {
+        		notification.setStatus("READ");
+        		notificationRepository.save(notification);
+        	} else {
+        		throw new AccessDeniedException("The user: " + auth.getName() + " is not authorized to update " + notification.getRecipient().getUsername() + "'s messages");
+        	}
+        	
+        	return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "message read"));
+        } else if (n.isEmpty()) {
+        	throw new EntityNotFoundException("Message with the given id " + messageId + " cannot be located");
+        }
+        
+        throw new BadCredentialsException ("The user has not been authenticated");
+    }
+    
+    @DeleteMapping("/inbox/{id}*")
+    @Operation(summary="delete given message for the user", 
+	description="Only authenticated user can delete his/her messages", security = { @SecurityRequirement(name = "bearer-key") })
+	@ApiResponses (value ={@ApiResponse(responseCode="200", description="message deleted successfully", content = {
+	    @Content(mediaType = "application/json", schema = @Schema(implementation = SuccessResponse.class))}), 
+	    @ApiResponse(responseCode="401", description="Unauthorized"),
+	    @ApiResponse(responseCode="403", description="Not enough privileges to delete messages"),
+	    @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse<Boolean>> deleteMessage (@PathVariable("id") Long messageId) {
+    	Optional<NotificationEntity> n = notificationRepository.findById(messageId);
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && n.isPresent()) { 
+        	UserEntity user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        	NotificationEntity notification = n.get();
+        	if (notification.getRecipient() != null && notification.getRecipient().getUserId().equals(user.getUserId())) {
+        		notificationRepository.delete(notification);
+        	} else {
+        		throw new AccessDeniedException("The user: " + auth.getName() + " is not authorized to delete " + notification.getRecipient().getUsername() + "'s messages");
+        	}
+        	
+        	return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "message deleted"));
+        } else if (n.isEmpty()) {
+        	throw new EntityNotFoundException("Message with the given id " + messageId + " cannot be located");
+        }
+        
+        throw new BadCredentialsException ("The user has not been authenticated");
+    }
 }

@@ -48,7 +48,7 @@ public class UserEntity implements Comparable<UserEntity>{
     private Boolean tempPassword;
     private UserLoginType loginType;
     private Collection<RoleEntity> roles;
-    private String type = INVESTIGATOR;
+    private String type = CURATOR;
     
     private Date dateCreated;
     private Date lastLoginDate;
