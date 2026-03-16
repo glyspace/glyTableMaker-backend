@@ -2,10 +2,16 @@ package org.glygen.tablemaker.persistence;
 
 import java.time.Instant;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import com.fasterxml.jackson.databind.JsonNode;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -15,6 +21,7 @@ import jakarta.persistence.Table;
 @Table(name = "notifications")
 public class NotificationEntity {
 	    @Id
+	    @GeneratedValue
 	    private Long id;
 
 	    @ManyToOne(targetEntity = UserEntity.class, fetch = FetchType.EAGER)
@@ -36,8 +43,9 @@ public class NotificationEntity {
 	    @Column
 	    private String status;
 
+	    @JdbcTypeCode(SqlTypes.JSON)
 	    @Column(columnDefinition = "jsonb")
-	    private String metadata;
+	    private JsonNode metadata;
 
 	    @Column
 	    private Instant createdAt;
@@ -94,14 +102,6 @@ public class NotificationEntity {
 			this.status = status;
 		}
 
-		public String getMetadata() {
-			return metadata;
-		}
-
-		public void setMetadata(String metadata) {
-			this.metadata = metadata;
-		}
-
 		public Instant getCreatedAt() {
 			return createdAt;
 		}
@@ -124,6 +124,14 @@ public class NotificationEntity {
 
 		public void setSenderId(Long senderId) {
 			this.senderId = senderId;
+		}
+
+		public JsonNode getMetadata() {
+			return metadata;
+		}
+
+		public void setMetadata(JsonNode metadata) {
+			this.metadata = metadata;
 		}
 
 }

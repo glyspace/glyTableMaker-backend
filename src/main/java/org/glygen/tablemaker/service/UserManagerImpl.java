@@ -6,8 +6,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import org.glygen.tablemaker.persistence.NotificationEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.VerificationToken;
+import org.glygen.tablemaker.persistence.dao.NotificationRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dao.VerificationTokenRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,9 @@ public class UserManagerImpl implements UserManager {
 
     @Autowired
     private VerificationTokenRepository tokenRepository;
+    
+    @Autowired
+    private NotificationRepository notificationRepository;
     
    // @Autowired
    // private EmailRepository emailRepository;
@@ -178,6 +183,12 @@ public class UserManagerImpl implements UserManager {
 		VerificationToken v = tokenRepository.findByToken(token);
 		if (v != null)
 			tokenRepository.delete(v);
+		
+	}
+
+	@Override
+	public void sendNotification(NotificationEntity notification) {
+		notificationRepository.save(notification);
 		
 	}
     

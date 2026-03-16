@@ -3,6 +3,7 @@ package org.glygen.tablemaker.service;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -25,6 +26,7 @@ import org.glygen.tablemaker.persistence.ApplicationSettingsEntity;
 import org.glygen.tablemaker.persistence.BatchUploadJob;
 import org.glygen.tablemaker.persistence.ErrorReportEntity;
 import org.glygen.tablemaker.persistence.GlycanImageEntity;
+import org.glygen.tablemaker.persistence.NotificationEntity;
 import org.glygen.tablemaker.persistence.dao.ApplicationSettingsRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadJobRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
@@ -50,6 +52,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.transaction.Transactional;
@@ -71,6 +74,7 @@ public class ScheduledTasksService {
 	final private ApplicationSettingsRepository settingRepository;
 	final private DatasetManager datasetManager;
 	final private EmailManager emailManager;
+	final private UserManager userManager;
 	
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
@@ -85,7 +89,7 @@ public class ScheduledTasksService {
 	String versionURL;
 			
 	
-	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, ErrorReportingService errorReportingService, UserRepository userRepository, GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, ApplicationSettingsRepository settingRepository, DatasetManager datasetManager, EmailManager emailManager) {
+	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, ErrorReportingService errorReportingService, UserRepository userRepository, GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, ApplicationSettingsRepository settingRepository, DatasetManager datasetManager, EmailManager emailManager, UserManager userManager) {
 		this.batchUploadJobRepository = batchUploadJobRepository;
 		this.batchUploadService = batchUploadService;
 		this.uploadRepository = uploadRepository;
@@ -97,6 +101,7 @@ public class ScheduledTasksService {
 		this.settingRepository = settingRepository;
 		this.datasetManager = datasetManager;
 		this.emailManager = emailManager;
+		this.userManager = userManager;
 	}
 	
 	@Scheduled(fixedDelay = 604800000, initialDelay=2000)
@@ -155,6 +160,17 @@ public class ScheduledTasksService {
 						
 						//notify the user of the dataset; send an email to d.getUser()
 						try {
+							// create a notification for the user's Inbox
+							NotificationEntity notification = new NotificationEntity();
+							notification.setRecipient(d.getUser());
+							notification.setTitle("GlyGen removed dataset");
+							String message = "Your dataset " + d.getDatasetIdentifier() + " has been removed from Glygen in the recent release: " + currentGlygenVersion;
+					        message += "\n\nPlease contact GlyGen if you need more information";
+							notification.setMessage(message);
+							notification.setCreatedAt(Instant.now());
+							notification.setType("Error");
+							notification.setStatus("UNREAD");
+							userManager.sendNotification(notification);
 							emailManager.sendDatasetRemovedFromGlyGenNotice(d.getUser(), d.getDatasetIdentifier(), currentGlygenVersion);
 						} catch (Exception e) {
 							logger.warn ("GlyGen integration removed notification could not be sent to user: " + d.getUser().getUsername(), e);
@@ -186,7 +202,22 @@ public class ScheduledTasksService {
 						
 						datasetManager.saveDataset(dataset);
 						
-						
+						if (resource.getErrorJson() != null && !resource.getErrorJson().isBlank()) {
+							// create a notification for the user
+							NotificationEntity notification = new NotificationEntity();
+							notification.setRecipient(dataset.getUser());
+							notification.setTitle("GlyGen integration errors");
+							String message = "Your dataset " + dataset.getDatasetIdentifier() + " has been integrated into Glygen in the recent release: " + currentGlygenVersion;
+					        message += " However, there are errors reported from GlyGen. Please investigate the reported errors!";
+							notification.setMessage(message);
+							notification.setCreatedAt(Instant.now());
+							notification.setType("Error");
+							ObjectMapper mapper = new ObjectMapper();
+							JsonNode node = mapper.readTree(resource.getErrorJson());
+							notification.setMetadata(node);
+							notification.setStatus("UNREAD");
+							userManager.sendNotification(notification);
+						}
 					} else {
 						logger.error("Given dataset identifier " + id + " does not exist in the repository");
 					}

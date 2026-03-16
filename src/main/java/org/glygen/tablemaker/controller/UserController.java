@@ -560,7 +560,9 @@ public class UserController {
             	userRepository.save(userEntity);
             }
             
+            long unread = notificationRepository.countByRecipientAndStatus(userEntity, "UNREAD");
             LoginResponse resp = new LoginResponse(jwt, userView);
+            resp.setUnreadMessageCount(unread);
             return ResponseEntity.ok(new SuccessResponse<LoginResponse>(resp, "Login Successfully"));
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             throw new RuntimeException("Failed to generate an authentication token!", e);

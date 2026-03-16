@@ -4,6 +4,7 @@ public class LoginResponse {
     
     String token;
     User user;
+    long unreadMessageCount;
     
     public LoginResponse() {
         // TODO Auto-generated constructor stub
@@ -42,4 +43,12 @@ public class LoginResponse {
     public void setUser(User user) {
         this.user = user;
     }
+
+	public long getUnreadMessageCount() {
+		return unreadMessageCount;
+	}
+
+	public void setUnreadMessageCount(long unreadMessageCount) {
+		this.unreadMessageCount = unreadMessageCount;
+	}
 }

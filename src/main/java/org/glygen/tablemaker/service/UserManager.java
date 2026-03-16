@@ -1,5 +1,6 @@
 package org.glygen.tablemaker.service;
 
+import org.glygen.tablemaker.persistence.NotificationEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.VerificationToken;
 
@@ -30,5 +31,7 @@ public interface UserManager {
 	UserEntity getUserByUsername(String userName);
 	
 	void cleanUpExpiredSignup ();
+	
+	void sendNotification(NotificationEntity notification);
 
 }
