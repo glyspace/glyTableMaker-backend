@@ -9,6 +9,7 @@ import java.util.Optional;
 
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.RoleEntity;
+import org.glygen.tablemaker.persistence.SoftwareEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
@@ -17,6 +18,7 @@ import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dao.RetractionRepository;
+import org.glygen.tablemaker.persistence.dao.SoftwareRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
@@ -50,8 +52,10 @@ import org.glygen.tablemaker.view.DatasetError;
 import org.glygen.tablemaker.view.DatasetInputView;
 import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.Filter;
+import org.glygen.tablemaker.view.Software;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
+import org.glygen.tablemaker.view.User;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -101,6 +105,7 @@ public class DatasetController {
 	private final PublicationRepository publicationRepository;
 	private final GlycanImageRepository glycanImageRepository;
 	private final RetractionRepository retractionRepository;
+	private final SoftwareRepository softwareRepository;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -111,7 +116,7 @@ public class DatasetController {
 	@Value("${ncbi.api-key}")
 	String apiKey;
 	
-	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository, RetractionRepository retractionRepository) {
+	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository, RetractionRepository retractionRepository, SoftwareRepository softwareRepository) {
 		this.datasetRepository = datasetRepository;
 		this.userRepository = userRepository;
 		this.templateRepository = templateRepository;
@@ -121,6 +126,7 @@ public class DatasetController {
 		this.publicationRepository = publicationRepository;
 		this.glycanImageRepository = glycanImageRepository;
 		this.retractionRepository = retractionRepository;
+		this.softwareRepository = softwareRepository;
 	}
 	
 	@Operation(summary = "Get user's public datasets", security = { @SecurityRequirement(name = "bearer-key") })
@@ -214,7 +220,7 @@ public class DatasetController {
                 	dv.setDatasetIdentifier(d.getDatasetIdentifier());
                 	dv.setDateCreated(d.getDateCreated());
                 	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
-                	dv.setUser (d.getUser());
+                	dv.setUser (getUserView(d.getUser(), softwareRepository));
                 	if (retracted.isPresent()) {
                 		dv.setRetraction(retracted.get());
                 		if (dv.getRetraction().getRemoved()) {
@@ -246,7 +252,7 @@ public class DatasetController {
             	dv.setDatasetIdentifier(d.getDatasetIdentifier());
             	dv.setDateCreated(d.getDateCreated());
             	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
-            	dv.setUser (d.getUser());
+            	dv.setUser (getUserView(d.getUser(), softwareRepository));
             	if (retracted.isPresent()) {
             		dv.setRetraction(retracted.get());
             		if (dv.getRetraction().getRemoved()) {
@@ -358,7 +364,7 @@ public class DatasetController {
                 	dv.setDatasetIdentifier(d.getDatasetIdentifier());
                 	dv.setDateCreated(d.getDateCreated());
                 	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
-                	dv.setUser (d.getUser());
+                	dv.setUser (getUserView(d.getUser(), softwareRepository));
                 	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
                 	dv.setNoProteins(proteinCount);
                 	dv.setNoGlycans(datasetRepository.getGlycanCount(d.getDatasetId()));
@@ -395,7 +401,7 @@ public class DatasetController {
             	dv.setDatasetIdentifier(d.getDatasetIdentifier());
             	dv.setDateCreated(d.getDateCreated());
             	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
-            	dv.setUser (d.getUser());
+            	dv.setUser (getUserView(d.getUser(), softwareRepository));
             	if (retracted.isPresent()) {
             		dv.setRetraction(retracted.get());
             		if (dv.getRetraction().getRemoved()) {
@@ -577,7 +583,7 @@ public class DatasetController {
         version.setDataset(newDataset);
         
         Dataset saved = datasetManager.saveDataset (newDataset);
-        DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation, retractionRepository);
+        DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation, retractionRepository, softwareRepository);
         return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset has been published"), HttpStatus.OK);
 	}
 	
@@ -1143,7 +1149,7 @@ public class DatasetController {
     	
 		Dataset saved = datasetManager.saveDataset(existing);
     	
-    	DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation, retractionRepository);
+    	DatasetView dv = createDatasetView(saved, null, glycanImageRepository, imageLocation, retractionRepository, softwareRepository);
     	return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset updated"), HttpStatus.OK);
 	}
 	
@@ -1179,7 +1185,7 @@ public class DatasetController {
             throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier + " for the user");
         }
         
-        DatasetView dv = createDatasetView (existing, version, glycanImageRepository, imageLocation, retractionRepository);
+        DatasetView dv = createDatasetView (existing, version, glycanImageRepository, imageLocation, retractionRepository, softwareRepository);
         
         return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset retrieved"), HttpStatus.OK);
     }
@@ -1228,7 +1234,10 @@ public class DatasetController {
         return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "publications retrieved"), HttpStatus.OK);
 	}
 	
-    public static DatasetView createDatasetView(Dataset d, String versionString, GlycanImageRepository imageRepository, String imageLocation, RetractionRepository retractionRepository) {
+    public static DatasetView createDatasetView(Dataset d, String versionString, 
+    		GlycanImageRepository imageRepository, String imageLocation, 
+    		RetractionRepository retractionRepository,
+    		SoftwareRepository softwareRepository) {
     	boolean head = false;
     	if (versionString == null || versionString.isEmpty()) 
     		head = true;
@@ -1243,7 +1252,8 @@ public class DatasetController {
     	dv.setNotes(d.getNotes());
     	dv.setRetracted(d.getRetracted());
     	dv.setDateCreated(d.getDateCreated());
-    	dv.setUser(d.getUser());
+    	
+    	dv.setUser(getUserView(d.getUser(), softwareRepository));
     	if (retracted.isPresent()) {
     		dv.setRetraction(retracted.get());
     		if (dv.getRetraction().getRemoved()) {
@@ -1277,6 +1287,33 @@ public class DatasetController {
     	}
 		return dv;
 	}
+    
+    public static User getUserView(UserEntity user, SoftwareRepository softwareRepository) {
+    	User userView = new User();
+        userView.setAffiliation(user.getAffiliation());
+        userView.setAffiliationWebsite(user.getAffiliationWebsite());
+        userView.setEmail(user.getEmail());
+        userView.setFirstName(user.getFirstName());
+        userView.setLastName(user.getLastName());
+        userView.setTempPassword(user.getTempPassword());
+        userView.setUserName(user.getUsername());
+        userView.setGroupName(user.getGroupName());
+        userView.setDepartment(user.getDepartment());
+        if (user.getType() != null) userView.setUserType(user.getType());
+        userView.setRole(user.hasRole(RoleEntity.ADMIN) ? "ADMIN" : user.hasRole(RoleEntity.SOFTWARE) ? "SOFTWARE" : user.hasRole(RoleEntity.MODERATOR) ? "MODERATOR" : "USER");
+        if (user.hasRole(RoleEntity.SOFTWARE)) {
+        	Optional<SoftwareEntity> sh = softwareRepository.findByUserId(user.getUserId());
+        	if (sh.isPresent()) {
+        		SoftwareEntity s = sh.get();
+        		Software software = new Software();
+        		software.setName(s.getSoftwareName());
+        		software.setPublication(s.getPmid());
+        		software.setUrl(s.getUrl());
+        		userView.setSoftware(software);
+        	}
+        }
+        return userView;
+    }
     
     public void getErrorsForCollection(CollectionView cv) {
     	getErrorsForCollection(cv, templateRepository, datatypeCategoryRepository, collectionRepository);

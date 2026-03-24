@@ -10,5 +10,8 @@ public interface SoftwareRepository extends JpaRepository<SoftwareEntity, Long> 
 	
 	@Query("SELECT s FROM SoftwareEntity s WHERE s.user.username = :username")
 	Optional<SoftwareEntity> findByUsername(String username);
+	
+	@Query("SELECT s FROM SoftwareEntity s WHERE s.user.userId = :userId")
+	Optional<SoftwareEntity> findByUserId (Long userId);
 
 }

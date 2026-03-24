@@ -15,6 +15,7 @@ import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.RetractionRepository;
 import org.glygen.tablemaker.persistence.dao.SearchResultRepository;
+import org.glygen.tablemaker.persistence.dao.SoftwareRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.view.DatasetSearchInput;
@@ -60,16 +61,18 @@ public class SearchController {
 	final GlycanImageRepository glycanImageRepository;
 	final UserRepository userRepository;
 	final RetractionRepository retractionRepository;
+	private final SoftwareRepository softwareRepository;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
 	
-	public SearchController(SearchResultRepository searchResultRepository, DatasetRepository datasetRepository, GlycanImageRepository glycanImageRepository, UserRepository userRepository, RetractionRepository retractionRepository) {
+	public SearchController(SearchResultRepository searchResultRepository, DatasetRepository datasetRepository, GlycanImageRepository glycanImageRepository, UserRepository userRepository, RetractionRepository retractionRepository, SoftwareRepository softwareRepository) {
 		this.searchResultRepository = searchResultRepository;
 		this.datasetRepository = datasetRepository;
 		this.glycanImageRepository = glycanImageRepository;
 		this.userRepository = userRepository;
 		this.retractionRepository = retractionRepository;
+		this.softwareRepository = softwareRepository;
 	}
 	
 	
@@ -150,7 +153,7 @@ public class SearchController {
                 Page<Dataset> datasets = datasetRepository.findByDatasetIdIn(ids, PageRequest.of(offset, limit, Sort.by(sortOrders)));
                 
                 for (Dataset set: datasets.getContent()) {
-                	searchDatasets.add(DatasetController.createDatasetView(set, null, glycanImageRepository, imageLocation, retractionRepository));
+                	searchDatasets.add(DatasetController.createDatasetView(set, null, glycanImageRepository, imageLocation, retractionRepository, softwareRepository));
                 }
             }
             

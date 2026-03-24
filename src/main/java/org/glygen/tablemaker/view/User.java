@@ -8,6 +8,7 @@ import org.glygen.tablemaker.view.validation.EmailWithTld;
 import org.glygen.tablemaker.view.validation.Password;
 import org.glygen.tablemaker.view.validation.Username;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
@@ -30,6 +31,7 @@ public class User {
     private Date dateCreated;
     private Date lastLoginDate;
     private Long datasetNo = 0L;
+    private Software software;
     
 	/**
 	 * @return the userName
@@ -210,6 +212,14 @@ public class User {
 	}
 	public void setDatasetNo(long datasetNo) {
 		this.datasetNo = datasetNo;
+	}
+	
+	@Valid
+	public Software getSoftware() {
+		return software;
+	}
+	public void setSoftware(Software software) {
+		this.software = software;
 	}
 
 }

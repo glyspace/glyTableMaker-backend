@@ -19,11 +19,13 @@ import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.GlygenUser;
 import org.glygen.tablemaker.persistence.NotificationEntity;
 import org.glygen.tablemaker.persistence.RoleEntity;
+import org.glygen.tablemaker.persistence.SoftwareEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.UserLoginType;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.NotificationRepository;
 import org.glygen.tablemaker.persistence.dao.RoleRepository;
+import org.glygen.tablemaker.persistence.dao.SoftwareRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.security.TokenProvider;
 import org.glygen.tablemaker.service.EmailManager;
@@ -32,6 +34,7 @@ import org.glygen.tablemaker.service.UserManagerImpl;
 import org.glygen.tablemaker.view.ChangePassword;
 import org.glygen.tablemaker.view.LoginRequest;
 import org.glygen.tablemaker.view.LoginResponse;
+import org.glygen.tablemaker.view.Software;
 import org.glygen.tablemaker.view.SuccessResponse;
 import org.glygen.tablemaker.view.User;
 import org.glygen.tablemaker.view.validation.PasswordValidator;
@@ -83,13 +86,14 @@ public class UserController {
     private final EmailManager emailManager;
     private final DatasetRepository datasetRepository;
     private final NotificationRepository notificationRepository;
+    private final SoftwareRepository softwareRepository;
     
     
     public UserController(UserManager userManager,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             TokenProvider tokenProvider, UserRepository userRepo, RoleRepository roleRepo, 
-            EmailManager emailManager, DatasetRepository datasetRepository, NotificationRepository notificationRepository) {
+            EmailManager emailManager, DatasetRepository datasetRepository, NotificationRepository notificationRepository, SoftwareRepository softwareRepository) {
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
         this.userManager = userManager;
@@ -99,6 +103,7 @@ public class UserController {
         this.emailManager = emailManager;
 		this.datasetRepository = datasetRepository;
 		this.notificationRepository = notificationRepository;
+		this.softwareRepository = softwareRepository;
     }
     
     
@@ -156,6 +161,17 @@ public class UserController {
         userView.setDepartment(user.getDepartment());
         if (user.getType() != null) userView.setUserType(user.getType());
         userView.setRole(user.hasRole(RoleEntity.ADMIN) ? "ADMIN" : user.hasRole(RoleEntity.SOFTWARE) ? "SOFTWARE" : user.hasRole(RoleEntity.MODERATOR) ? "MODERATOR" : "USER");
+        if (user.hasRole(RoleEntity.SOFTWARE)) {
+        	Optional<SoftwareEntity> sh = softwareRepository.findByUserId(user.getUserId());
+        	if (sh.isPresent()) {
+        		SoftwareEntity s = sh.get();
+        		Software software = new Software();
+        		software.setName(s.getSoftwareName());
+        		software.setPublication(s.getPmid());
+        		software.setUrl(s.getUrl());
+        		userView.setSoftware(software);
+        	}
+        }
         return ResponseEntity.ok(new SuccessResponse<User>(userView, "User Information retrieved successfully"));
     }
     
@@ -192,6 +208,17 @@ public class UserController {
         		u.setLastLoginDate(user.getLastLoginDate());
         		u.setTempPassword(user.getTempPassword());
         		u.setDatasetNo(datasetRepository.countByUser (user));
+        		if (user.hasRole(RoleEntity.SOFTWARE)) {
+                	Optional<SoftwareEntity> sh = softwareRepository.findByUserId(user.getUserId());
+                	if (sh.isPresent()) {
+                		SoftwareEntity s = sh.get();
+                		Software software = new Software();
+                		software.setName(s.getSoftwareName());
+                		software.setPublication(s.getPmid());
+                		software.setUrl(s.getUrl());
+                		u.setSoftware(software);
+                	}
+                }
         		users.add(u);
         	}
         }
@@ -323,6 +350,16 @@ public class UserController {
                 if (user.getLastName() != null && !user.getLastName().trim().isEmpty()) userEntity.setLastName(user.getLastName().trim());
                 if (user.getTempPassword() != null) userEntity.setTempPassword(user.getTempPassword());
                 if (user.getUserType() != null) userEntity.setType(user.getUserType()); else userEntity.setType(UserEntity.INVESTIGATOR);
+                if (user.getSoftware() != null && user.getRole().equalsIgnoreCase("SOFTWARE")) {
+                	Optional<SoftwareEntity> sh = softwareRepository.findByUserId(userEntity.getUserId());
+                	if (sh.isPresent()) {
+                		SoftwareEntity s = sh.get();
+                		s.setSoftwareName(user.getSoftware().getName());
+                		s.setPmid(user.getSoftware().getPublication());
+                		s.setUrl(user.getSoftware().getUrl());
+                		softwareRepository.save(s);
+                	}
+                }
                 userRepository.save(userEntity);
             }
             else {
@@ -367,7 +404,11 @@ public class UserController {
         newUser.setDepartment(user.getDepartment());
         newUser.setAffiliationWebsite(user.getAffiliationWebsite()); 
         newUser.setTempPassword(false);
-        newUser.setRoles(Arrays.asList(roleRepository.findByRoleName("ROLE_USER")));
+        if (user.getRole() != null && user.getRole().equalsIgnoreCase("SOFTWARE")) {
+        	newUser.setRoles(Arrays.asList(roleRepository.findByRoleName("ROLE_SOFTWARE")));
+        } else {
+        	newUser.setRoles(Arrays.asList(roleRepository.findByRoleName("ROLE_USER")));
+        }
         newUser.setLoginType(UserLoginType.LOCAL); 
         newUser.setDateCreated(new Date());
         if (user.getUserType() != null) newUser.setType(user.getUserType()); else newUser.setType(UserEntity.INVESTIGATOR);
@@ -386,8 +427,18 @@ public class UserController {
         if (existing != null) {
             throw new DuplicateException ("There is already an account with this email: " + user.getEmail());
         }
-            
+        
         userManager.createUser(newUser);  
+        
+        if (user.getRole() != null && user.getRole().equalsIgnoreCase("SOFTWARE")) {
+        	SoftwareEntity software = new SoftwareEntity();
+        	software.setUser(newUser);
+        	software.setSoftwareName(user.getSoftware().getName());
+        	software.setUrl(user.getSoftware().getUrl());
+        	software.setPmid(user.getSoftware().getPublication());
+        	
+        	softwareRepository.save(software);
+        }
         
         // send email confirmation
         try {

@@ -39,7 +39,7 @@ public class DatasetView {
 	Date versionDate;
 	String versionComment;
 	
-	UserEntity user;
+	User user;
 	
 	List<Publication> publications;
 	List<Grant> grants;
@@ -122,10 +122,10 @@ public class DatasetView {
 	public void setVersionComment(String versionComment) {
 		this.versionComment = versionComment;
 	}
-	public UserEntity getUser() {
+	public User getUser() {
 		return user;
 	}
-	public void setUser(UserEntity user) {
+	public void setUser(User user) {
 		this.user = user;
 	}
 	public List<Publication> getPublications() {
