@@ -116,7 +116,11 @@ public class ControllerAdvice {
     	//send an email and create a ticket with the stack trace
     	ErrorReportEntity error = new ErrorReportEntity();
     	error.setDateReported(new Date());
-    	error.setMessage(ex.getMessage());
+    	if (ex.getMessage() == null) {
+    		error.setMessage("<Message is null>");
+    	} else {
+    		error.setMessage(ex.getMessage());
+    	}
     	StringWriter stringWriter = new StringWriter();
     	PrintWriter printWriter = new PrintWriter(stringWriter);
     	ex.printStackTrace(printWriter);

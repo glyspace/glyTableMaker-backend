@@ -285,6 +285,69 @@ public class UserController {
         return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "Enabled successfully"));  
     }
     
+    @PostMapping("/promote/{userName}")
+    @Operation(summary="enable", security = { @SecurityRequirement(name = "bearer-key") })
+    public ResponseEntity<SuccessResponse<Boolean>> promoteUser (
+    		@Parameter(required=true, description="login name of the user")
+    		@PathVariable("userName")
+    		String userName) {
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"))) {
+        	throw new AccessDeniedException("The user: " + auth.getName() + " is not authorized to promote users");
+        }
+        
+        if (!userName.equalsIgnoreCase(auth.getName())) {
+	        UserEntity user = userRepository.findByUsernameIgnoreCase(userName.trim());
+	        if (user == null) {
+	            // try with email
+	            user = userRepository.findByEmailIgnoreCase(userName.trim());
+	            if (user == null) {
+	                throw new DataNotFoundException("A user with loginId " + userName + " does not exist");
+	            }
+	        }
+	        user.getRoles().clear();
+	        RoleEntity adminRole = roleRepository.findByRoleName(RoleEntity.ADMIN);
+        	user.getRoles().add(adminRole);
+	        userRepository.save(user);
+	        
+	        return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "Promoted successfully"));  
+        } else {
+        	throw new IllegalArgumentException("The user: " + auth.getName() + " cannot promote themselves");
+        }
+    }
+    
+    @PostMapping("/demote/{userName}")
+    @Operation(summary="enable", security = { @SecurityRequirement(name = "bearer-key") })
+    public ResponseEntity<SuccessResponse<Boolean>> demoteUser (
+    		@Parameter(required=true, description="login name of the user")
+    		@PathVariable("userName")
+    		String userName) {
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"))) {
+        	throw new AccessDeniedException("The user: " + auth.getName() + " is not authorized to demote users");
+        }
+        
+        if (!userName.equalsIgnoreCase(auth.getName())) {
+	        UserEntity user = userRepository.findByUsernameIgnoreCase(userName.trim());
+	        if (user == null) {
+	            // try with email
+	            user = userRepository.findByEmailIgnoreCase(userName.trim());
+	            if (user == null) {
+	                throw new DataNotFoundException("A user with loginId " + userName + " does not exist");
+	            }
+	        }
+	        if (user.hasRole(RoleEntity.ADMIN)) {
+	        	user.getRoles().clear();
+	        	RoleEntity userRole = roleRepository.findByRoleName(RoleEntity.USER);
+	        	user.getRoles().add(userRole);
+	        	userRepository.save(user);
+	        }
+	        return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "Promoted successfully"));  
+        } else {
+        	throw new IllegalArgumentException("The user: " + auth.getName() + " cannot demote themselves");
+        }
+    }
+    
     @PostMapping("/update/{userName}")
     @Operation(summary="Updates the information for the given user. Only the non-empty fields will be updated. "
             + "\"username\" cannot be changed", security = { @SecurityRequirement(name = "bearer-key") })

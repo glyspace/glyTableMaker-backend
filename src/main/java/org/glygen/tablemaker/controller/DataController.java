@@ -2731,6 +2731,14 @@ public class DataController {
                     	    	error.setTicketLabel("bug");
                     			error.setDateReported(new Date());
                             	errorReportingService.reportError(error);
+                            	// try to save only the upload status
+                            	saved.getGlycans().clear();
+                            	saved.getGlycoproteins().clear();
+                            	try {
+                            		uploadRepository.save(saved);
+                            	} catch (Exception ex1) {
+                            		logger.warn("saving the status without glycans/glycoproteins failed for " + saved.getId(), ex1);
+                            	}
                             }
                             
                         } else {
@@ -2763,6 +2771,14 @@ public class DataController {
                     	    	error.setTicketLabel("bug");
                     			error.setDateReported(new Date());
                             	errorReportingService.reportError(error);
+                            	// try to save only the upload status
+                            	saved.getGlycans().clear();
+                            	saved.getGlycoproteins().clear();
+                            	try {
+                            		uploadRepository.save(saved);
+                            	} catch (Exception ex1) {
+                            		logger.warn("saving the status without glycans/glycoproteins failed for " + saved.getId(), ex1);
+                            	}
                             }
                         }                       
                     });
@@ -2780,7 +2796,28 @@ public class DataController {
 	                        	for (UploadErrorEntity err: saved.getErrors()) {
 	                        		existing.getErrors().add(err);
 	                        	}
-	                        	uploadRepository.save(existing);
+	                        	try {
+	                            	uploadRepository.save(existing);
+	                            } catch (Exception ex) {
+	                            	logger.error("could not set status to DONE for upload " + existing.getId(), e);
+	                            	ErrorReportEntity error = new ErrorReportEntity();
+	                    			error.setMessage("Error occurred setting the status of batch glycan upload after the process is finished");
+	                    			StringWriter stringWriter = new StringWriter();
+	                    	    	PrintWriter printWriter = new PrintWriter(stringWriter);
+	                    	    	ex.printStackTrace(printWriter);
+	                    	    	error.setDetails(stringWriter.toString().substring(0, 3900));
+	                    	    	error.setTicketLabel("bug");
+	                    			error.setDateReported(new Date());
+	                            	errorReportingService.reportError(error);
+	                            	// try to save only the upload status
+	                            	existing.getGlycans().clear();
+	                            	existing.getGlycoproteins().clear();
+	                            	try {
+	                            		uploadRepository.save(existing);
+	                            	} catch (Exception ex1) {
+	                            		logger.warn("saving the status without glycans/glycoproteins failed for " + existing.getId(), ex1);
+	                            	}
+	                            }
 	                        } 
                 		}
                     }
@@ -2862,7 +2899,7 @@ public class DataController {
             	logger.error("Could not store the original file");
             }
             addGlycoproteinsFromFile(this, newFile, saved, fileType, tag, multipleGlycanOrder, compType,
-    			user, uploadRepository, batchUploadJobRepository, batchUploadService);
+    			user, uploadRepository, batchUploadJobRepository, batchUploadService, errorReportingService);
             return new ResponseEntity<>(new SuccessResponse<Boolean>(true, "batch upload finished"), HttpStatus.OK); 
         }
     }
@@ -2870,7 +2907,7 @@ public class DataController {
     public static void rerunAddGlycoproteinsFromFile(ScheduledTasksService scheduledTasksService, File file, Long uploadId,
 			String fileType, String tag, MultipleGlycanOrder orderParam, CompositionType compositionType, Long userId,
 			BatchUploadRepository uploadRepository, BatchUploadJobRepository batchUploadJobRepository,
-			AsyncService batchUploadService, UserRepository userRepository) {
+			AsyncService batchUploadService, UserRepository userRepository, ErrorReportingService errorReportingService) {
     	
     	Optional<UserEntity> user = userRepository.findById(userId);
  		Optional<BatchUploadEntity> batch = uploadRepository.findById(uploadId);
@@ -2880,7 +2917,7 @@ public class DataController {
 			result.setStatus(UploadStatus.PROCESSING);
 			BatchUploadEntity saved = uploadRepository.save(result);
 			addGlycoproteinsFromFile(scheduledTasksService, file, saved, fileType, tag, orderParam, compositionType, user.get(), 
-					uploadRepository, batchUploadJobRepository, batchUploadService);
+					uploadRepository, batchUploadJobRepository, batchUploadService, errorReportingService);
 		}
 		
 	}
@@ -2888,7 +2925,8 @@ public class DataController {
     public static void addGlycoproteinsFromFile (Object instance, File newFile, BatchUploadEntity result, String fileType, 
     		String tag, MultipleGlycanOrder multipleGlycanOrder, CompositionType compType,
     		UserEntity user, BatchUploadRepository uploadRepository, 
-    		BatchUploadJobRepository batchUploadJobRepository, AsyncService batchUploadService) {
+    		BatchUploadJobRepository batchUploadJobRepository, AsyncService batchUploadService,
+    		ErrorReportingService errorReportingService) {
     	
         try {    
             CompletableFuture<SuccessResponse<BatchUploadEntity>> response = null;
@@ -2925,7 +2963,28 @@ public class DataController {
                     if (result.getGlycoproteins() == null) {
                     	result.setGlycoproteins(new ArrayList<>());
                     }
-                    uploadRepository.save(result);
+                    try {
+                    	uploadRepository.save(result);
+                    } catch (Exception ex) {
+                    	logger.error("could not set status to DONE for upload " + result.getId(), e);
+                    	ErrorReportEntity error = new ErrorReportEntity();
+            			error.setMessage("Error occurred setting the status of batch glycan upload after the process is finished");
+            			StringWriter stringWriter = new StringWriter();
+            	    	PrintWriter printWriter = new PrintWriter(stringWriter);
+            	    	ex.printStackTrace(printWriter);
+            	    	error.setDetails(stringWriter.toString().substring(0, 3900));
+            	    	error.setTicketLabel("bug");
+            			error.setDateReported(new Date());
+                    	errorReportingService.reportError(error);
+                    	// try to update the status only
+                    	result.getGlycans().clear();
+                    	result.getGlycoproteins().clear();
+                    	try {
+                    		uploadRepository.save(result);
+                    	} catch (Exception ex1) {
+                    		logger.warn ("could not save the status of file upload even after removing glycans/glycoproteins" + result.getId(), ex1);
+                    	}
+                    }
                     
                 } else {
                 	BatchUploadEntity upload = (BatchUploadEntity) resp.getData();
@@ -2940,7 +2999,28 @@ public class DataController {
                         if (result.getGlycoproteins() == null) {
                         	result.setGlycoproteins(new ArrayList<>());
                         }
-                		uploadRepository.save(result);
+                        try {
+                        	uploadRepository.save(result);
+                        } catch (Exception ex) {
+                        	logger.error("could not set status to DONE for upload " + result.getId(), e);
+                        	ErrorReportEntity error = new ErrorReportEntity();
+                			error.setMessage("Error occurred setting the status of batch glycan upload after the process is finished");
+                			StringWriter stringWriter = new StringWriter();
+                	    	PrintWriter printWriter = new PrintWriter(stringWriter);
+                	    	ex.printStackTrace(printWriter);
+                	    	error.setDetails(stringWriter.toString().substring(0, 3900));
+                	    	error.setTicketLabel("bug");
+                			error.setDateReported(new Date());
+                        	errorReportingService.reportError(error);
+                        	// try to update the status only
+                        	result.getGlycans().clear();
+                        	result.getGlycoproteins().clear();
+                        	try {
+                        		uploadRepository.save(result);
+                        	} catch (Exception ex1) {
+                        		logger.warn ("could not save the status of file upload even after removing glycans/glycoproteins" + result.getId(), ex1);
+                        	}
+                        }
                 		List<BatchUploadJob> batchUploadJobs = batchUploadJobRepository.findAllByUpload(upload);
                 		if (batchUploadJobs.isEmpty()) {
 	                		BatchUploadJob job = new BatchUploadJob();
@@ -2974,7 +3054,28 @@ public class DataController {
                         if (result.getGlycoproteins() == null) {
                         	result.setGlycoproteins(new ArrayList<>());
                         }
-                        uploadRepository.save(result);
+                        try {
+                        	uploadRepository.save(result);
+                        } catch (Exception ex) {
+                        	logger.error("could not set status to DONE for upload " + result.getId(), e);
+                        	ErrorReportEntity error = new ErrorReportEntity();
+                			error.setMessage("Error occurred setting the status of batch glycan upload after the process is finished");
+                			StringWriter stringWriter = new StringWriter();
+                	    	PrintWriter printWriter = new PrintWriter(stringWriter);
+                	    	ex.printStackTrace(printWriter);
+                	    	error.setDetails(stringWriter.toString().substring(0, 3900));
+                	    	error.setTicketLabel("bug");
+                			error.setDateReported(new Date());
+                        	errorReportingService.reportError(error);
+                        	// try to update the status only
+                        	result.getGlycans().clear();
+                        	result.getGlycoproteins().clear();
+                        	try {
+                        		uploadRepository.save(result);
+                        	} catch (Exception ex1) {
+                        		logger.warn ("could not save the status of file upload even after removing glycans/glycoproteins" + result.getId(), ex1);
+                        	}
+                        }
                 	}
                 }                       
             });
@@ -2992,7 +3093,28 @@ public class DataController {
                 if (result.getGlycoproteins() == null) {
                 	result.setGlycoproteins(new ArrayList<>());
                 }
-                uploadRepository.save(result);
+                try {
+                	uploadRepository.save(result);
+                } catch (Exception ex) {
+                	logger.error("could not set status to DONE for upload " + result.getId(), e);
+                	ErrorReportEntity error = new ErrorReportEntity();
+        			error.setMessage("Error occurred setting the status of batch glycan upload after the process is finished");
+        			StringWriter stringWriter = new StringWriter();
+        	    	PrintWriter printWriter = new PrintWriter(stringWriter);
+        	    	ex.printStackTrace(printWriter);
+        	    	error.setDetails(stringWriter.toString().substring(0, 3900));
+        	    	error.setTicketLabel("bug");
+        			error.setDateReported(new Date());
+                	errorReportingService.reportError(error);
+                	// try to update the status only
+                	result.getGlycans().clear();
+                	result.getGlycoproteins().clear();
+                	try {
+                		uploadRepository.save(result);
+                	} catch (Exception ex1) {
+                		logger.warn ("could not save the status of file upload even after removing glycans/glycoproteins" + result.getId(), ex1);
+                	}
+                }
             }
         } catch (InterruptedException e1) {
 			logger.error("batch upload is interrupted", e1);

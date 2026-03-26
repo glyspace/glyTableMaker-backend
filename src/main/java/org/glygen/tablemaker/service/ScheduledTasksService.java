@@ -206,7 +206,6 @@ public class ScheduledTasksService {
 							// create a notification for the user
 							NotificationEntity notification = new NotificationEntity();
 							notification.setRecipient(dataset.getUser());
-							notification.setTitle("GlyGen integration errors");
 							String message = "Your dataset " + dataset.getDatasetIdentifier() + " has been integrated into Glygen in the recent release: " + currentGlygenVersion;
 					        message += " However, there are errors reported from GlyGen. Please investigate the reported errors!";
 							notification.setMessage(message);
@@ -214,8 +213,14 @@ public class ScheduledTasksService {
 							notification.setType("Error");
 							ObjectMapper mapper = new ObjectMapper();
 							JsonNode node = mapper.readTree(resource.getErrorJson());
+							JsonNode arrayNode = node.get("excluded_records");
+							int numberErrors = 0;
+				            if (arrayNode != null && arrayNode.isArray()) {
+				                numberErrors= arrayNode.size();
+				            }
 							notification.setMetadata(node);
 							notification.setStatus("UNREAD");
+							notification.setTitle("GlyGen integration errors - " + dataset.getDatasetIdentifier() + ": " + numberErrors + " errors!");
 							userManager.sendNotification(notification);
 						}
 					} else {
@@ -535,7 +540,7 @@ public class ScheduledTasksService {
     			try {
 	    			DataController.rerunAddGlycoproteinsFromFile(this, newFile, job.getUpload().getId(), job.getFileType(), 
 	    					job.getTag(), job.getOrderParam(), job.getCompType(), job.getUser().getUserId(), 
-	    					uploadRepository, batchUploadJobRepository, batchUploadService, userRepository);
+	    					uploadRepository, batchUploadJobRepository, batchUploadService, userRepository, errorReportingService);
 	    			job.setLastRun(new Date());
 	    			batchUploadJobRepository.save(job);
     			} catch (Exception e) {
