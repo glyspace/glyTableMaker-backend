@@ -190,7 +190,7 @@ public class UserController {
         	throw new AccessDeniedException("The user: " + auth.getName() + " is not authorized to access all users");
         }
         
-        List<UserEntity> userList = userRepository.findAll();
+        List<UserEntity> userList = userRepository.findAllOrderByLastLoginDateDescNullsLast();
         for (UserEntity user: userList) {
         	if (!user.getUsername().equalsIgnoreCase(auth.getName())) {
         		User u = new User();
@@ -222,7 +222,6 @@ public class UserController {
         		users.add(u);
         	}
         }
-
 
         Map<String, Object> response = new HashMap<>();
         response.put("objects", users);
