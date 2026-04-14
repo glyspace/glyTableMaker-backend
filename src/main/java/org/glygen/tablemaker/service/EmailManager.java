@@ -15,4 +15,5 @@ public interface EmailManager {
 	void sendErrorReport(UserError error, String...emails);
 	void sendErrorReport(ErrorReportEntity error, String ... emails);
 	void sendDatasetRemovedFromGlyGenNotice(UserEntity user, String datasetIdentifier, String glygenRelease);
+	void sendTransferRequest(UserEntity owner, UserEntity recipient, String datasetId);
 }

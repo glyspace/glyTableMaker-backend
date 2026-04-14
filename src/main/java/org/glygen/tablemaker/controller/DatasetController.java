@@ -1,5 +1,6 @@
 package org.glygen.tablemaker.controller;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -8,18 +9,22 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.glygen.tablemaker.exception.DuplicateException;
+import org.glygen.tablemaker.persistence.NotificationEntity;
 import org.glygen.tablemaker.persistence.RoleEntity;
 import org.glygen.tablemaker.persistence.SoftwareEntity;
+import org.glygen.tablemaker.persistence.TransferRequest;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
+import org.glygen.tablemaker.persistence.dao.NotificationRepository;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dao.RetractionRepository;
 import org.glygen.tablemaker.persistence.dao.SoftwareRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
+import org.glygen.tablemaker.persistence.dao.TransferRequestRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
@@ -46,6 +51,8 @@ import org.glygen.tablemaker.persistence.protein.SitePosition;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.service.DatasetManager;
+import org.glygen.tablemaker.service.EmailManager;
+import org.glygen.tablemaker.service.UserManager;
 import org.glygen.tablemaker.util.pubmed.PubmedUtil;
 import org.glygen.tablemaker.view.CollectionView;
 import org.glygen.tablemaker.view.DatasetError;
@@ -55,8 +62,11 @@ import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.Software;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
+import org.glygen.tablemaker.view.Transfer;
 import org.glygen.tablemaker.view.User;
+import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -71,6 +81,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -82,6 +93,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -106,6 +118,10 @@ public class DatasetController {
 	private final GlycanImageRepository glycanImageRepository;
 	private final RetractionRepository retractionRepository;
 	private final SoftwareRepository softwareRepository;
+	final private EmailManager emailManager;
+	final private UserManager userManager;
+	final private TransferRequestRepository transferRequestRepository;
+	final private NotificationRepository notificationRepository;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -115,8 +131,14 @@ public class DatasetController {
 	
 	@Value("${ncbi.api-key}")
 	String apiKey;
+    
+    @Value("#{systemProperties['jasypt.encryptor.password']}")
+    private String secret;
+    
+    @Autowired
+    private ObjectMapper mapper;
 	
-	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository, RetractionRepository retractionRepository, SoftwareRepository softwareRepository) {
+	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository, RetractionRepository retractionRepository, SoftwareRepository softwareRepository, UserManager userManager, EmailManager emailManager, TransferRequestRepository transferRequestRepository, NotificationRepository notificationRepository) {
 		this.datasetRepository = datasetRepository;
 		this.userRepository = userRepository;
 		this.templateRepository = templateRepository;
@@ -127,6 +149,10 @@ public class DatasetController {
 		this.glycanImageRepository = glycanImageRepository;
 		this.retractionRepository = retractionRepository;
 		this.softwareRepository = softwareRepository;
+		this.emailManager = emailManager;
+		this.userManager = userManager;
+		this.transferRequestRepository = transferRequestRepository;
+		this.notificationRepository = notificationRepository;
 	}
 	
 	@Operation(summary = "Get user's public datasets", security = { @SecurityRequirement(name = "bearer-key") })
@@ -231,6 +257,9 @@ public class DatasetController {
                 	}
                 	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
                 	dv.setNoProteins(proteinCount);
+                	
+                	List<TransferRequest> requests = transferRequestRepository.findByDatasetIdentifier(d.getDatasetIdentifier());
+                	dv.setTransferRequested(!requests.isEmpty());
                 	datasets.add(dv);
                 }
         	} catch (Exception e) {
@@ -264,6 +293,8 @@ public class DatasetController {
             	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
             	dv.setNoGlycans(datasetRepository.getGlycanCount(d.getDatasetId()));
             	dv.setNoProteins(proteinCount);
+            	List<TransferRequest> requests = transferRequestRepository.findByDatasetIdentifier(d.getDatasetIdentifier());
+            	dv.setTransferRequested(!requests.isEmpty());
             	datasets.add(dv);
             }
         	response.put("objects", datasets);
@@ -860,9 +891,173 @@ public class DatasetController {
 		return new ResponseEntity<>(new SuccessResponse<String>(datasetId, "Dataset recovered successfully"), HttpStatus.OK);
 	}
 	
+	@Operation(summary = "cancel transfer dataset request", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/canceltransferrequest")
+    public ResponseEntity<SuccessResponse<String>> cancelTransferRequest(
+            @Valid @RequestBody Transfer transfer) {
+	    
+        List<TransferRequest> requests = transferRequestRepository.findByDatasetIdentifier(transfer.getDatasetIdentifier());
+        for (TransferRequest req: requests) {
+			transferRequestRepository.deleteById(req.getId());
+		}
+        
+        return new ResponseEntity<>(new SuccessResponse<String>(transfer.getDatasetIdentifier(), "Dataset transfer request cancelled successfully"), HttpStatus.OK);
+	}
+	
+	@Operation(summary = "transfer dataset request", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/transferdatasetrequest")
+    public ResponseEntity<SuccessResponse<String>> transferDatasetRequest(
+            @Valid @RequestBody Transfer transfer) {
+		
+		// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        Dataset existing = datasetRepository.findByDatasetIdentifierAndUserAndVersions_head(transfer.getDatasetIdentifier(), user, true);
+    	if (existing == null) {
+    		throw new IllegalArgumentException("Dataset (" + transfer.getDatasetIdentifier() + ") to be transfered cannot be found in user's dataset collection");
+    	}
+    	
+    	UserEntity recipient = userRepository.findByUsernameIgnoreCase(transfer.getUserName());
+    	if (recipient == null) {
+    		throw new IllegalArgumentException("User " + transfer.getUserName() + " cannot be found");
+    	}
+    	
+    	try {
+    		TransferRequest request = new TransferRequest();
+    		request.setDatasetIdentifier(transfer.getDatasetIdentifier());
+    		request.setDatasetHash(encryptString(transfer.getDatasetIdentifier()));
+    		transferRequestRepository.save(request);
+			// create a notification for the user's Inbox
+			NotificationEntity notification = new NotificationEntity();
+			notification.setRecipient(recipient);
+			notification.setSenderId(user.getUserId());
+			notification.setTitle("Dataset Transfer Request");
+			String message = "You have a dataset transfer request from the user " +  user + ".";
+			notification.setMessage(message);
+			//String jsonString = "{\"datasetHash\":" + "\""+ request.getDatasetHash() + "\"}";
+			//JsonNode node = mapper.readTree(jsonString);
+			JsonNode node = mapper.valueToTree(request);
+			notification.setMetadata(node);
+			notification.setCreatedAt(Instant.now());
+			notification.setType("Transfer Request");
+			notification.setStatus("UNREAD");
+			userManager.sendNotification(notification);
+			//emailManager.sendTransferRequest(user, recipient, datasetId); //TODO do we need to send an email???
+		} catch (Exception e) {
+			logger.error ("Transfer request notification could not be sent to user: " + recipient.getUsername(), e);
+			throw new IllegalArgumentException ("Transfer request notification could not be sent to user: " + recipient.getUsername());
+		}
+		
+		return new ResponseEntity<>(new SuccessResponse<String>(transfer.getDatasetIdentifier(), "Dataset transfer request sent successfully"), HttpStatus.OK);
+	}
+	
+	String encryptString (String id) {
+		StandardPBEStringEncryptor encryptor = new StandardPBEStringEncryptor();
+		encryptor.setPassword(secret);                     
+		encryptor.setAlgorithm("PBEWithMD5AndDES");          
+		return encryptor.encrypt(id);	
+	}
+	
+	String decryptString (String encryptedData) {
+		StandardPBEStringEncryptor encryptor = new StandardPBEStringEncryptor();
+		encryptor.setPassword(secret);
+		encryptor.setAlgorithm("PBEWithMD5AndDES");   
+		return encryptor.decrypt(encryptedData);	
+	}
+	
+	@Operation(summary = "transfer dataset", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/transferdataset/{requestId}")
+    public ResponseEntity<SuccessResponse<Long>> transferDataset(
+    		@Parameter(required=true, description="notification id of the transfer request") 
+            @PathVariable("requestId") Long notificationId) {
+		
+		// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        Optional<NotificationEntity> n = notificationRepository.findById(notificationId);
+		if (!n.isPresent()) {
+			throw new IllegalArgumentException("There is no active transfer request with the given identifier: " + notificationId);
+		}
+		
+		NotificationEntity notification = n.get();
+		JsonNode node = notification.getMetadata();
+		if (node.has("datasetHash")) {
+			String datasetHash = node.get("datasetHash").asText();
+			List<TransferRequest> requests = transferRequestRepository.findByDatasetHash(datasetHash);
+			
+			if (requests.isEmpty()) {
+				throw new IllegalArgumentException("There is no active transfer request with the given identifier");
+			}
+			// there should be only one
+			for (TransferRequest req: requests) {
+				Dataset dataset = datasetRepository.findByDatasetIdentifierAndVersions_head(req.getDatasetIdentifier(), true);
+				datasetManager.transferDataset(dataset, user, req);
+			}
+			
+			notificationRepository.delete(notification);
+		}
+		
+		return new ResponseEntity<>(new SuccessResponse<Long>(notificationId, "Dataset transferred successfully"), HttpStatus.OK);	
+	}
+	
+	@PostMapping("/rejecttransfer/{requestId}")
+	public ResponseEntity<SuccessResponse<Long>> rejectTransfer(
+			@Parameter(required=true, description="notification id of the transfer request") 
+            @PathVariable("requestId") Long notificationId) {
+		
+		// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+		
+		Optional<NotificationEntity> n = notificationRepository.findByIdAndRecipient(notificationId, user);
+		if (!n.isPresent()) {
+			throw new IllegalArgumentException("There is no active transfer request with the given identifier: " + notificationId);
+		}
+		
+		NotificationEntity notification = n.get();
+		JsonNode node = notification.getMetadata();
+		if (node.has("datasetIdentifier")) {
+			String datasetIdentifier = node.get("datasetIdentifier").asText();
+			
+			Optional<UserEntity> sender = userRepository.findById(notification.getSenderId());
+			if (sender.isPresent()) {
+				// create a notification for the user's Inbox
+				NotificationEntity rejection = new NotificationEntity();
+				rejection.setRecipient(sender.get());
+				rejection.setTitle("Dataset Transfer Request Rejected");
+				String message = "Your dataset transfer request for " + datasetIdentifier + " is rejected by " + user;
+				rejection.setMessage(message);
+				rejection.setCreatedAt(Instant.now());
+				rejection.setType("Info");
+				rejection.setStatus("UNREAD");
+				userManager.sendNotification(rejection);
+			}
+			
+			List<TransferRequest> requests = transferRequestRepository.findByDatasetHash(node.get("datasetHash").asText());
+			for (TransferRequest req: requests) {
+				transferRequestRepository.deleteById(req.getId());
+			}
+			notificationRepository.delete(notification);
+			return new ResponseEntity<>(new SuccessResponse<Long>(notificationId, "Transfer request rejected successfully"), HttpStatus.OK);	
+		} 
+		
+		throw new IllegalArgumentException("There is no active transfer request with the given identifier: " + notificationId);
+	}
+	
+	
 	@Operation(summary = "update dataset", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatedataset")
-    public ResponseEntity<SuccessResponse> updateDataset(@Valid @RequestBody DatasetInputView d) {
+    public ResponseEntity<SuccessResponse<DatasetView>> updateDataset(@Valid @RequestBody DatasetInputView d) {
     	if (d.getId() == null) {
     		throw new IllegalArgumentException("Dataset id should be provided for update");
     	}

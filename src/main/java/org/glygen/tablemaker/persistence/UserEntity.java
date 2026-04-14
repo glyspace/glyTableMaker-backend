@@ -280,4 +280,17 @@ public class UserEntity implements Comparable<UserEntity>{
 	public void setLastLoginDate(Date lastLoginDate) {
 		this.lastLoginDate = lastLoginDate;
 	}
+	
+	@Override
+	public String toString() {
+		if (firstName != null && lastName != null && !lastName.isBlank() && !firstName.isBlank()) {
+			return firstName + " " + lastName + "(" + username + ": " + email + ")";
+		} else if (lastName != null && !lastName.isBlank()) {
+			return lastName +  "(" + username + ": " + email + ")";
+		} else if (firstName != null && !firstName.isBlank()) {
+			return firstName +  "(" + username + ": " + email + ")";
+		} else {
+			return username + ": " + email;
+		}
+	}
 }

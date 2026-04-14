@@ -30,6 +30,8 @@ public class DatasetView {
 	Integer noGlycans;
 	Integer noProteins = 0;
 	
+	Boolean transferRequested;
+	
 	String error; // error json reported by GlyGen if this dataset is integrated in GlyGen
 	
 	Integer noRows;
@@ -205,6 +207,12 @@ public class DatasetView {
 	}
 	public void setError(String error) {
 		this.error = error;
+	}
+	public Boolean getTransferRequested() {
+		return transferRequested;
+	}
+	public void setTransferRequested(Boolean transferRequested) {
+		this.transferRequested = transferRequested;
 	}
 	
 	

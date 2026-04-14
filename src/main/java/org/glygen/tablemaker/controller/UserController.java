@@ -186,8 +186,9 @@ public class UserController {
     public ResponseEntity<SuccessResponse> getUsers () {
         List<User> users = new ArrayList<>();
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (!auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"))) {
-        	throw new AccessDeniedException("The user: " + auth.getName() + " is not authorized to access all users");
+        boolean admin = false;
+        if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"))) {
+        	admin=true;
         }
         
         List<UserEntity> userList = userRepository.findAllOrderByLastLoginDateDescNullsLast();
@@ -198,27 +199,30 @@ public class UserController {
         		u.setAffiliation(user.getAffiliation());
         		u.setAffiliationWebsite(user.getAffiliationWebsite());
         		u.setDepartment(user.getDepartment());
-        		u.setEmail(user.getEmail());
         		u.setFirstName(user.getFirstName());
         		u.setLastName(user.getLastName());
         		u.setGroupName(user.getGroupName());
-        		u.setRole(user.hasRole(RoleEntity.ADMIN) ? "ADMIN" : user.hasRole(RoleEntity.SOFTWARE) ? "SOFTWARE" : user.hasRole(RoleEntity.MODERATOR) ? "MODERATOR" : "USER");
-        		u.setEnabled(user.getEnabled());
-        		u.setDateCreated(user.getDateCreated());
-        		u.setLastLoginDate(user.getLastLoginDate());
-        		u.setTempPassword(user.getTempPassword());
-        		u.setDatasetNo(datasetRepository.countByUser (user));
-        		if (user.hasRole(RoleEntity.SOFTWARE)) {
-                	Optional<SoftwareEntity> sh = softwareRepository.findByUserId(user.getUserId());
-                	if (sh.isPresent()) {
-                		SoftwareEntity s = sh.get();
-                		Software software = new Software();
-                		software.setName(s.getSoftwareName());
-                		software.setPublication(s.getPmid());
-                		software.setUrl(s.getUrl());
-                		u.setSoftware(software);
-                	}
-                }
+        		if (admin) {
+        			u.setEmail(user.getEmail());
+        			u.setRole(user.hasRole(RoleEntity.ADMIN) ? "ADMIN" : user.hasRole(RoleEntity.SOFTWARE) ? "SOFTWARE" : user.hasRole(RoleEntity.MODERATOR) ? "MODERATOR" : "USER");
+        			u.setEnabled(user.getEnabled());
+            		u.setDateCreated(user.getDateCreated());
+            		u.setLastLoginDate(user.getLastLoginDate());
+            		u.setTempPassword(user.getTempPassword());
+            		u.setDatasetNo(datasetRepository.countByUser (user));
+            		if (user.hasRole(RoleEntity.SOFTWARE)) {
+                    	Optional<SoftwareEntity> sh = softwareRepository.findByUserId(user.getUserId());
+                    	if (sh.isPresent()) {
+                    		SoftwareEntity s = sh.get();
+                    		Software software = new Software();
+                    		software.setName(s.getSoftwareName());
+                    		software.setPublication(s.getPmid());
+                    		software.setUrl(s.getUrl());
+                    		u.setSoftware(software);
+                    	}
+                    }
+        		}
+        		
         		users.add(u);
         	}
         }

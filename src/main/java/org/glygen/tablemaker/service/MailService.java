@@ -205,4 +205,14 @@ public class MailService implements EmailManager {
 		
 	}
 
+	@Override
+	public void sendTransferRequest(UserEntity owner, UserEntity recipient, String datasetId) {
+		String subject = "Dataset Transfer Request";
+		String message = "The user " +  owner + " has requested to transfer dataset (" + datasetId + ") to you.\nPlease click on the link to accept/deny the request!";
+		message += "link!!!"; // TODO determine the link
+       
+        sendMessage(recipient.getEmail(), subject, message);
+		
+	}
+
 }

@@ -2,10 +2,13 @@ package org.glygen.tablemaker.service;
 
 import java.util.Random;
 
+import org.glygen.tablemaker.persistence.TransferRequest;
+import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.DatabaseResourceRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.GrantRepository;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
+import org.glygen.tablemaker.persistence.dao.TransferRequestRepository;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResourceDataset;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
@@ -26,18 +29,18 @@ public class DatasetManagerImpl implements DatasetManager {
 	final private PublicationRepository publicationRepository;
 	final private GrantRepository grantRepository;
 	final private DatabaseResourceRepository dataResourceRepository;
+	final private TransferRequestRepository transferRequestRepository;
 	
-	public DatasetManagerImpl(DatasetRepository datasetRepository, PublicationRepository publicationRepository, GrantRepository grantRepository, DatabaseResourceRepository dataResourceRepository) {
+	public DatasetManagerImpl(DatasetRepository datasetRepository, PublicationRepository publicationRepository, GrantRepository grantRepository, DatabaseResourceRepository dataResourceRepository, TransferRequestRepository transferRequestRepository) {
 		this.datasetRepository = datasetRepository;
 		this.publicationRepository = publicationRepository;
 		this.grantRepository = grantRepository;
 		this.dataResourceRepository = dataResourceRepository;
+		this.transferRequestRepository = transferRequestRepository;
 	}
 
 	@Override
 	public Dataset saveDataset(Dataset d) {
-		
-		
 		boolean protein = false;
 		for (DatasetVersion version: d.getVersions()) {
 			if (version.getPublications() != null) {
@@ -115,6 +118,13 @@ public class DatasetManagerImpl implements DatasetManager {
 		} while (!unique);
 		
 		return identifier;
+	}
+
+	@Override
+	public void transferDataset(Dataset d, UserEntity recipient, TransferRequest r) {
+		d.setUser(recipient);
+		datasetRepository.save(d);
+		transferRequestRepository.delete(r);
 	}
 
 }

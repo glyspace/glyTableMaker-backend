@@ -168,6 +168,11 @@
             <artifactId>jdom2</artifactId>
             <version>2.0.6</version><!--$NO-MVN-MAN-VER$-->
         </dependency>
+        
+        <dependency>
+		    <groupId>com.fasterxml.jackson.datatype</groupId>
+		    <artifactId>jackson-datatype-jsr310</artifactId>
+		</dependency>
 
 
     </dependencies>

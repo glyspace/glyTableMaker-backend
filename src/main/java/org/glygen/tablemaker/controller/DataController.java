@@ -2734,6 +2734,9 @@ public class DataController {
                             	// try to save only the upload status
                             	saved.getGlycans().clear();
                             	saved.getGlycoproteins().clear();
+                            	UploadErrorEntity ue = new UploadErrorEntity(null, "Error saving glycan related info (added glycans/existing glycans etc)", null);
+                            	ue.setUpload(saved);
+                    			saved.getErrors().add(ue);
                             	try {
                             		uploadRepository.save(saved);
                             	} catch (Exception ex1) {
@@ -2774,6 +2777,9 @@ public class DataController {
                             	// try to save only the upload status
                             	saved.getGlycans().clear();
                             	saved.getGlycoproteins().clear();
+                            	UploadErrorEntity ue = new UploadErrorEntity(null, "Error saving glycan related info (added glycans/existing glycans etc)", null);
+                            	ue.setUpload(saved);
+                    			saved.getErrors().add(ue);
                             	try {
                             		uploadRepository.save(saved);
                             	} catch (Exception ex1) {
@@ -2812,6 +2818,9 @@ public class DataController {
 	                            	// try to save only the upload status
 	                            	existing.getGlycans().clear();
 	                            	existing.getGlycoproteins().clear();
+	                            	UploadErrorEntity ue = new UploadErrorEntity(null, "Error saving glycan related info (added glycans/existing glycans etc)", null);
+	                            	ue.setUpload(existing);
+	                    			existing.getErrors().add(ue);
 	                            	try {
 	                            		uploadRepository.save(existing);
 	                            	} catch (Exception ex1) {
@@ -2979,6 +2988,9 @@ public class DataController {
                     	// try to update the status only
                     	result.getGlycans().clear();
                     	result.getGlycoproteins().clear();
+                    	UploadErrorEntity ue = new UploadErrorEntity(null, "Error saving glycoprotein related info (added/existing glycoproteins/glycans etc)", null);
+                    	ue.setUpload(result);
+            			result.getErrors().add(ue);
                     	try {
                     		uploadRepository.save(result);
                     	} catch (Exception ex1) {
@@ -3015,6 +3027,9 @@ public class DataController {
                         	// try to update the status only
                         	result.getGlycans().clear();
                         	result.getGlycoproteins().clear();
+                        	UploadErrorEntity ue = new UploadErrorEntity(null, "Error saving glycoprotein related info (added/existing glycoproteins/glycans etc)", null);
+                        	ue.setUpload(result);
+                			result.getErrors().add(ue);
                         	try {
                         		uploadRepository.save(result);
                         	} catch (Exception ex1) {
@@ -3070,6 +3085,9 @@ public class DataController {
                         	// try to update the status only
                         	result.getGlycans().clear();
                         	result.getGlycoproteins().clear();
+                        	UploadErrorEntity ue = new UploadErrorEntity(null, "Error saving glycoprotein related info (added/existing glycoproteins/glycans etc)", null);
+                        	ue.setUpload(result);
+                			result.getErrors().add(ue);
                         	try {
                         		uploadRepository.save(result);
                         	} catch (Exception ex1) {
@@ -3109,6 +3127,9 @@ public class DataController {
                 	// try to update the status only
                 	result.getGlycans().clear();
                 	result.getGlycoproteins().clear();
+                	UploadErrorEntity ue = new UploadErrorEntity(null, "Error saving glycoprotein related info (added/existing glycoproteins/glycans etc)", null);
+                	ue.setUpload(result);
+        			result.getErrors().add(ue);
                 	try {
                 		uploadRepository.save(result);
                 	} catch (Exception ex1) {
