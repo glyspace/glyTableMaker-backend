@@ -558,7 +558,7 @@ public class TableController {
         		int j=0;
         		for (String col: row) {
         			Cell cell = entry.createCell(j++);
-        			if (col.startsWith ("IMAGE")) {
+        			if (col != null && col.startsWith ("IMAGE")) {
         				// find the cartoon 
         				String glycanId = col.substring(col.indexOf("IMAGE")+5);
         				byte[] cartoon = cartoons.get(col);

@@ -3644,7 +3644,11 @@ public class DataController {
 	    		//add glycan rows and fill in the cartoons map
 	        	String[] row = new String[6];
 	    		row[0] = glycan.getGlytoucanID() != null ? glycan.getGlytoucanID() : "";
-	    		row[1] = glycan.getStatus().name();
+	    		if (glycan.getStatus() != null) {
+	    			row[1] = glycan.getStatus().name();
+	    		} else {
+	    			report.addWarning("Glycan " + glycan.getGlycanId() + " does not have a status. Column is left empty");
+	    		}
 	    		// retrieve/generate the cartoon
 	    		try {
 	                DataController.getImageForGlycan(imageLocation, glycan);

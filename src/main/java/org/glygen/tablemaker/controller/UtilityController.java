@@ -10,9 +10,11 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
@@ -192,7 +194,7 @@ public class UtilityController {
             @ApiResponse(responseCode="400", description="Invalid request, validation error"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse<List<String>>> getTypeAheadSuggestions (
+    public ResponseEntity<SuccessResponse<List<String>>> r (
             @Parameter(required=true, description="Name of the namespace to retrieve matches ")
             @RequestParam("namespace")
             String namespace, 
@@ -252,6 +254,16 @@ public class UtilityController {
                     firstNames.add(user.getFirstName());
             }
             trie = NamespaceHandler.createNamespaceFromList(firstNames);
+        } else if (namespace.equalsIgnoreCase("user")) {
+            List<UserEntity> userList = userRepository.findAll();
+            List<String> allNames = new ArrayList<String>();
+            for (UserEntity user: userList) {
+            	allNames.add(user.getUsername());
+                if (user.getEmail() != null && !user.getEmail().isEmpty())
+                	allNames.add(user.getEmail());
+            }
+            
+            trie = NamespaceHandler.createNamespaceFromList(allNames);
         } else {
             // find the file identifier associated with the given namespace
 	        Namespace entity = namespaceRepository.findByNameIgnoreCase(namespace);  

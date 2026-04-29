@@ -922,7 +922,10 @@ public class DatasetController {
     	
     	UserEntity recipient = userRepository.findByUsernameIgnoreCase(transfer.getUserName());
     	if (recipient == null) {
-    		throw new IllegalArgumentException("User " + transfer.getUserName() + " cannot be found");
+    		recipient = userRepository.findByEmailIgnoreCase(transfer.getUserName());
+    		if (recipient == null) {
+    			throw new IllegalArgumentException("User " + transfer.getUserName() + " cannot be found");
+    		}
     	}
     	
     	try {
