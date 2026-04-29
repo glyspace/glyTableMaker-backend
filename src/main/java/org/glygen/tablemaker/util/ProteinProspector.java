@@ -49,7 +49,6 @@ import org.glycoinfo.application.glycanbuilder.converterWURCS2.WURCS2Parser;
 import org.glygen.tablemaker.controller.DataController;
 import org.glygen.tablemaker.controller.TableController;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
-import org.grits.toolbox.glycanarray.om.util.ExcelWriterHelper;
 
 public class ProteinProspector {
 	
@@ -388,6 +387,13 @@ public class ProteinProspector {
             	System.err.println ("Error generating Wurcs for " + input + " " + e.getMessage());
             }
 		}
+		
+		try {
+			helper.resizeColumnsRows(cartoons, m_lPictures);
+        } catch (Exception e) {
+			System.err.println ("Could not resize row/columns to fit all the images. " + e.getMessage());
+		}
+		
 		
 		try (FileOutputStream fileOut = new FileOutputStream("ProteinProspector-withcartoons.xlsx")) {
 		    workbook.write(fileOut);

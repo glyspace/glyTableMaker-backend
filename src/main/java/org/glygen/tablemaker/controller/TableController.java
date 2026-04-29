@@ -50,8 +50,8 @@ import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.persistence.table.TableReport;
 import org.glygen.tablemaker.persistence.table.TableReportDetail;
 import org.glygen.tablemaker.persistence.table.TableView;
+import org.glygen.tablemaker.util.ExcelWriterHelper;
 import org.glygen.tablemaker.view.SuccessResponse;
-import org.grits.toolbox.glycanarray.om.util.ExcelWriterHelper;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -582,8 +582,14 @@ public class TableController {
         }
         
         //resize pictures
-		for (Picture pic: m_lPictures) {
+	/*	for (Picture pic: m_lPictures) {
 			pic.resize();
+		}*/
+		
+        try {
+        	helper.resizeColumnsRows(sheet, m_lPictures);
+        } catch (Exception e) {
+			logger.warn ("Could not resize row/columns to fit all the images", e);
 		}
         
         workbook.write(excelWriter);
