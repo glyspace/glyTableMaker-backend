@@ -574,8 +574,15 @@ public class TableController {
         			        
         				}
         			} else {
-        				cell.setCellStyle(wrapTextStyle);
-        				cell.setCellValue(col);
+        				try {
+        					double cellValue = Double.parseDouble(col);
+        					cell.setCellValue(cellValue);
+        				} catch (NumberFormatException e) {
+        					// ignore
+        					cell.setCellStyle(wrapTextStyle);
+        					cell.setCellValue(col);
+        				}
+        				
         			}
         		}
         	}
