@@ -29,6 +29,9 @@ public interface GlycanRepository extends JpaRepository<Glycan, Long>,  JpaSpeci
 	@Query("SELECT DISTINCT g.glytoucanID FROM Glycan g")
     public List<String> findDistinctGlytoucanId();
 	
+	@Query("SELECT g.glycanId FROM Glycan g")
+	public List<Long> findAllGlycanId();
+	
 	long countByGlytoucanIDInAndStatus(List<String> glytoucanids, RegistrationStatus status);
 	
 	public List<Glycan> findByGlytoucanIDIgnoreCase (String glytoucanID);

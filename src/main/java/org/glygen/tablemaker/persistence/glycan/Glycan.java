@@ -50,7 +50,6 @@ public class Glycan {
     java.util.Collection<GlycanInSite> sites;
     java.util.Collection<GlycanTag> tags;
     java.util.Collection<GlycanInFile> uploadFiles;
-    byte[] cartoon;
     String condensedString;
     String byonicString;
     
@@ -216,19 +215,6 @@ public class Glycan {
      */
     public void setGlycanCollections(java.util.Collection<GlycanInCollection> glycanCollections) {
         this.glycanCollections = glycanCollections;
-    }
-    /**
-     * @return the cartoon
-     */
-    @Transient
-    public byte[] getCartoon() {
-        return cartoon;
-    }
-    /**
-     * @param cartoon the cartoon to set
-     */
-    public void setCartoon(byte[] cartoon) {
-        this.cartoon = cartoon;
     }
     
     @ManyToMany(fetch = FetchType.EAGER)

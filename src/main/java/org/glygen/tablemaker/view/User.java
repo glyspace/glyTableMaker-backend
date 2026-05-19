@@ -213,8 +213,6 @@ public class User {
 	public void setDatasetNo(long datasetNo) {
 		this.datasetNo = datasetNo;
 	}
-	
-	@Valid
 	public Software getSoftware() {
 		return software;
 	}

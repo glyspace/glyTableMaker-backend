@@ -1,15 +1,24 @@
 package org.glygen.tablemaker.controller;
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -21,8 +30,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-
-import javax.imageio.ImageIO;
 
 import org.apache.commons.io.IOUtils;
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarExporterGlycoCTCondensed;
@@ -53,6 +60,7 @@ import org.glycoinfo.GlycanCompositionConverter.utils.CompositionParseException;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionUtils;
 import org.glycoinfo.GlycanCompositionConverter.utils.DictionaryException;
 import org.glycoinfo.GlycanFormatconverter.util.exchange.SugarToWURCSGraph.SugarToWURCSGraph;
+import org.glycoinfo.WURCSFramework.io.GlycoCT.WURCSExporterGlycoCT;
 import org.glycoinfo.WURCSFramework.util.WURCSException;
 import org.glycoinfo.WURCSFramework.util.WURCSFactory;
 import org.glycoinfo.WURCSFramework.util.exchange.WURCSExchangeException;
@@ -74,6 +82,7 @@ import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.BatchUploadJob;
 import org.glygen.tablemaker.persistence.ErrorReportEntity;
 import org.glygen.tablemaker.persistence.GlycanImageEntity;
+import org.glygen.tablemaker.persistence.SettingEntity;
 import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.UserError;
@@ -92,6 +101,7 @@ import org.glygen.tablemaker.persistence.dao.GlycanTagRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinSpecification;
 import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
+import org.glygen.tablemaker.persistence.dao.SettingRepository;
 import org.glygen.tablemaker.persistence.dao.TableReportRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
@@ -101,6 +111,7 @@ import org.glygen.tablemaker.persistence.glycan.CollectionTag;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
+import org.glygen.tablemaker.persistence.glycan.GlycanCartoon;
 import org.glygen.tablemaker.persistence.glycan.GlycanFileFormat;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
@@ -135,6 +146,8 @@ import org.glygen.tablemaker.view.Filter;
 import org.glygen.tablemaker.view.GlycanInSiteView;
 import org.glygen.tablemaker.view.GlycanView;
 import org.glygen.tablemaker.view.GlycoproteinView;
+import org.glygen.tablemaker.view.GlymageRequest;
+import org.glygen.tablemaker.view.ImageSettings;
 import org.glygen.tablemaker.view.SequenceFormat;
 import org.glygen.tablemaker.view.SiteView;
 import org.glygen.tablemaker.view.Sorting;
@@ -145,6 +158,8 @@ import org.glygen.tablemaker.view.dto.GlycanDTO;
 import org.glygen.tablemaker.view.dto.GlycanInSiteDTO;
 import org.glygen.tablemaker.view.dto.GlycoproteinDTO;
 import org.glygen.tablemaker.view.dto.SiteDTO;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
@@ -156,7 +171,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -168,6 +185,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -189,6 +207,7 @@ public class DataController {
     
     static Logger logger = org.slf4j.LoggerFactory.getLogger(DataController.class);
     static BuilderWorkspace glycanWorkspace = new BuilderWorkspace(new GlycanRendererAWT());
+    private final static RestTemplate restTemplate = new RestTemplate();
     static {       
             glycanWorkspace.initData();
             // Set orientation of glycan: RL - right to left, LR - left to right, TB - top to bottom, BT - bottom to top
@@ -224,6 +243,7 @@ public class DataController {
     final private ErrorReportingService errorReportingService;
     final private TemplateRepository templateRepository;
 	private final DatatypeCategoryRepository datatypeCategoryRepository;
+	final private SettingRepository settingRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -237,7 +257,10 @@ public class DataController {
     		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, 
     		TableReportRepository reportRepository, NamespaceRepository namespaceRepository, 
     		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
-    		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository, ErrorReportingService errorReportingService, GlycanTagRepository glycanTagRepository, CollectionTagRepository collectionTagRepository, TemplateRepository templateRepository, DatatypeCategoryRepository datatypeCategoryRepository) {
+    		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository, 
+    		ErrorReportingService errorReportingService, GlycanTagRepository glycanTagRepository, 
+    		CollectionTagRepository collectionTagRepository, TemplateRepository templateRepository, 
+    		DatatypeCategoryRepository datatypeCategoryRepository, SettingRepository settingRepository) {
         this.glycanRepository = glycanRepository;
 		this.glycanTagRepository = glycanTagRepository;
 		this.collectionRepository = collectionRepository;
@@ -258,6 +281,7 @@ public class DataController {
 		this.errorReportingService = errorReportingService;
 		this.templateRepository = templateRepository;
 		this.datatypeCategoryRepository = datatypeCategoryRepository;
+		this.settingRepository = settingRepository;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -379,7 +403,6 @@ public class DataController {
     		throw e;
     	}
         
-        // retrieve cartoon images
         for (Glycan g: pageGlycans) {
         	// generate optional byonic and condensed composition strings
         	if (g.getCondensedString() == null || g.getCondensedString().isEmpty() || g.getByonicString() == null || g.getByonicString().isEmpty()) {
@@ -395,7 +418,6 @@ public class DataController {
         		glycanImageRepository.save(entity);
         	}
             try {
-                getImageForGlycan(imageLocation, g);
                 if (g.getGlytoucanID() == null && g.getGlytoucanHash() != null && g.getWurcs() != null) {
                 	try {
                 		// registered, try to get the accession number
@@ -598,13 +620,6 @@ public class DataController {
     	        		if (g != null) {
 	    	        		g.setGlycanCollections(null);
 	    	        		g.setSites(null);
-	    	        		//SequenceUtils.addCompositionInformation(g);
-	    	        		try {
-	    	                    getImageForGlycan(imageLocation, g);
-	    	                } catch (DataNotFoundException e) {
-	    	                    // ignore
-	    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
-	    	                }
     	        		}
     	        	}
         		}
@@ -980,15 +995,6 @@ public class DataController {
 		    		Glycan g = gic.getGlycan();
 		    		g.setGlycanCollections(null);
 		    		g.setSites(null);
-		    		//SequenceUtils.addCompositionInformation(g);
-		    		//g.setByonicString(SequenceUtils.generateByonicString(g));
-		        	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
-		    		try {
-		                getImageForGlycan(imageLocation, g);
-		            } catch (DataNotFoundException e) {
-		                // ignore
-		                logger.warn ("no image found for glycan " + g.getGlycanId());
-		            }
 		    		cv.getGlycans().add(g);
 		    	}
 	    	}
@@ -1003,15 +1009,6 @@ public class DataController {
 	    	        		if (g != null) {
 		    	        		g.setGlycanCollections(null);
 		    	        		g.setSites(null);
-		    	        		//SequenceUtils.addCompositionInformation(g);
-		    	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
-		    	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
-		    	        		try {
-		    	                    getImageForGlycan(imageLocation, g);
-		    	                } catch (DataNotFoundException e) {
-		    	                    // ignore
-		    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
-		    	                }
 	    	        		}
 	    	        	}
 	    			}
@@ -1038,13 +1035,6 @@ public class DataController {
 			        		Glycan g = gic.getGlycan();
 			        		g.setGlycanCollections(null);
 			        		g.setSites(null);
-			        		//SequenceUtils.addCompositionInformation(g);
-			        		try {
-			                    getImageForGlycan(imageLocation, g);
-			                } catch (DataNotFoundException e) {
-			                    // ignore
-			                    logger.warn ("no image found for glycan " + g.getGlycanId());
-			                }
 			        		child.getGlycans().add(g);
 			        	}
 	    	    	}
@@ -1058,13 +1048,6 @@ public class DataController {
 		        	        		Glycan g = gic.getGlycan();
 		        	        		g.setGlycanCollections(null);
 		        	        		g.setSites(null);
-		        	        		//SequenceUtils.addCompositionInformation(g);
-		        	        		try {
-		        	                    getImageForGlycan(imageLocation, g);
-		        	                } catch (DataNotFoundException e) {
-		        	                    // ignore
-		        	                    logger.warn ("no image found for glycan " + g.getGlycanId());
-		        	                }
 		        	        	}
 		        			}
 		        			child.getGlycoproteins().add(p);
@@ -1778,20 +1761,7 @@ public class DataController {
         Glycan added = glycanRepository.save(glycan);
         
         if (added != null) {
-            BufferedImage t_image = createImageForGlycan(added);
-            if (t_image != null) {
-                String filename = added.getGlycanId() + ".png";
-                //save the image into a file
-                logger.debug("Adding image to " + imageLocation);
-                File imageFile = new File(imageLocation + File.separator + filename);
-                try {
-                    ImageIO.write(t_image, "png", imageFile);
-                } catch (IOException e) {
-                    logger.error("could not write cartoon image to file", e);
-                }
-            } else {
-                logger.warn ("Glycan image cannot be generated for glycan " + added.getGlycanId());
-            }
+            createImageForGlycan(imageLocation, added);
             GlycanImageEntity imageEntity = new GlycanImageEntity();
             imageEntity.setGlycanId(added.getGlycanId());
             imageEntity.setGlytoucanId(added.getGlytoucanID());
@@ -2075,15 +2045,6 @@ public class DataController {
 	        		if (g != null) {
     	        		g.setGlycanCollections(null);
     	        		g.setSites(null);
-    	        		//SequenceUtils.addCompositionInformation(g);
-    	        		//g.setByonicString(SequenceUtils.generateByonicString(g));
-    	            	//g.setCondensedString(SequenceUtils.generateCondensedString(g));
-    	        		try {
-    	                    getImageForGlycan(imageLocation, g);
-    	                } catch (DataNotFoundException e) {
-    	                    // ignore
-    	                    logger.warn ("no image found for glycan " + g.getGlycanId());
-    	                }
 	        		}
 	        	}
     		}
@@ -3514,7 +3475,22 @@ public class DataController {
         }
         
         Page<Glycan> allGlycans = glycanRepository.findAllByUser(user, Pageable.unpaged());
-        return downloadGlycans(allGlycans.getContent(), format, status, tag);
+        
+        ImageSettings settings = new ImageSettings();
+        Optional<SettingEntity> displaySetting = settingRepository.findByNameAndUser("display", user);
+        if (displaySetting.isPresent()) {
+        	String d = displaySetting.get().getValue();
+        	if (d.equalsIgnoreCase("extended"))
+        		settings.setDisplay(1);
+        	else settings.setDisplay(0);
+        }
+        
+        Optional<SettingEntity> redEndSetting = settingRepository.findByNameAndUser("redEnd", user);
+        if (redEndSetting.isPresent()) {
+        	String r = redEndSetting.get().getValue();
+        	settings.setRedEnd(r.equalsIgnoreCase("y"));
+        }
+        return downloadGlycans(allGlycans.getContent(), format, status, tag, Optional.of(settings));
     }
     
     @Operation(summary = "Download glycans in a collection", security = { @SecurityRequirement(name = "bearer-key") })
@@ -3549,12 +3525,27 @@ public class DataController {
         	}
         }
         
-        return downloadGlycans(glycans, format, status, tag);
+        ImageSettings settings = new ImageSettings();
+        Optional<SettingEntity> displaySetting = settingRepository.findByNameAndUser("display", user);
+        if (displaySetting.isPresent()) {
+        	String d = displaySetting.get().getValue();
+        	if (d.equalsIgnoreCase("extended"))
+        		settings.setDisplay(1);
+        	else settings.setDisplay(0);
+        }
+        
+        Optional<SettingEntity> redEndSetting = settingRepository.findByNameAndUser("redEnd", user);
+        if (redEndSetting.isPresent()) {
+        	String r = redEndSetting.get().getValue();
+        	settings.setRedEnd(r.equalsIgnoreCase("y"));
+        }
+        
+        return downloadGlycans(glycans, format, status, tag, Optional.of(settings));
     }
     
     ResponseEntity<Resource> downloadGlycans (List<Glycan> glycans, GlycanFileFormat format, 
     		Optional<RegistrationStatus> status,
-    		Optional<String> tag) {
+    		Optional<String> tag, Optional<ImageSettings> settings) {
         StringBuffer fileContent = new StringBuffer();
         
         String filename = "glycanexport";
@@ -3651,18 +3642,19 @@ public class DataController {
 	    		}
 	    		// retrieve/generate the cartoon
 	    		try {
-	                DataController.getImageForGlycan(imageLocation, glycan);
+	                GlycanCartoon cartoon = DataController.getImageForGlycan(imageLocation, glycan.getGlycanId());
+	                if (cartoon != null) {
+						row[2] = "IMAGE" + glycan.getGlycanId();
+						cartoons.put ("IMAGE" + glycan.getGlycanId(), cartoon.getCartoon(settings.isPresent() ? settings.get(): null));
+					} else {
+						// warning
+						report.addWarning("Glycan " + glycan.getGlycanId() + " does not have a cartoon. Column is left empty");
+						row[2] = "";
+					}
 				} catch (DataNotFoundException e) {
 					// do nothing, warning will be added later
 				}
-	    		if (glycan.getCartoon() != null) {
-					row[2] = "IMAGE" + glycan.getGlycanId();
-					cartoons.put ("IMAGE" + glycan.getGlycanId(), glycan.getCartoon());
-				} else {
-					// warning
-					report.addWarning("Glycan " + glycan.getGlycanId() + " does not have a cartoon. Column is left empty");
-					row[2] = "";
-				}
+	    		
 	    		row[3] = glycan.getMass()+"";
 	    		row[4] = glycan.getGlycanCollections().size() + "";
 	    		row[5] = glycan.getError() != null ? "Glycan is submitted to Glytoucan on " + glycan.getDateCreated() + 
@@ -3939,16 +3931,19 @@ public class DataController {
         return sequence;
     }
     
-    public static BufferedImage createImageForGlycan(Glycan glycan) {
-        BufferedImage t_image = null;
-        org.eurocarbdb.application.glycanbuilder.Glycan glycanObject = null;
+    public static GlycanCartoon createImageForGlycan(String imageLocation, Glycan glycan) {
+        GlymageRequest req = new GlymageRequest();
+        GlycanCartoon cartoon = new GlycanCartoon();
+        
+        //org.eurocarbdb.application.glycanbuilder.Glycan glycanObject = null;
         try {
         	if (glycan.getWurcs() != null && !glycan.getWurcs().isEmpty()) {
-                WURCS2Parser t_wurcsparser = new WURCS2Parser();
-                glycanObject = t_wurcsparser.readGlycan(glycan.getWurcs().trim(), new MassOptions());
+        		req.setSeq(glycan.getWurcs().trim());
+                //WURCS2Parser t_wurcsparser = new WURCS2Parser();
+                //glycanObject = t_wurcsparser.readGlycan(glycan.getWurcs().trim(), new MassOptions());
         	}
         	else if (glycan.getGlycoCT() != null && !glycan.getGlycoCT().isEmpty()) {
-                glycanObject = 
+                /*glycanObject = 
                         org.eurocarbdb.application.glycanbuilder.Glycan.
                         fromGlycoCTCondensed(glycan.getGlycoCT().trim());
                 if (glycanObject == null && glycan.getGlytoucanID() != null) {
@@ -3962,20 +3957,29 @@ public class DataController {
                         }
                     }
                 }
-                
-            } 
+                */
+        		// convert to WURCS and get the image
+        		WURCSExporterGlycoCT exporter = new WURCSExporterGlycoCT();
+                exporter.start(glycan.getGlycoCT());
+                String wurcs = exporter.getWURCS();
+                req.setSeq(wurcs);
+        		
+            } else if (glycan.getGlytoucanID() != null) {
+    			String seq = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
+    			req.setSeq(seq);
+    		}
         	
-            if (glycanObject != null) {
+          /*  if (glycanObject != null) {
                 t_image = glycanWorkspace.getGlycanRenderer().getImage(glycanObject, true, false, true, 1.0D);
-            } 
-
+            } */
+        	
         } catch (Exception e) {
             logger.error ("Glycan image cannot be generated. Reason: " + e.getMessage());
             // check if there is glytoucan id
             if (glycan.getGlytoucanID() != null) {
                 String seq = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
                 if (seq != null) {
-                    WURCS2Parser t_wurcsparser = new WURCS2Parser();
+                    /*WURCS2Parser t_wurcsparser = new WURCS2Parser();
                     try {
                         glycanObject = t_wurcsparser.readGlycan(seq, new MassOptions());
                         if (glycanObject != null) {
@@ -3983,47 +3987,196 @@ public class DataController {
                         }
                     } catch (Exception e1) {
                         logger.error ("Glycan image cannot be generated from WURCS. Reason: " + e);
-                    }
+                    }*/
+                	req.setSeq(seq);
+                	
                 }
-            }
-            
+            }  
         }
-        return t_image;
-    }
-    
-    public static void getImageForGlycan (String imageLocation, Glycan g) {
-    	try {
-    		g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-    	} catch (DataNotFoundException e) {
-    		// try to recreate
-        	BufferedImage t_image = createImageForGlycan(g);
-            if (t_image != null) {
-                String filename = g.getGlycanId() + ".png";
-                //save the image into a file
-                logger.debug("Adding image to " + imageLocation);
-                File imageFile = new File(imageLocation + File.separator + filename);
-                try {
-                    ImageIO.write(t_image, "png", imageFile);
-                } catch (IOException e1) {
-                    logger.error("could not write cartoon image to file", e1);
-                }
-                g.setCartoon(getImageForGlycan(imageLocation, g.getGlycanId()));
-            } else {
-                logger.warn ("Glycan image cannot be generated for glycan " + g.getGlycanId());
-                throw new DataNotFoundException("Image for glycan " + g.getGlycanId() + " is not available");
-            }
-    	}
-    	
-    }
-    
-    public static byte[] getImageForGlycan (String imageLocation, Long glycanId) {
+        
+        File imageFolder = new File (imageLocation + File.separator + glycan.getGlycanId());
+        if (!imageFolder.exists()) {
+        	imageFolder.mkdirs();
+        }
+        
+        // generate 4 versions and save them
         try {
-            File imageFile = new File(imageLocation + File.separator + glycanId + ".png");
-            InputStreamResource resource = new InputStreamResource(new FileInputStream(imageFile));
-            return IOUtils.toByteArray(resource.getInputStream());
+	        req.setRedend("y");
+	        req.setDisplay("extended");
+	        
+	        String taskId = submitImageTask(req);
+	        byte[] image1 = retrieveImage(taskId);
+	        cartoon.setExtendedRedEnd(image1);
+	        
+	        if (image1 != null) {
+                String filename = "extendedRedEnd.png";
+                //save the image into a file
+                logger.debug("Adding image to " + imageFolder);
+                Path imageFile = Paths.get(imageFolder + File.separator + filename);
+                try {
+                    Files.write(imageFile, image1);
+                } catch (IOException e) {
+                    logger.error("could not write cartoon image to file", e);
+                }
+            } else {
+                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
+            }
+	        
+	        req.setRedend("n");
+	        req.setDisplay("extended");
+	        
+	        taskId = submitImageTask(req);
+	        byte[] image2 = retrieveImage(taskId);
+	        cartoon.setExtendedNoRedEnd(image2);
+	        
+	        if (image2 != null) {
+                String filename = "extendedNoRedEnd.png";
+                //save the image into a file
+                logger.debug("Adding image to " + imageFolder);
+                Path imageFile = Paths.get(imageFolder + File.separator + filename);
+                try {
+                    Files.write(imageFile, image2);
+                } catch (IOException e) {
+                    logger.error("could not write cartoon image to file", e);
+                }
+            } else {
+                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
+            }
+	        
+	        req.setRedend("y");
+	        req.setDisplay("compact");
+	        
+	        taskId = submitImageTask(req);
+	        byte[] image3 = retrieveImage(taskId);
+	        cartoon.setCompactRedEnd(image3);
+	        
+	        if (image3 != null) {
+                String filename = "compactRedEnd.png";
+                //save the image into a file
+                logger.debug("Adding image to " + imageFolder);
+                Path imageFile = Paths.get(imageFolder + File.separator + filename);
+                try {
+                    Files.write(imageFile, image3);
+                } catch (IOException e) {
+                    logger.error("could not write cartoon image to file", e);
+                }
+            } else {
+                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
+            }
+	        
+	        req.setRedend("n");
+	        req.setDisplay("compact");
+	        
+	        taskId = submitImageTask(req);
+	        byte[] image4 = retrieveImage(taskId);
+	        cartoon.setCompactNoRedEnd(image4);
+	        
+	        if (image4 != null) {
+                String filename = "compactNoRedEnd.png";
+                //save the image into a file
+                logger.debug("Adding image to " + imageFolder);
+                Path imageFile = Paths.get(imageFolder + File.separator + filename);
+                try {
+                    Files.write(imageFile, image4);
+                } catch (IOException e) {
+                    logger.error("could not write cartoon image to file", e);
+                }
+            } else {
+                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
+            }
+        } catch (Exception e) {
+        	logger.error ("Glycan image cannot be generated. Reason: " + e.getMessage());
+        }
+        return cartoon;
+    }
+    
+    public static String submitImageTask(GlymageRequest imageRequest) throws IOException, InterruptedException {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        ObjectMapper mapper = new ObjectMapper();
+        String jsonPayload = mapper.writeValueAsString(imageRequest);
+
+        String encoded = URLEncoder.encode(jsonPayload, StandardCharsets.UTF_8);
+        String url = "https://glymage.glyomics.org/submit?task=" + encoded + "&developer_email=glygenarray.api@gmail.com";
+
+        
+    	HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .build();
+
+        HttpResponse<String> response1 = client.send(request, HttpResponse.BodyHandlers.ofString());
+		String json = response1.body();
+		JSONArray jsonArray = new JSONArray(json);
+		return ((JSONObject)jsonArray.get(0)).getString("id");
+    }
+
+    public static byte[] retrieveImage(String taskId) throws IOException, InterruptedException {
+        String url = "https://glymage.glyomics.org/retrieve?task_id=" + taskId;
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .build();
+
+        boolean finished = false;
+        JSONArray jsonArray;
+		do {
+			HttpResponse<String> response1 = client.send(request, HttpResponse.BodyHandlers.ofString());
+			String json = response1.body();
+			jsonArray = new JSONArray(json);
+			finished = ((JSONObject)jsonArray.get(0)).getBoolean("finished");
+			if (!finished) {
+				try {
+			        Thread.sleep(1000); // wait 1 sec between requests
+			    } catch (InterruptedException e) {
+			        Thread.currentThread().interrupt(); // restore interrupted status
+			    }
+			}
+		} while (!finished);
+		String imagePath = ((JSONObject)jsonArray.get(0)).getString("result");
+        
+        String baseUrl = "https://glymage.glyomics.org/";
+
+        URL url2 = new URL(baseUrl + imagePath);
+        HttpURLConnection conn = (HttpURLConnection) url2.openConnection();
+        conn.setRequestMethod("GET");
+
+        try (InputStream in = conn.getInputStream()) {
+            byte[] bytes = in.readAllBytes();
+            return bytes;
+        }
+    }
+    
+    public static GlycanCartoon getImageForGlycan (String imageLocation, Long glycanId) {
+        try {
+        	GlycanCartoon cartoon = new GlycanCartoon();
+            File imageFolder = new File(imageLocation + File.separator + glycanId);
+            File imageFile1 = new File (imageFolder + File.separator + "compactRedEnd.png");
+            InputStreamResource resource = new InputStreamResource(new FileInputStream(imageFile1));
+            cartoon.setCompactRedEnd(IOUtils.toByteArray(resource.getInputStream()));
+            File imageFile2 = new File (imageFolder + File.separator + "compactNoRedEnd.png");
+            resource = new InputStreamResource(new FileInputStream(imageFile2));
+            cartoon.setCompactNoRedEnd(IOUtils.toByteArray(resource.getInputStream()));
+            File imageFile3 = new File (imageFolder + File.separator + "extendedRedEnd.png");
+            resource = new InputStreamResource(new FileInputStream(imageFile3));
+            cartoon.setExtendedRedEnd(IOUtils.toByteArray(resource.getInputStream()));
+            File imageFile4 = new File (imageFolder + File.separator + "extendedNoRedEnd.png");
+            resource = new InputStreamResource(new FileInputStream(imageFile4));
+            cartoon.setExtendedNoRedEnd(IOUtils.toByteArray(resource.getInputStream()));
+            return cartoon;
         } catch (IOException e) {
             logger.error("Image cannot be retrieved. Reason: " + e.getMessage());
             throw new DataNotFoundException("Image for glycan " + glycanId + " is not available");
         }
+    }
+    
+    public class GlymageSubmitResponse {
+        private String id;
+    
+        public String getId() {
+			return id;
+		}
+        
     }
 }

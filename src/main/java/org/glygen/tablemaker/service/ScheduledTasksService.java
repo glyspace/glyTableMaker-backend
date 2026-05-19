@@ -368,6 +368,22 @@ public class ScheduledTasksService {
 		return identifiers;
 	}
 	
+	@Scheduled(fixedDelay = 604800000, initialDelay=1000)
+	public void generateGlycanImages () {
+		logger.info("Checking glycan images on " + new Date());
+		List<Long> glycans = glycanRepository.findAllGlycanId();
+		for (Long id: glycans) {
+			File imageFolder = new File(imageLocation + File.separator + id);
+			if (!imageFolder.exists()) {
+				Optional<Glycan> g = glycanRepository.findById(id);
+				if (g.isPresent()) {
+					DataController.createImageForGlycan(imageLocation, g.get());
+				}
+			}
+		}
+		logger.info("DONE generating glycan images: " + new Date());
+	}
+	
     @Scheduled(fixedDelay = 86400000, initialDelay=1000)
     public void checkGlytoucanRegistration () {
     	logger.info("Checking submitted glycans on " + new Date());
@@ -445,7 +461,7 @@ public class ScheduledTasksService {
         		glycanImageRepository.save(entity);
         	}
             try {
-            	DataController.getImageForGlycan(imageLocation, glycan);
+            	DataController.getImageForGlycan(imageLocation, glycan.getGlycanId());
                 if (glycan.getGlytoucanID() != null) {
             		List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(glycan.getGlytoucanID());
         			if (images == null || images.isEmpty()) {
@@ -492,7 +508,7 @@ public class ScheduledTasksService {
             		glycanImageRepository.save(entity);
             	}
                 try {
-                	glycan.setCartoon(DataController.getImageForGlycan(imageLocation, glycan.getGlycanId()));
+                	DataController.getImageForGlycan(imageLocation, glycan.getGlycanId());
                     if (glycan.getGlytoucanID() != null) {
                 		List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(glycan.getGlytoucanID());
             			if (images == null || images.isEmpty()) {
@@ -550,4 +566,6 @@ public class ScheduledTasksService {
     	}
     	logger.info("DONE Checking upload jobs: " + new Date());
     }
+    
+    
 }

@@ -123,20 +123,7 @@ public class AsyncServiceImpl implements AsyncService {
                     Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
                     allGlycans.add(added);
                     if (added != null) {
-                        BufferedImage t_image = DataController.createImageForGlycan(added);
-                        if (t_image != null) {
-                            String filename = added.getGlycanId() + ".png";
-                            //save the image into a file
-                            logger.debug("Adding image to " + imageLocation);
-                            File imageFile = new File(imageLocation + File.separator + filename);
-                            try {
-                                ImageIO.write(t_image, "png", imageFile);
-                            } catch (IOException e) {
-                                logger.error("could not write cartoon image to file", e);
-                            }
-                        } else {
-                            logger.warn ("Glycan image cannot be generated for glycan " + added.getGlycanId());
-                        }
+                    	DataController.createImageForGlycan(imageLocation, added);
                     }
                 	countSuccess++;
                 } catch (DuplicateException e) {
@@ -233,20 +220,7 @@ public class AsyncServiceImpl implements AsyncService {
 	                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
 	                    allGlycans.add(added);
 	                    if (added != null) {
-	                        BufferedImage t_image = DataController.createImageForGlycan(added);
-	                        if (t_image != null) {
-	                            String filename = added.getGlycanId() + ".png";
-	                            //save the image into a file
-	                            logger.debug("Adding image to " + imageLocation);
-	                            File imageFile = new File(imageLocation + File.separator + filename);
-	                            try {
-	                                ImageIO.write(t_image, "png", imageFile);
-	                            } catch (IOException e) {
-	                                logger.error("could not write cartoon image to file", e);
-	                            }
-	                        } else {
-	                            logger.warn ("Glycan image cannot be generated for glycan " + added.getGlycanId());
-	                        }
+	                        DataController.createImageForGlycan(imageLocation, added);
 	                    }
 	                	countSuccess++;
 	                } catch (DuplicateException e) {
@@ -341,20 +315,7 @@ public class AsyncServiceImpl implements AsyncService {
 		                    glycanSequenceMap.put (comp.trim(), glycan);
 		                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
 		                    if (added != null) {
-		                        BufferedImage t_image = DataController.createImageForGlycan(added);
-		                        if (t_image != null) {
-		                            String filename = added.getGlycanId() + ".png";
-		                            //save the image into a file
-		                            logger.debug("Adding image to " + imageLocation);
-		                            File imageFile = new File(imageLocation + File.separator + filename);
-		                            try {
-		                                ImageIO.write(t_image, "png", imageFile);
-		                            } catch (IOException e) {
-		                                logger.error("could not write cartoon image to file", e);
-		                            }
-		                        } else {
-		                            logger.warn ("Glycan image cannot be generated for glycan " + added.getGlycanId());
-		                        }
+		                    	DataController.createImageForGlycan(imageLocation, added);
 		                    }
                 		
 		                } catch (DuplicateException e) {
@@ -557,20 +518,7 @@ public class AsyncServiceImpl implements AsyncService {
         	                    glycanSequenceMap.put (comp.trim(), glycan);
         	                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
         	                    if (added != null) {
-        	                        BufferedImage t_image = DataController.createImageForGlycan(added);
-        	                        if (t_image != null) {
-        	                            String filename = added.getGlycanId() + ".png";
-        	                            //save the image into a file
-        	                            logger.debug("Adding image to " + imageLocation);
-        	                            File imageFile = new File(imageLocation + File.separator + filename);
-        	                            try {
-        	                                ImageIO.write(t_image, "png", imageFile);
-        	                            } catch (IOException e) {
-        	                                logger.error("could not write cartoon image to file", e);
-        	                            }
-        	                        } else {
-        	                            logger.warn ("Glycan image cannot be generated for glycan " + added.getGlycanId());
-        	                        }
+        	                    	DataController.createImageForGlycan(imageLocation, added);
         	                    }
         	                } catch (DuplicateException e) {
         	                	//errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));
@@ -1085,20 +1033,7 @@ public class AsyncServiceImpl implements AsyncService {
                     allGlycans.add(glycan);
                     Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
                     if (added != null) {
-                        BufferedImage t_image = DataController.createImageForGlycan(added);
-                        if (t_image != null) {
-                            String filename = added.getGlycanId() + ".png";
-                            //save the image into a file
-                            logger.debug("Adding image to " + imageLocation);
-                            File imageFile = new File(imageLocation + File.separator + filename);
-                            try {
-                                ImageIO.write(t_image, "png", imageFile);
-                            } catch (IOException e) {
-                                logger.error("could not write cartoon image to file", e);
-                            }
-                        } else {
-                            logger.warn ("Glycan image cannot be generated for glycan " + added.getGlycanId());
-                        }
+                    	DataController.createImageForGlycan(imageLocation, added);
                     }
                 } catch (DuplicateException e) {
                 	//errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));

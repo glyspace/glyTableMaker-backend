@@ -3,6 +3,7 @@ package org.glygen.tablemaker.persistence.table;
 import java.util.List;
 
 import org.glygen.tablemaker.persistence.glycan.Collection;
+import org.glygen.tablemaker.view.ImageSettings;
 
 public class TableView {
 	
@@ -11,6 +12,7 @@ public class TableView {
 	FileFormat fileFormat;
 	String filename;
 	Double imageScale = 1.0;
+	ImageSettings imageSettings;
 	
 	public List<Collection> getCollections() {
 		return collections;
@@ -41,6 +43,12 @@ public class TableView {
 	}
 	public void setImageScale(Double imageScale) {
 		this.imageScale = imageScale;
+	}
+	public ImageSettings getImageSettings() {
+		return imageSettings;
+	}
+	public void setImageSettings(ImageSettings imageSettings) {
+		this.imageSettings = imageSettings;
 	}
 	
 

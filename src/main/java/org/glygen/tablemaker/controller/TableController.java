@@ -37,6 +37,7 @@ import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
+import org.glygen.tablemaker.persistence.glycan.GlycanCartoon;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.protein.GlycanInSite;
@@ -210,23 +211,6 @@ public class TableController {
 			}
 		}
 		
-		// generate cartoons for glycans, if CARTOON column is requested
-		for (TableColumn col: table.getColumns()) {
-			if (col.getGlycanColumn() == GlycanColumns.CARTOON) {
-				for (Collection c: collectionList) {
-					if (c.getGlycans() != null) {
-						for (GlycanInCollection g: c.getGlycans()) {
-							try {
-				               DataController.getImageForGlycan(imageLocation, g.getGlycan());
-							} catch (DataNotFoundException e) {
-								// do nothing, warning will be added later
-							}
-						}
-					}
-				}
-			}
-		}
-		
 		// add header row
 		String[] row = new String[table.getColumns().size()];
 		int column = 0;
@@ -244,12 +228,13 @@ public class TableController {
 						if (col.getGlycanColumn() != null) {
 							switch (col.getGlycanColumn()) {
 							case CARTOON:
-								if (g.getGlycan().getCartoon() == null && col.getDefaultValue() != null) {
+								GlycanCartoon cartoon = DataController.getImageForGlycan(imageLocation, g.getGlycan().getGlycanId());
+								if (cartoon == null && col.getDefaultValue() != null) {
 									row[i] = col.getDefaultValue();
 								} else {
-									if (g.getGlycan().getCartoon() != null) {
+									if (cartoon != null) {
 										row[i] = "IMAGE" + g.getGlycan().getGlycanId();
-										cartoons.put ("IMAGE" + g.getGlycan().getGlycanId(), g.getGlycan().getCartoon());
+										cartoons.put ("IMAGE" + g.getGlycan().getGlycanId(), cartoon.getCartoon(table.getImageSettings()));
 									} else {
 										// warning
 										report.addWarning("Glycan " + g.getGlycan().getGlycanId() + " in collection " + c.getName() + " does not have a cartoon. Column is left empty");

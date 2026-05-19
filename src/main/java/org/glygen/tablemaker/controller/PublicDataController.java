@@ -212,17 +212,6 @@ public class PublicDataController {
 				GlygenProteinMetadataRow row = new GlygenProteinMetadataRow();
 				row.setRowId(key);
 				row.setColumns(rowMap.get(key));
-				for (DatasetGlycoproteinMetadata col: row.getColumns()) {
-					if (col.getGlycoproteinColumn() != null && col.getGlycoproteinColumn() == GlycoproteinColumns.GLYTOUCANID) {
-						try {
-							byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), glycanImageRepository, imageLocation);
-							row.setCartoon(cartoon);
-						} catch (Exception e) {
-							logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
-						}
-						break;
-					}
-				}
 				result.add(row);
 			}
         	
@@ -254,17 +243,6 @@ public class PublicDataController {
 				GlygenMetadataRow row = new GlygenMetadataRow();
 				row.setRowId(key);
 				row.setColumns(rowMap.get(key));
-				for (DatasetMetadata col: row.getColumns()) {
-					if (col.getGlycanColumn() != null && col.getGlycanColumn() == GlycanColumns.GLYTOUCANID) {
-						try {
-							byte[] cartoon = UtilityController.getCartoon(col.getValue().trim(), glycanImageRepository, imageLocation);
-							row.setCartoon(cartoon);
-						} catch (Exception e) {
-							logger.warn("could not get the cartoon for " + col.getValue() + " column id: " + col.getId()) ;
-						}
-						break;
-					}
-				}
 				result.add(row);
 			}
 			

@@ -3,12 +3,12 @@ package org.glygen.tablemaker.view;
 import java.util.List;
 
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
+import org.glygen.tablemaker.persistence.glycan.GlycanCartoon;
 
 public class GlygenMetadataRow {
 	
 	String rowId;
 	List<DatasetMetadata> columns;
-	byte[] cartoon;
 	
 	public GlygenMetadataRow() {
 	}
@@ -29,13 +29,5 @@ public class GlygenMetadataRow {
 	}
 	public void setColumns(List<DatasetMetadata> columns) {
 		this.columns = columns;
-	}
-	
-	public byte[] getCartoon() {
-		return cartoon;
-	}
-	
-	public void setCartoon(byte[] cartoon) {
-		this.cartoon = cartoon;
 	}
 }

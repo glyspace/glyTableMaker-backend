@@ -40,6 +40,7 @@ import org.glygen.tablemaker.persistence.dataset.License;
 import org.glygen.tablemaker.persistence.dataset.Publication;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
+import org.glygen.tablemaker.persistence.glycan.GlycanCartoon;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.Namespace;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
@@ -748,42 +749,63 @@ public class UtilityController {
             @ApiResponse(responseCode="500", description="Internal Server Error")})
     public ResponseEntity<SuccessResponse<byte[]>> getCartoon (
             @Parameter(required=true, description="GlyTouCan Id for the glycan") 
-            @RequestParam("glytoucanId") String glytoucanId) {
+            @RequestParam("glytoucanId") String glytoucanId, 
+            @Parameter(required=false, description="display type for the cartoon, extended/compact") 
+            @RequestParam(required=false, name="display") String display,
+            @Parameter(required=false, description="show reducing end, y/n") 
+            @RequestParam(required=false, name="redEnd") String redEnd) {
         if (glytoucanId == null) {
             throw new IllegalArgumentException("Invalid Input: Not a valid glytoucan id");
         }
-
-        return new ResponseEntity<>(new SuccessResponse<byte[]>(getCartoon (glytoucanId, glycanImageRepository, imageLocation), "Cartoon retrieved"), HttpStatus.OK);
+        
+        if (display == null) display = "extended";
+        if (redEnd == null) redEnd = "y";
+        
+        GlycanCartoon cartoon = null;
+        if (glytoucanId.startsWith("G")) {
+        	cartoon = getCartoon (glytoucanId, glycanImageRepository, imageLocation);
+        } else {
+        	try {
+        		Long glycanId = Long.parseLong(glytoucanId);
+        		cartoon = DataController.getImageForGlycan(imageLocation, glycanId);
+        	} catch (NumberFormatException e) {
+        		throw new DataNotFoundException("Invalid Input: Glycan with the given glytoucan id cannot be located");
+        	}
+        }
+        byte[] image = cartoon.getExtendedRedEnd();
+        if (display.equalsIgnoreCase("compact")) {
+        	if (redEnd.toLowerCase().startsWith("y")) {
+        		image = cartoon.getCompactRedEnd();
+        	} else {
+        		image = cartoon.getCompactNoRedEnd();
+        	}
+        } else {
+        	if (redEnd.toLowerCase().startsWith("y")) {
+        		image = cartoon.getExtendedRedEnd();
+        	} else {
+        		image = cartoon.getExtendedNoRedEnd();
+        	}
+        }
+        
+        return new ResponseEntity<>(new SuccessResponse<byte[]>(image, "Cartoon retrieved"), HttpStatus.OK);
     }
 	
-	public static byte[] getCartoon (String glytoucanId, GlycanImageRepository glycanImageRepository, String imageLocation) {
+	public static GlycanCartoon getCartoon (String glytoucanId, GlycanImageRepository glycanImageRepository, String imageLocation) {
 		try {
         	List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(glytoucanId.trim());
         	if (images != null && images.size() > 0) {
         		GlycanImageEntity image = images.get(0);
         		Long glycanId = images.get(0).getGlycanId();
         		try {
-        			byte[] cartoon = DataController.getImageForGlycan(imageLocation, glycanId);
-        			return cartoon;
+        			return DataController.getImageForGlycan(imageLocation, glycanId);
         		} catch (DataNotFoundException e) {
         			// generate and save
         			Glycan glycan = new Glycan();
+        			glycan.setGlycanId(glycanId);
         			glycan.setWurcs(image.getWurcs());
         			glycan.setGlytoucanID(image.getGlytoucanId());
-        			BufferedImage t_image = DataController.createImageForGlycan(glycan);
-        			if (t_image != null) {
-                        String filename = glycanId + ".png";
-                        //save the image into a file
-                        logger.debug("Adding image to " + imageLocation);
-                        File imageFile = new File(imageLocation + File.separator + filename);
-                        try {
-                            ImageIO.write(t_image, "png", imageFile);
-                        } catch (IOException e1) {
-                            logger.error("could not write cartoon image to file", e1);
-                        }
-                    } else {
-                        logger.warn ("Glycan image cannot be generated for glycan " + glycanId);
-                    }
+        			DataController.createImageForGlycan(imageLocation, glycan);
+        			
         			return DataController.getImageForGlycan(imageLocation, glycanId);             
         		}	
         	} else {
