@@ -368,7 +368,7 @@ public class ScheduledTasksService {
 		return identifiers;
 	}
 	
-	/*@Scheduled(fixedDelay = 604800000, initialDelay=1000)
+	@Scheduled(fixedDelay = 604800000, initialDelay=1000)
 	public void generateGlycanImages () {
 		logger.info("Checking glycan images on " + new Date());
 		List<Long> glycans = glycanRepository.findAllGlycanId();
@@ -382,7 +382,7 @@ public class ScheduledTasksService {
 			}
 		}
 		logger.info("DONE generating glycan images: " + new Date());
-	}*/
+	}
 	
     @Scheduled(fixedDelay = 86400000, initialDelay=1000)
     public void checkGlytoucanRegistration () {

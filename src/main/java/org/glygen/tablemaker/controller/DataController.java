@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLDecoder;
@@ -242,7 +243,7 @@ public class DataController {
     final private BatchUploadJobRepository batchUploadJobRepository;
     final private ErrorReportingService errorReportingService;
     final private TemplateRepository templateRepository;
-	private final DatatypeCategoryRepository datatypeCategoryRepository;
+	final private DatatypeCategoryRepository datatypeCategoryRepository;
 	final private SettingRepository settingRepository;
     
     @Value("${spring.file.imagedirectory}")
@@ -304,6 +305,278 @@ public class DataController {
     	stats.setCocCount(collectionRepository.count(spec));
     	stats.setGlycoproteinCount(glycoproteinRepository.count(GlycoproteinSpecification.hasUserWithId(user.getUserId())));
         return new ResponseEntity<>(new SuccessResponse<UserStatisticsView>(stats, "statistics gathered"), HttpStatus.OK);
+    }
+    
+    public static void createImageForGlycans(String imageLocation, List<Glycan> glycans) {
+    	for (Glycan glycan: glycans) {
+    		createImageForGlycan(imageLocation, glycan);
+    	}
+    }
+    
+    public static void createImageForGlycan(String imageLocation, Glycan glycan) {
+    	List<GlymageRequest> requests = new ArrayList<GlymageRequest>();
+        GlycanCartoon cartoon = new GlycanCartoon();
+        String wurcs = null;
+        Map<String, GlymageRequest> taskMap = new HashMap<String, GlymageRequest>();
+        
+        try {
+        	if (glycan.getWurcs() != null && !glycan.getWurcs().isEmpty()) {
+        		wurcs = glycan.getWurcs().trim();
+        	}
+        	else if (glycan.getGlycoCT() != null && !glycan.getGlycoCT().isEmpty()) {
+        		// convert to WURCS and get the image
+        		WURCSExporterGlycoCT exporter = new WURCSExporterGlycoCT();
+                exporter.start(glycan.getGlycoCT());
+                wurcs = exporter.getWURCS();
+        		
+            } else if (glycan.getGlytoucanID() != null) {
+    			wurcs = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
+    		}
+        } catch (Exception e) {
+            logger.error ("Glycan image cannot be generated. Reason: " + e.getMessage());
+            // check if there is glytoucan id
+            if (glycan.getGlytoucanID() != null) {
+                String seq = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
+                if (seq != null) {
+                	wurcs = seq;
+                	
+                }
+            }  
+        }
+        
+        if (wurcs == null) {
+        	logger.error("Glycan image cannot be generated since wurcs sequence cannot be generated");
+        	return;
+        }
+        
+        File imageFolder = new File (imageLocation + File.separator + glycan.getGlycanId());
+        if (!imageFolder.exists()) {
+        	imageFolder.mkdirs();
+        }
+        
+        // generate 4 versions and save them
+        try {
+	        GlymageRequest req = new GlymageRequest();
+			req.setRedend("y");
+	        req.setDisplay("extended");
+	        req.setSeq (wurcs);
+	        
+	        requests.add(req);
+	        
+	        GlymageRequest req1 = new GlymageRequest();
+	        req1.setRedend("n");
+	        req1.setDisplay("extended");
+	        req1.setSeq (wurcs);
+	        requests.add(req1);
+	        
+	        GlymageRequest req2 = new GlymageRequest();
+	        req2.setRedend("y");
+	        req2.setDisplay("compact");
+	        req2.setSeq (wurcs);
+	        requests.add(req2);
+	        
+	        GlymageRequest req3 = new GlymageRequest();
+	        req3.setRedend("n");
+	        req3.setDisplay("compact");
+	        req3.setSeq (wurcs);
+	        requests.add(req3);
+	        
+	        submitImageTasks (requests, taskMap);
+	        
+	        try {
+		        Thread.sleep(3000); // wait 3 sec between submit/retrieve
+		    } catch (InterruptedException e) {
+		        Thread.currentThread().interrupt(); // restore interrupted status
+		   
+		    }
+	        
+	        cartoon = retrieveImages (taskMap);
+	      
+	        if (cartoon.getExtendedRedEnd() != null) {
+                String filename = "extendedRedEnd.png";
+                //save the image into a file
+                logger.debug("Adding image to " + imageFolder);
+                Path imageFile = Paths.get(imageFolder + File.separator + filename);
+                try {
+                    Files.write(imageFile, cartoon.getExtendedRedEnd());
+                } catch (IOException e) {
+                    logger.error("could not write cartoon image to file", e);
+                }
+            } else {
+                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
+            }
+	        
+	        if (cartoon.getExtendedNoRedEnd() != null) {
+                String filename = "extendedNoRedEnd.png";
+                //save the image into a file
+                logger.debug("Adding image to " + imageFolder);
+                Path imageFile = Paths.get(imageFolder + File.separator + filename);
+                try {
+                    Files.write(imageFile, cartoon.getExtendedNoRedEnd());
+                } catch (IOException e) {
+                    logger.error("could not write cartoon image to file", e);
+                }
+            } else {
+                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
+            }
+	        
+	        
+	        if (cartoon.getCompactRedEnd() != null) {
+                String filename = "compactRedEnd.png";
+                //save the image into a file
+                logger.debug("Adding image to " + imageFolder);
+                Path imageFile = Paths.get(imageFolder + File.separator + filename);
+                try {
+                    Files.write(imageFile, cartoon.getCompactRedEnd());
+                } catch (IOException e) {
+                    logger.error("could not write cartoon image to file", e);
+                }
+            } else {
+                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
+            }
+	        
+	        if (cartoon.getCompactNoRedEnd() != null) {
+                String filename = "compactNoRedEnd.png";
+                //save the image into a file
+                logger.debug("Adding image to " + imageFolder);
+                Path imageFile = Paths.get(imageFolder + File.separator + filename);
+                try {
+                    Files.write(imageFile, cartoon.getCompactNoRedEnd());
+                } catch (IOException e) {
+                    logger.error("could not write cartoon image to file", e);
+                }
+            } else {
+                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
+            }
+        } catch (Exception e) {
+        	logger.error ("Glycan image cannot be generated. Reason: " + e.getMessage());
+        }
+    }
+    
+    private static GlycanCartoon retrieveImages(Map<String, GlymageRequest> taskMap) throws JsonProcessingException, IOException, InterruptedException {
+    	GlycanCartoon cartoon = new GlycanCartoon();
+    	ObjectMapper mapper = new ObjectMapper();
+        String jsonPayload = mapper.writeValueAsString(taskMap.keySet());
+        
+        String url = "https://glymage.glyomics.org/retrieve?task_ids=" + URLEncoder.encode(jsonPayload, StandardCharsets.UTF_8);
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .build();
+
+        boolean finished = false;
+        JSONArray jsonArray;
+		do {
+			HttpResponse<String> response1 = client.send(request, HttpResponse.BodyHandlers.ofString());
+			String json = response1.body();
+			jsonArray = new JSONArray(json);
+			for (int i = 0; i < jsonArray.length(); i++) {
+	        	JSONObject resp = jsonArray.getJSONObject(i);
+				finished = resp.getBoolean("finished");
+				if (!finished) {
+					try {
+				        Thread.sleep(1000); // wait 1 sec between requests
+				    } catch (InterruptedException e) {
+				        Thread.currentThread().interrupt(); // restore interrupted status
+				   
+				    }
+				}
+			}
+		} while (!finished);
+		
+		String baseUrl = "https://glymage.glyomics.org/";
+		for (int i = 0; i < jsonArray.length(); i++) {
+        	JSONObject resp = jsonArray.getJSONObject(i);
+			String imagePath = resp.getString("result");
+			String taskId = resp.getString("id");
+			GlymageRequest req = taskMap.get(taskId);
+			if (req != null) {
+				URL url2 = new URL(baseUrl + imagePath);
+				HttpURLConnection conn = (HttpURLConnection) url2.openConnection();
+		        conn.setRequestMethod("GET");
+		        try (InputStream in = conn.getInputStream()) {
+		        	byte[] bytes = in.readAllBytes();
+		        	if (req.getDisplay().equalsIgnoreCase("extended")) {
+						if (req.getRedend().equalsIgnoreCase("true")) {
+					        cartoon.setExtendedRedEnd(bytes);
+						} else {
+							cartoon.setExtendedNoRedEnd(bytes);
+						}
+					} else {
+						if (req.getRedend().equalsIgnoreCase("true")) {
+					        cartoon.setCompactRedEnd(bytes);
+						} else {
+							cartoon.setCompactNoRedEnd(bytes);
+						}
+					}
+		        }
+			}
+		}
+    	
+		return cartoon;
+	}
+
+	private static void submitImageTasks(List<GlymageRequest> requests, Map<String, GlymageRequest> taskMap) throws IOException, InterruptedException {
+		HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        
+		ObjectMapper mapper = new ObjectMapper();
+        String jsonPayload = mapper.writeValueAsString(requests);
+        String encoded = URLEncoder.encode(jsonPayload, StandardCharsets.UTF_8);
+        String url = "https://glymage.glyomics.org/submit?tasks=" + encoded + "&developer_email=glygenarray.api@gmail.com";
+
+    	HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .build();
+
+        HttpResponse<String> response1 = client.send(request, HttpResponse.BodyHandlers.ofString());
+		String json = response1.body();
+		JSONArray jsonArray = new JSONArray(json);
+		
+		for (int i = 0; i < jsonArray.length(); i++) {
+        	JSONObject task = jsonArray.getJSONObject(i);
+			GlymageRequest req = new GlymageRequest();
+			req.setDisplay(task.getString("display"));
+			req.setRedend(task.getString("redend"));
+			taskMap.put(task.getString("id"), req);
+		}
+	}
+
+    public static byte[] retrieveImage(String taskId) throws IOException, InterruptedException {
+        String url = "https://glymage.glyomics.org/retrieve?task_id=" + taskId;
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .build();
+
+        boolean finished = false;
+        JSONArray jsonArray;
+		do {
+			HttpResponse<String> response1 = client.send(request, HttpResponse.BodyHandlers.ofString());
+			String json = response1.body();
+			jsonArray = new JSONArray(json);
+			finished = ((JSONObject)jsonArray.get(0)).getBoolean("finished");
+			if (!finished) {
+				try {
+			        Thread.sleep(1000); // wait 1 sec between requests
+			    } catch (InterruptedException e) {
+			        Thread.currentThread().interrupt(); // restore interrupted status
+			    }
+			}
+		} while (!finished);
+		String imagePath = ((JSONObject)jsonArray.get(0)).getString("result");
+        
+        String baseUrl = "https://glymage.glyomics.org/";
+
+        URL url2 = new URL(baseUrl + imagePath);
+        HttpURLConnection conn = (HttpURLConnection) url2.openConnection();
+        conn.setRequestMethod("GET");
+
+        try (InputStream in = conn.getInputStream()) {
+            byte[] bytes = in.readAllBytes();
+            return bytes;
+        }
     }
     
     @Operation(summary = "Get glycans", security = { @SecurityRequirement(name = "bearer-key") })
@@ -3931,222 +4204,7 @@ public class DataController {
         return sequence;
     }
     
-    public static GlycanCartoon createImageForGlycan(String imageLocation, Glycan glycan) {
-        GlymageRequest req = new GlymageRequest();
-        GlycanCartoon cartoon = new GlycanCartoon();
-        
-        //org.eurocarbdb.application.glycanbuilder.Glycan glycanObject = null;
-        try {
-        	if (glycan.getWurcs() != null && !glycan.getWurcs().isEmpty()) {
-        		req.setSeq(glycan.getWurcs().trim());
-                //WURCS2Parser t_wurcsparser = new WURCS2Parser();
-                //glycanObject = t_wurcsparser.readGlycan(glycan.getWurcs().trim(), new MassOptions());
-        	}
-        	else if (glycan.getGlycoCT() != null && !glycan.getGlycoCT().isEmpty()) {
-                /*glycanObject = 
-                        org.eurocarbdb.application.glycanbuilder.Glycan.
-                        fromGlycoCTCondensed(glycan.getGlycoCT().trim());
-                if (glycanObject == null && glycan.getGlytoucanID() != null) {
-                    String seq = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
-                    if (seq != null) {
-                        try {
-                            WURCS2Parser t_wurcsparser = new WURCS2Parser();
-                            glycanObject = t_wurcsparser.readGlycan(seq, new MassOptions());
-                        } catch (Exception e) {
-                            logger.error ("Glycan image cannot be generated with WURCS sequence. Reason: " + e);
-                        }
-                    }
-                }
-                */
-        		// convert to WURCS and get the image
-        		WURCSExporterGlycoCT exporter = new WURCSExporterGlycoCT();
-                exporter.start(glycan.getGlycoCT());
-                String wurcs = exporter.getWURCS();
-                req.setSeq(wurcs);
-        		
-            } else if (glycan.getGlytoucanID() != null) {
-    			String seq = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
-    			req.setSeq(seq);
-    		}
-        	
-          /*  if (glycanObject != null) {
-                t_image = glycanWorkspace.getGlycanRenderer().getImage(glycanObject, true, false, true, 1.0D);
-            } */
-        	
-        } catch (Exception e) {
-            logger.error ("Glycan image cannot be generated. Reason: " + e.getMessage());
-            // check if there is glytoucan id
-            if (glycan.getGlytoucanID() != null) {
-                String seq = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
-                if (seq != null) {
-                    /*WURCS2Parser t_wurcsparser = new WURCS2Parser();
-                    try {
-                        glycanObject = t_wurcsparser.readGlycan(seq, new MassOptions());
-                        if (glycanObject != null) {
-                            t_image = glycanWorkspace.getGlycanRenderer().getImage(glycanObject, true, false, true, 1.0D);
-                        }
-                    } catch (Exception e1) {
-                        logger.error ("Glycan image cannot be generated from WURCS. Reason: " + e);
-                    }*/
-                	req.setSeq(seq);
-                	
-                }
-            }  
-        }
-        
-        File imageFolder = new File (imageLocation + File.separator + glycan.getGlycanId());
-        if (!imageFolder.exists()) {
-        	imageFolder.mkdirs();
-        }
-        
-        // generate 4 versions and save them
-        try {
-	        req.setRedend("y");
-	        req.setDisplay("extended");
-	        
-	        String taskId = submitImageTask(req);
-	        byte[] image1 = retrieveImage(taskId);
-	        cartoon.setExtendedRedEnd(image1);
-	        
-	        if (image1 != null) {
-                String filename = "extendedRedEnd.png";
-                //save the image into a file
-                logger.debug("Adding image to " + imageFolder);
-                Path imageFile = Paths.get(imageFolder + File.separator + filename);
-                try {
-                    Files.write(imageFile, image1);
-                } catch (IOException e) {
-                    logger.error("could not write cartoon image to file", e);
-                }
-            } else {
-                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
-            }
-	        
-	        req.setRedend("n");
-	        req.setDisplay("extended");
-	        
-	        taskId = submitImageTask(req);
-	        byte[] image2 = retrieveImage(taskId);
-	        cartoon.setExtendedNoRedEnd(image2);
-	        
-	        if (image2 != null) {
-                String filename = "extendedNoRedEnd.png";
-                //save the image into a file
-                logger.debug("Adding image to " + imageFolder);
-                Path imageFile = Paths.get(imageFolder + File.separator + filename);
-                try {
-                    Files.write(imageFile, image2);
-                } catch (IOException e) {
-                    logger.error("could not write cartoon image to file", e);
-                }
-            } else {
-                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
-            }
-	        
-	        req.setRedend("y");
-	        req.setDisplay("compact");
-	        
-	        taskId = submitImageTask(req);
-	        byte[] image3 = retrieveImage(taskId);
-	        cartoon.setCompactRedEnd(image3);
-	        
-	        if (image3 != null) {
-                String filename = "compactRedEnd.png";
-                //save the image into a file
-                logger.debug("Adding image to " + imageFolder);
-                Path imageFile = Paths.get(imageFolder + File.separator + filename);
-                try {
-                    Files.write(imageFile, image3);
-                } catch (IOException e) {
-                    logger.error("could not write cartoon image to file", e);
-                }
-            } else {
-                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
-            }
-	        
-	        req.setRedend("n");
-	        req.setDisplay("compact");
-	        
-	        taskId = submitImageTask(req);
-	        byte[] image4 = retrieveImage(taskId);
-	        cartoon.setCompactNoRedEnd(image4);
-	        
-	        if (image4 != null) {
-                String filename = "compactNoRedEnd.png";
-                //save the image into a file
-                logger.debug("Adding image to " + imageFolder);
-                Path imageFile = Paths.get(imageFolder + File.separator + filename);
-                try {
-                    Files.write(imageFile, image4);
-                } catch (IOException e) {
-                    logger.error("could not write cartoon image to file", e);
-                }
-            } else {
-                logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
-            }
-        } catch (Exception e) {
-        	logger.error ("Glycan image cannot be generated. Reason: " + e.getMessage());
-        }
-        return cartoon;
-    }
     
-    public static String submitImageTask(GlymageRequest imageRequest) throws IOException, InterruptedException {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        ObjectMapper mapper = new ObjectMapper();
-        String jsonPayload = mapper.writeValueAsString(imageRequest);
-
-        String encoded = URLEncoder.encode(jsonPayload, StandardCharsets.UTF_8);
-        String url = "https://glymage.glyomics.org/submit?task=" + encoded + "&developer_email=glygenarray.api@gmail.com";
-
-        
-    	HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .build();
-
-        HttpResponse<String> response1 = client.send(request, HttpResponse.BodyHandlers.ofString());
-		String json = response1.body();
-		JSONArray jsonArray = new JSONArray(json);
-		return ((JSONObject)jsonArray.get(0)).getString("id");
-    }
-
-    public static byte[] retrieveImage(String taskId) throws IOException, InterruptedException {
-        String url = "https://glymage.glyomics.org/retrieve?task_id=" + taskId;
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .build();
-
-        boolean finished = false;
-        JSONArray jsonArray;
-		do {
-			HttpResponse<String> response1 = client.send(request, HttpResponse.BodyHandlers.ofString());
-			String json = response1.body();
-			jsonArray = new JSONArray(json);
-			finished = ((JSONObject)jsonArray.get(0)).getBoolean("finished");
-			if (!finished) {
-				try {
-			        Thread.sleep(1000); // wait 1 sec between requests
-			    } catch (InterruptedException e) {
-			        Thread.currentThread().interrupt(); // restore interrupted status
-			    }
-			}
-		} while (!finished);
-		String imagePath = ((JSONObject)jsonArray.get(0)).getString("result");
-        
-        String baseUrl = "https://glymage.glyomics.org/";
-
-        URL url2 = new URL(baseUrl + imagePath);
-        HttpURLConnection conn = (HttpURLConnection) url2.openConnection();
-        conn.setRequestMethod("GET");
-
-        try (InputStream in = conn.getInputStream()) {
-            byte[] bytes = in.readAllBytes();
-            return bytes;
-        }
-    }
     
     public static GlycanCartoon getImageForGlycan (String imageLocation, Long glycanId) {
         try {
@@ -4169,14 +4227,5 @@ public class DataController {
             logger.error("Image cannot be retrieved. Reason: " + e.getMessage());
             throw new DataNotFoundException("Image for glycan " + glycanId + " is not available");
         }
-    }
-    
-    public class GlymageSubmitResponse {
-        private String id;
-    
-        public String getId() {
-			return id;
-		}
-        
     }
 }
