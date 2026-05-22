@@ -20,3 +20,4 @@ uploads/*
 images/*
 .DS_Store
 /TD1127346.csv
+/glycanDiseaseTissue.json

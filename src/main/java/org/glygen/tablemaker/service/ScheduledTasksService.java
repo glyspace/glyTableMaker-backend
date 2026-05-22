@@ -3,10 +3,10 @@ package org.glygen.tablemaker.service;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -368,21 +368,56 @@ public class ScheduledTasksService {
 		return identifiers;
 	}
 	
-	/*@Scheduled(fixedDelay = 604800000, initialDelay=1000)
+	@Scheduled(fixedDelay = 604800000, initialDelay=1000)
 	public void generateGlycanImages () {
 		logger.info("Checking glycan images on " + new Date());
 		List<Long> glycans = glycanRepository.findAllGlycanId();
 		for (Long id: glycans) {
 			File imageFolder = new File(imageLocation + File.separator + id);
 			if (!imageFolder.exists()) {
+				boolean copied = false;
 				Optional<Glycan> g = glycanRepository.findById(id);
 				if (g.isPresent()) {
-					DataController.createImageForGlycan(imageLocation, g.get());
+					// check if we already have images for this glycan somewhere else
+					if (g.get().getGlytoucanID() != null) {
+						List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(g.get().getGlytoucanID());
+			        	if (!images.isEmpty()) {
+			        		for (GlycanImageEntity entity: images) {
+			        			if (!entity.getGlycanId().equals(id)) {
+				        			File iFolder = new File(imageLocation + File.separator + entity.getGlycanId());
+				        			if (iFolder.exists()) {
+				        				File[] files = iFolder.listFiles();
+				        				if (files.length == 4) {
+				        					imageFolder.mkdirs();
+					        				// copy images to this glycan's folder
+					        				try {
+					        					Files.copy(Paths.get(iFolder +  File.separator + "compactNoRedEnd.png"), 
+						        						Paths.get(imageFolder + File.separator + "compactNoRedEnd.png"));
+												Files.copy(Paths.get(iFolder +  File.separator + "compactRedEnd.png"), 
+														Paths.get(imageFolder + File.separator + "compactRedEnd.png"));
+												Files.copy(Paths.get(iFolder +  File.separator + "extendedNoRedEnd.png"), 
+						        						Paths.get(imageFolder + File.separator + "extendedNoRedEnd.png"));
+						        				Files.copy(Paths.get(iFolder +  File.separator + "extendedRedEnd.png"), 
+						        						Paths.get(imageFolder + File.separator + "extendedRedEnd.png"));
+						        				copied = true;
+											} catch (IOException e) {
+												logger.error("error copying cartoon images from " + iFolder + " to " + imageFolder, e);
+											}
+					        				break;
+				        				}
+				        			}
+			        			}
+			        		}
+			        	}
+					}
+				/*	if (!copied) {
+						DataController.createImageForGlycan(imageLocation, g.get());
+					}*/
 				}
 			}
 		}
 		logger.info("DONE generating glycan images: " + new Date());
-	}*/
+	}
 	
     @Scheduled(fixedDelay = 86400000, initialDelay=1000)
     public void checkGlytoucanRegistration () {
