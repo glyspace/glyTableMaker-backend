@@ -4182,8 +4182,16 @@ public class DataController {
 		for (int i = 0; i < jsonArray.length(); i++) {
         	JSONObject task = jsonArray.getJSONObject(i);
 			GlymageRequest req = new GlymageRequest();
-			req.setDisplay(task.getString("display"));
-			req.setRedend(task.getString("redend"));
+			if (task.has("display")) {
+				req.setDisplay(task.getString("display"));
+			} else {
+				logger.warn ("Glyimage submit response do not contain display field" + json);
+			}
+			if (task.has("redend")) {
+				req.setRedend(task.getString("redend"));
+			} else {
+				logger.warn ("Glyimage submit response do not contain redend field " + json);
+			}
 			taskMap.put(task.getString("id"), req);
 		}
 	}
