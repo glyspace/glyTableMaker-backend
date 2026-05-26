@@ -159,6 +159,7 @@ import org.glygen.tablemaker.view.dto.GlycanInSiteDTO;
 import org.glygen.tablemaker.view.dto.GlycoproteinDTO;
 import org.glygen.tablemaker.view.dto.SiteDTO;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
@@ -4183,8 +4184,14 @@ public class DataController {
         	JSONObject task = jsonArray.getJSONObject(i);
 			GlymageRequest req = new GlymageRequest();
 			req.setDisplay(task.optString("display"));
-			req.setRedend(task.optString("redend"));
-			logger.info("response to submit: " + json);
+			try {
+				req.setRedend(task.getString("redend"));
+			} catch (JSONException e) {
+				// try as boolean
+				Boolean redEnd = task.getBoolean("redend");
+				if (redEnd) req.setRedend("true");
+				else req.setRedend("false");
+			}
 			taskMap.put(task.getString("id"), req);
 		}
 	}
