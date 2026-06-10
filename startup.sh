@@ -9,3 +9,5 @@ cd ~/workspace/glyTableMaker-backend/postgres && docker compose up -d
 cd ~/workspace/glyTableMaker-backend && docker compose up -d
 # start frontend application
 cd ~/workspace/glyTableMaker-frontend && docker compose up -d --build && docker images -qf dangling=true | xargs docker rmi
+# start glymage application
+cd ~/workspace/glyTableMaker-backend/glymage && docker compose up -d
