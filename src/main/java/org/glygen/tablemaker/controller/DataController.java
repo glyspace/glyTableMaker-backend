@@ -252,10 +252,10 @@ public class DataController {
     @Value("${spring.file.uploaddirectory}")
 	String uploadDir;
     
-    @Value("${spring.glygen.scheme}")
+    @Value("${glygen.scheme}")
 	String scheme;
     
-    @Value("${spring.glygen.glymage}")
+    @Value("${glygen.glymage}")
 	String glymage;
     
     
@@ -4141,7 +4141,7 @@ public class DataController {
 			String taskId = resp.getString("id");
 			GlymageRequest req = taskMap.get(taskId);
 			if (req != null) {
-				URL url2 = new URL(glymageUrl + imagePath);
+				URL url2 = new URL(glymageUrl + "/" + imagePath);
 				HttpURLConnection conn = (HttpURLConnection) url2.openConnection();
 		        conn.setRequestMethod("GET");
 		        try (InputStream in = conn.getInputStream()) {

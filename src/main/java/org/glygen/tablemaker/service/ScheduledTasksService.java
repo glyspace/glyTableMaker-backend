@@ -87,6 +87,12 @@ public class ScheduledTasksService {
 	
 	@Value("${glygen.versionURL}")
 	String versionURL;
+	
+	@Value("${glygen.scheme}")
+	String scheme;
+    
+    @Value("${glygen.glymage}")
+	String glymage;
 			
 	
 	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, ErrorReportingService errorReportingService, UserRepository userRepository, GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, ApplicationSettingsRepository settingRepository, DatasetManager datasetManager, EmailManager emailManager, UserManager userManager) {
@@ -410,9 +416,9 @@ public class ScheduledTasksService {
 			        		}
 			        	}
 					}
-				/*	if (!copied) {
-						DataController.createImageForGlycan(imageLocation, g.get());
-					}*/
+					if (!copied) {
+						DataController.createImageForGlycan(imageLocation, scheme+glymage, g.get());
+					}
 				}
 			}
 		}

@@ -73,10 +73,10 @@ public class AsyncServiceImpl implements AsyncService {
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
 	
-	@Value("${spring.glygen.scheme}")
+	@Value("${glygen.scheme}")
 	String scheme;
     
-    @Value("${spring.glygen.glymage}")
+    @Value("${glygen.glymage}")
 	String glymage;
 	
 	GlycanTypes glycanTypeList;

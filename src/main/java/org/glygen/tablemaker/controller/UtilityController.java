@@ -106,10 +106,10 @@ public class UtilityController {
 	@Value("${ncbi.api-key}")
 	String apiKey;
 	
-	@Value("${spring.glygen.scheme}")
+	@Value("${glygen.scheme}")
 	String scheme;
     
-    @Value("${spring.glygen.glymage}")
+    @Value("${glygen.glymage}")
 	String glymage;
 	
 	public UtilityController(NamespaceRepository namespaceRepository, 
