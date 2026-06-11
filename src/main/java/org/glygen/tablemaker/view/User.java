@@ -22,6 +22,7 @@ public class User {
     private String email;
     private String groupName;
     private String department;
+    private String researchCenter;
     private String affiliation;
     private String affiliationWebsite;
     private Boolean tempPassword = false;
@@ -218,6 +219,12 @@ public class User {
 	}
 	public void setSoftware(Software software) {
 		this.software = software;
+	}
+	public String getResearchCenter() {
+		return researchCenter;
+	}
+	public void setResearchCenter(String researchCenter) {
+		this.researchCenter = researchCenter;
 	}
 
 }

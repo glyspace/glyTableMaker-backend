@@ -159,6 +159,7 @@ public class UserController {
         userView.setUserName(user.getUsername());
         userView.setGroupName(user.getGroupName());
         userView.setDepartment(user.getDepartment());
+        userView.setResearchCenter(user.getResearchCenter());
         if (user.getType() != null) userView.setUserType(user.getType());
         userView.setRole(user.hasRole(RoleEntity.ADMIN) ? "ADMIN" : user.hasRole(RoleEntity.SOFTWARE) ? "SOFTWARE" : user.hasRole(RoleEntity.MODERATOR) ? "MODERATOR" : "USER");
         if (user.hasRole(RoleEntity.SOFTWARE)) {
@@ -199,6 +200,7 @@ public class UserController {
         		u.setAffiliation(user.getAffiliation());
         		u.setAffiliationWebsite(user.getAffiliationWebsite());
         		u.setDepartment(user.getDepartment());
+        		u.setResearchCenter(user.getResearchCenter());
         		u.setFirstName(user.getFirstName());
         		u.setLastName(user.getLastName());
         		u.setGroupName(user.getGroupName());
@@ -409,6 +411,7 @@ public class UserController {
                 }*/   //TODO handle email change
                 
                 if (user.getAffiliation() != null) userEntity.setAffiliation(user.getAffiliation().trim());
+                if (user.getResearchCenter() != null) userEntity.setResearchCenter(user.getResearchCenter().trim());
                 if (user.getGroupName() != null) userEntity.setGroupName(user.getGroupName().trim());
                 if (user.getDepartment() != null) userEntity.setDepartment(user.getDepartment().trim());
                 if (user.getAffiliationWebsite() != null) userEntity.setAffiliationWebsite(user.getAffiliationWebsite().trim());
@@ -466,6 +469,7 @@ public class UserController {
         newUser.setLastName(user.getLastName());
         newUser.setEmail(user.getEmail());
         newUser.setAffiliation(user.getAffiliation());
+        newUser.setResearchCenter(user.getResearchCenter());
         newUser.setGroupName(user.getGroupName());
         newUser.setDepartment(user.getDepartment());
         newUser.setAffiliationWebsite(user.getAffiliationWebsite()); 

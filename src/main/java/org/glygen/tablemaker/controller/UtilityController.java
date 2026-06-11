@@ -106,6 +106,12 @@ public class UtilityController {
 	@Value("${ncbi.api-key}")
 	String apiKey;
 	
+	@Value("${spring.glygen.scheme}")
+	String scheme;
+    
+    @Value("${spring.glygen.glymage}")
+	String glymage;
+	
 	public UtilityController(NamespaceRepository namespaceRepository, 
 			FeedbackRepository feedbackRepository, 
 			EmailManager emailManager, 
@@ -763,7 +769,7 @@ public class UtilityController {
         
         GlycanCartoon cartoon = null;
         if (glytoucanId.startsWith("G")) {
-        	cartoon = getCartoon (glytoucanId, glycanImageRepository, imageLocation);
+        	cartoon = getCartoon (glytoucanId, glycanImageRepository, imageLocation, scheme+glymage);
         } else {
         	try {
         		Long glycanId = Long.parseLong(glytoucanId);
@@ -790,7 +796,7 @@ public class UtilityController {
         return new ResponseEntity<>(new SuccessResponse<byte[]>(image, "Cartoon retrieved"), HttpStatus.OK);
     }
 	
-	public static GlycanCartoon getCartoon (String glytoucanId, GlycanImageRepository glycanImageRepository, String imageLocation) {
+	public static GlycanCartoon getCartoon (String glytoucanId, GlycanImageRepository glycanImageRepository, String imageLocation, String glymageUrl) {
 		try {
         	List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(glytoucanId.trim());
         	if (images != null && images.size() > 0) {
@@ -804,7 +810,7 @@ public class UtilityController {
         			glycan.setGlycanId(glycanId);
         			glycan.setWurcs(image.getWurcs());
         			glycan.setGlytoucanID(image.getGlytoucanId());
-        			DataController.createImageForGlycan(imageLocation, glycan);
+        			DataController.createImageForGlycan(imageLocation, glymageUrl, glycan);
         			
         			return DataController.getImageForGlycan(imageLocation, glycanId);             
         		}	

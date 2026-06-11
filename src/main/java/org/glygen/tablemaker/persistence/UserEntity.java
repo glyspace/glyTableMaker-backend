@@ -43,6 +43,7 @@ public class UserEntity implements Comparable<UserEntity>{
     private String email;
     private String groupName;
     private String department;
+    private String researchCenter;
     private String affiliation;
     private String affiliationWebsite;
     private Boolean tempPassword;
@@ -292,5 +293,14 @@ public class UserEntity implements Comparable<UserEntity>{
 		} else {
 			return username + ": " + email;
 		}
+	}
+
+	@Column
+	public String getResearchCenter() {
+		return researchCenter;
+	}
+
+	public void setResearchCenter(String researchCenter) {
+		this.researchCenter = researchCenter;
 	}
 }

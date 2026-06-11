@@ -1489,6 +1489,7 @@ public class DatasetController {
     public static User getUserView(UserEntity user, SoftwareRepository softwareRepository) {
     	User userView = new User();
         userView.setAffiliation(user.getAffiliation());
+        userView.setResearchCenter(user.getResearchCenter());
         userView.setAffiliationWebsite(user.getAffiliationWebsite());
         userView.setEmail(user.getEmail());
         userView.setFirstName(user.getFirstName());

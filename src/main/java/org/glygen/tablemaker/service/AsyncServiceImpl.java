@@ -1,6 +1,5 @@
 package org.glygen.tablemaker.service;
 
-import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -16,8 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-
-import javax.imageio.ImageIO;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.poi.ss.usermodel.Cell;
@@ -76,6 +73,12 @@ public class AsyncServiceImpl implements AsyncService {
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
 	
+	@Value("${spring.glygen.scheme}")
+	String scheme;
+    
+    @Value("${spring.glygen.glymage}")
+	String glymage;
+	
 	GlycanTypes glycanTypeList;
 	
 	public AsyncServiceImpl(GlycanRepository repository, GlycanManager glycanManager, GlycoproteinRepository glycoproteinRepository, ErrorReportingService errorReportingService) {
@@ -123,7 +126,7 @@ public class AsyncServiceImpl implements AsyncService {
                     Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
                     allGlycans.add(added);
                     if (added != null) {
-                    	DataController.createImageForGlycan(imageLocation, added);
+                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added);
                     }
                 	countSuccess++;
                 } catch (DuplicateException e) {
@@ -220,7 +223,7 @@ public class AsyncServiceImpl implements AsyncService {
 	                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
 	                    allGlycans.add(added);
 	                    if (added != null) {
-	                        DataController.createImageForGlycan(imageLocation, added);
+	                        DataController.createImageForGlycan(imageLocation, scheme+glymage, added);
 	                    }
 	                	countSuccess++;
 	                } catch (DuplicateException e) {
@@ -315,7 +318,7 @@ public class AsyncServiceImpl implements AsyncService {
 		                    glycanSequenceMap.put (comp.trim(), glycan);
 		                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
 		                    if (added != null) {
-		                    	DataController.createImageForGlycan(imageLocation, added);
+		                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added);
 		                    }
                 		
 		                } catch (DuplicateException e) {
@@ -518,7 +521,7 @@ public class AsyncServiceImpl implements AsyncService {
         	                    glycanSequenceMap.put (comp.trim(), glycan);
         	                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
         	                    if (added != null) {
-        	                    	DataController.createImageForGlycan(imageLocation, added);
+        	                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added);
         	                    }
         	                } catch (DuplicateException e) {
         	                	//errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));
@@ -1033,7 +1036,7 @@ public class AsyncServiceImpl implements AsyncService {
                     allGlycans.add(glycan);
                     Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
                     if (added != null) {
-                    	DataController.createImageForGlycan(imageLocation, added);
+                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added);
                     }
                 } catch (DuplicateException e) {
                 	//errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));

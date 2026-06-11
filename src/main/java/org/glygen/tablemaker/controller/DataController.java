@@ -252,6 +252,13 @@ public class DataController {
     @Value("${spring.file.uploaddirectory}")
 	String uploadDir;
     
+    @Value("${spring.glygen.scheme}")
+	String scheme;
+    
+    @Value("${spring.glygen.glymage}")
+	String glymage;
+    
+    
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository,
     		BatchUploadRepository uploadRepository, AsyncService uploadService, 
     		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, 
@@ -1762,7 +1769,7 @@ public class DataController {
         Glycan added = glycanRepository.save(glycan);
         
         if (added != null) {
-            createImageForGlycan(imageLocation, added);
+            createImageForGlycan(imageLocation, scheme+glymage, added);
             GlycanImageEntity imageEntity = new GlycanImageEntity();
             imageEntity.setGlycanId(added.getGlycanId());
             imageEntity.setGlytoucanId(added.getGlytoucanID());
@@ -3932,7 +3939,7 @@ public class DataController {
         return sequence;
     }
     
-    public static void createImageForGlycan(String imageLocation, Glycan glycan) {
+    public static void createImageForGlycan(String imageLocation, String glymageUrl, Glycan glycan) {
     	List<GlymageRequest> requests = new ArrayList<GlymageRequest>();
         GlycanCartoon cartoon = new GlycanCartoon();
         String wurcs = null;
@@ -3978,8 +3985,8 @@ public class DataController {
         	
         	if (glycan.getGlytoucanID() != null) {
 	        	// retrieve standard cartoons
-	        	String compactUrl = "https://glymage.glyomics.org/image/snfg/compact/" + glycan.getGlytoucanID() + ".png";
-	        	String extendedUrl = "https://glymage.glyomics.org/image/snfg/extended/" + glycan.getGlytoucanID() + ".png";
+	        	String compactUrl = glymageUrl + "/image/snfg/compact/" + glycan.getGlytoucanID() + ".png";
+	        	String extendedUrl = glymageUrl + "/image/snfg/extended/" + glycan.getGlytoucanID() + ".png";
 	        	
 	        	URL url = new URL(compactUrl);
 	        	HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -4026,7 +4033,7 @@ public class DataController {
 	        req3.setSeq (wurcs);
 	        requests.add(req3);
 	        
-	        submitImageTasks (requests, taskMap);
+	        submitImageTasks (glymageUrl, requests, taskMap);
 	        
 	        try {
 		        Thread.sleep(3000); // wait 3 sec between submit/retrieve
@@ -4035,7 +4042,7 @@ public class DataController {
 		   
 		    }
 	        
-	        retrieveImages (taskMap, cartoon);
+	        retrieveImages (glymageUrl, taskMap, cartoon);
 	        
 	        if (cartoon.getExtendedRedEnd() != null) {
                 String filename = "extendedRedEnd.png";
@@ -4098,11 +4105,11 @@ public class DataController {
         }
     }
     
-    private static void retrieveImages(Map<String, GlymageRequest> taskMap, GlycanCartoon cartoon) throws JsonProcessingException, IOException, InterruptedException {
+    private static void retrieveImages(String glymageUrl, Map<String, GlymageRequest> taskMap, GlycanCartoon cartoon) throws JsonProcessingException, IOException, InterruptedException {
     	ObjectMapper mapper = new ObjectMapper();
         String jsonPayload = mapper.writeValueAsString(taskMap.keySet());
         
-        String url = "https://glymage.glyomics.org/retrieve?task_ids=" + URLEncoder.encode(jsonPayload, StandardCharsets.UTF_8);
+        String url = glymageUrl + "/retrieve?task_ids=" + URLEncoder.encode(jsonPayload, StandardCharsets.UTF_8);
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -4128,14 +4135,13 @@ public class DataController {
 			}
 		} while (!finished);
 		
-		String baseUrl = "https://glymage.glyomics.org/";
 		for (int i = 0; i < jsonArray.length(); i++) {
         	JSONObject resp = jsonArray.getJSONObject(i);
 			String imagePath = resp.getString("result");
 			String taskId = resp.getString("id");
 			GlymageRequest req = taskMap.get(taskId);
 			if (req != null) {
-				URL url2 = new URL(baseUrl + imagePath);
+				URL url2 = new URL(glymageUrl + imagePath);
 				HttpURLConnection conn = (HttpURLConnection) url2.openConnection();
 		        conn.setRequestMethod("GET");
 		        try (InputStream in = conn.getInputStream()) {
@@ -4158,7 +4164,7 @@ public class DataController {
 		}
 	}
 
-	private static void submitImageTasks(List<GlymageRequest> requests, Map<String, GlymageRequest> taskMap) throws IOException, InterruptedException {
+	private static void submitImageTasks(String glymageUrl, List<GlymageRequest> requests, Map<String, GlymageRequest> taskMap) throws IOException, InterruptedException {
         
 		ObjectMapper mapper = new ObjectMapper();
         String jsonPayload = mapper.writeValueAsString(requests);
@@ -4170,7 +4176,7 @@ public class DataController {
 
         //Build POST request
         HttpRequest request = HttpRequest.newBuilder()
-		    .uri(URI.create("https://glymage.glyomics.org/submit"))
+		    .uri(URI.create(glymageUrl + "/submit"))
 		    .header("Content-Type", "application/x-www-form-urlencoded")
 		    .POST(HttpRequest.BodyPublishers.ofString(form))
 		    .build();
