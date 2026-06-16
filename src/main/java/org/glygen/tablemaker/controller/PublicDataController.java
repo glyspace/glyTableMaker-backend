@@ -292,6 +292,9 @@ public class PublicDataController {
             } catch (JsonProcessingException e) {
                 throw new InternalError("sorting parameter is invalid " + sorting, e);
             }
+        } else {
+        	// default sort order, order by created date descending
+        	sortOrders.add(new Order (Direction.DESC, "dateCreated"));
         }
         
         // apply filters
