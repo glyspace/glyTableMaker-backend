@@ -4,10 +4,13 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +35,7 @@ import org.glycoinfo.WURCSFramework.util.WURCSFactory;
 import org.glycoinfo.WURCSFramework.wurcs.graph.WURCSGraph;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -129,11 +133,41 @@ public class GlytoucanUtil {
 	    Sequence input = new Sequence();
 	    input.setSequence(wurcsSequence);
 	    
-	    HttpEntity<Sequence> requestEntity = new HttpEntity<Sequence>(input, createHeaders(userId, apiKey));
-		
-		try {
-			ResponseEntity<Response> response = restTemplate.exchange(registerURL, HttpMethod.POST, requestEntity, Response.class);
-			return response.getBody().getMessage();
+	    try {
+			HttpClient client = HttpClient.newHttpClient();
+
+			ObjectMapper mapper = new ObjectMapper();
+			String requestBody = mapper.writeValueAsString(input);
+
+
+			HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+			        .uri(URI.create(registerURL))
+			        .POST(HttpRequest.BodyPublishers.ofString(requestBody));
+			
+			// Add headers
+			createHeaders2(userId, apiKey).forEach(requestBuilder::header);
+			
+			HttpRequest request = requestBuilder.build();
+
+	        java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+	        String json = response.body();
+	        JSONObject obj = new JSONObject(json);
+	        if (obj.has("contents")) {
+	        	JSONObject contents = obj.getJSONObject("contents");
+	        	if (contents.has("submission_number"))
+	        		return contents.getString("submission_number");
+	        	else {
+	        		// something has changed with the end-point
+		        	// log error
+		        	logger.error("GlyTouCan registration API has been changed. Cannot find submission number in the resppnse: " + json);
+		        	throw new GlytoucanFailedException ("GlyTouCan registration API has been modified!", null);
+	        	}
+	        } else {
+	        	// something has changed with the end-point
+	        	// log error
+	        	logger.error("GlyTouCan registration API has been changed. Cannot find contents in the resppnse: " + json);
+	        	throw new GlytoucanFailedException ("GlyTouCan registration API has been modified!", null);
+	        }
 		} catch (HttpClientErrorException e) {
 			logger.error("Client Error: Exception adding glycan " + ((HttpClientErrorException) e).getResponseBodyAsString());
 			String error = ((HttpClientErrorException) e).getResponseBodyAsString();
@@ -304,6 +338,19 @@ public class GlytoucanUtil {
 	      }};
 	}
 	
+
+	Map<String, String> createHeaders2(String userId, String apiKey) {
+	    Map<String, String> headers = new HashMap<>();
+	    String auth = userId + ":" + apiKey;
+        byte[] encodedAuth = Base64.getEncoder().encode( 
+           auth.getBytes(Charset.forName("US-ASCII")) );
+        String authHeader = "Basic " + new String( encodedAuth );
+	    headers.put("Authorization", authHeader);
+	    headers.put("Content-Type", "application/json");
+	    return headers;
+	}
+
+	
 	public static Sugar getSugarFromWURCS (String wurcsSequence) throws IOException {
 	    try {
             WURCSFactory wf = new WURCSFactory(wurcsSequence);
@@ -332,7 +379,7 @@ public class GlytoucanUtil {
 		
 		String glyTouCanId;
 		try {
-			glyTouCanId = GlytoucanUtil.getInstance().registerGlycan(null);
+			glyTouCanId = GlytoucanUtil.getInstance().registerGlycan("WURCS=2.0/3,3,2/[a1122h-1b_1-5][a1122h-1a_1-5_6*OPOC/3O/3=O][a1122h-1a_1-5_?*OPOC/3O/3=O]/1-2-3/a3-b1_a6-c1");
 			System.out.println(glyTouCanId);
 		} catch (Exception e1) {
 			System.out.println ("Registration Error " + e1.getMessage());
