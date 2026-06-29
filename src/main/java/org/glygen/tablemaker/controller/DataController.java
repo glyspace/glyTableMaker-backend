@@ -3975,11 +3975,6 @@ public class DataController {
         	return;
         }
         
-        File imageFolder = new File (imageLocation + File.separator + glycan.getGlycanId());
-        if (!imageFolder.exists()) {
-        	imageFolder.mkdirs();
-        }
-        
         // generate 4 versions and save them
         try {
         	
@@ -4044,6 +4039,11 @@ public class DataController {
 	        
 	        retrieveImages (glymageUrl, taskMap, cartoon);
 	        
+	        File imageFolder = new File (imageLocation + File.separator + glycan.getGlycanId());
+	        if (!imageFolder.exists()) {
+	        	imageFolder.mkdirs();
+	        }
+	        
 	        if (cartoon.getExtendedRedEnd() != null) {
                 String filename = "extendedRedEnd.png";
                 //save the image into a file
@@ -4101,7 +4101,8 @@ public class DataController {
                 logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
             }
         } catch (Exception e) {
-        	logger.error ("Glycan image cannot be generated. Reason: " + e.getMessage());
+        	logger.error ("Glycan image cannot be generated for glycan " + glycan.getGlycanId() + ". Reason: " + e.getMessage());
+        			
         }
     }
     
