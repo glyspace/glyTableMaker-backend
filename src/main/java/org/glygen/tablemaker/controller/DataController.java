@@ -4116,25 +4116,27 @@ public class DataController {
                 .uri(URI.create(url))
                 .build();
 
-        boolean finished = false;
+        boolean allFinished = false;
         JSONArray jsonArray;
 		do {
 			HttpResponse<String> response1 = client.send(request, HttpResponse.BodyHandlers.ofString());
 			String json = response1.body();
 			jsonArray = new JSONArray(json);
+			allFinished = true;
 			for (int i = 0; i < jsonArray.length(); i++) {
 	        	JSONObject resp = jsonArray.getJSONObject(i);
-				finished = resp.getBoolean("finished");
-				if (!finished) {
-					try {
-				        Thread.sleep(20); // wait 20ms between requests
-				    } catch (InterruptedException e) {
-				        Thread.currentThread().interrupt(); // restore interrupted status
-				   
-				    }
-				}
+				boolean finished = resp.getBoolean("finished");
+				if (!finished) allFinished = false;
 			}
-		} while (!finished);
+			if (!allFinished) {
+				try {
+			        Thread.sleep(50); // wait 50ms between requests
+			    } catch (InterruptedException e) {
+			        Thread.currentThread().interrupt(); // restore interrupted status
+			   
+			    }
+			}
+		} while (!allFinished);
 		
 		for (int i = 0; i < jsonArray.length(); i++) {
         	JSONObject resp = jsonArray.getJSONObject(i);
