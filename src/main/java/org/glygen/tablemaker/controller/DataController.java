@@ -4035,12 +4035,12 @@ public class DataController {
 	        
 	        submitImageTasks (glymageUrl, requests, taskMap);
 	        
-	        try {
-		        Thread.sleep(3000); // wait 3 sec between submit/retrieve
+	        /*try {
+		        Thread.sleep(20); // wait 20ms between submit/retrieve
 		    } catch (InterruptedException e) {
 		        Thread.currentThread().interrupt(); // restore interrupted status
 		   
-		    }
+		    }*/
 	        
 	        retrieveImages (glymageUrl, taskMap, cartoon);
 	        
@@ -4126,7 +4126,7 @@ public class DataController {
 				finished = resp.getBoolean("finished");
 				if (!finished) {
 					try {
-				        Thread.sleep(1000); // wait 1 sec between requests
+				        Thread.sleep(20); // wait 20ms between requests
 				    } catch (InterruptedException e) {
 				        Thread.currentThread().interrupt(); // restore interrupted status
 				   

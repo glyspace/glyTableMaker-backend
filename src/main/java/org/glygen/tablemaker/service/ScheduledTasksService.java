@@ -582,6 +582,61 @@ public class ScheduledTasksService {
     		}
     	}
     	
+    	List<Glycan> glycansWithErrors = glycanRepository.findByStatus(RegistrationStatus.ERROR);
+    	for (Glycan glycan: glycansWithErrors) {
+    		// check and fix the error status if there is a glytoucanID
+    		try {
+    			String glyToucanId = GlytoucanUtil.getInstance().getAccessionNumber(glycan.getWurcs());
+    	        if (glyToucanId != null) {
+    	            glycan.setGlytoucanID(glyToucanId);
+    	            glycan.setStatus(RegistrationStatus.NEWLY_REGISTERED);
+    	            glycanRepository.save(glycan);
+    	        
+    	            // save cartoons in imagerepository as necessary
+	        		Optional<GlycanImageEntity> imageHandle = glycanImageRepository.findByGlycanId(glycan.getGlycanId());
+	            	if (!imageHandle.isPresent()) {
+	            		// create entry
+	            		GlycanImageEntity entity = new GlycanImageEntity();
+	            		entity.setGlycanId(glycan.getGlycanId());
+	            		entity.setGlytoucanId(glycan.getGlytoucanID());
+	            		entity.setWurcs(glycan.getWurcs());
+	            		glycanImageRepository.save(entity);
+	            	}
+	                try {
+	                	DataController.getImageForGlycan(imageLocation, glycan.getGlycanId());
+	                    if (glycan.getGlytoucanID() != null) {
+	                		List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(glycan.getGlytoucanID());
+	            			if (images == null || images.isEmpty()) {
+	            				// update glycan image table
+	                			imageHandle = glycanImageRepository.findByGlycanId(glycan.getGlycanId());
+	                			if (imageHandle.isPresent()) {
+	                				GlycanImageEntity entity = imageHandle.get();
+	                				entity.setGlytoucanId(glycan.getGlytoucanID());
+	                				glycanImageRepository.save(entity);
+	                			}
+	                			else {
+	                				logger.error("Cannot find glycan with id " + glycan.getGlycanId() + " in the image repository");
+	                			}
+	            			}
+	                	}
+	                } catch (DataNotFoundException e) {
+	                    // ignore
+	                    logger.warn ("no image found for glycan " + glycan.getGlycanId());
+	                }
+    	        }
+    		} catch (GlytoucanAPIFailedException e) {
+    			// report the issue
+				logger.error (e.getMessage(), e);
+				ErrorReportEntity error = new ErrorReportEntity();
+				error.setMessage(e.getMessage());
+				error.setDetails("Error occurred during retrieval of glytoucan ids for \"not submitted\" glycans tasks");
+				error.setDateReported(new Date());
+				error.setTicketLabel("GlytoucanAPI");
+				errorReportingService.reportError(error);
+				break;
+    		}
+    	}
+    	
     	logger.info("DONE Checking glycans: " + new Date());
     	
     	logger.info("Checking upload (waiting) jobs: " + new Date());

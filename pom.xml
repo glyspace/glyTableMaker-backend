@@ -16,6 +16,7 @@
     <description>Glygen Table Formatter/Maker</description>
     <properties>
         <java.version>17</java.version>
+  		<github.global.server>github</github.global.server>
     </properties>
     <dependencies>
         <dependency>
@@ -113,7 +114,7 @@
         <dependency>
             <groupId>org.glycoinfo</groupId>
             <artifactId>wurcsframework</artifactId>
-            <version>1.3.1</version>
+            <version>1.3.3</version>
         </dependency>
         <dependency>
           <groupId>glycoinfo</groupId>
