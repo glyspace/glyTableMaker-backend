@@ -3982,22 +3982,35 @@ public class DataController {
 	        	// retrieve standard cartoons
 	        	String compactUrl = glymageUrl + "/image/snfg/compact/" + glycan.getGlytoucanID() + ".png";
 	        	String extendedUrl = glymageUrl + "/image/snfg/extended/" + glycan.getGlytoucanID() + ".png";
-	        	
-	        	URL url = new URL(compactUrl);
-	        	HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-		        conn.setRequestMethod("GET");
-		        try (InputStream in = conn.getInputStream()) {
-		        	byte[] bytes = in.readAllBytes();
-		        	cartoon.setCompactRedEnd(bytes);
-		        }
-		        
-		        url = new URL(extendedUrl);
-	        	conn = (HttpURLConnection) url.openConnection();
-		        conn.setRequestMethod("GET");
-		        try (InputStream in = conn.getInputStream()) {
-		        	byte[] bytes = in.readAllBytes();
-		        	cartoon.setExtendedRedEnd(bytes);
-		        }
+	        	try {
+		        	URL url = new URL(compactUrl);
+		        	HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			        conn.setRequestMethod("GET");
+					conn.setConnectTimeout(3000); 
+					conn.setReadTimeout(3000);   
+			        int responseCode = conn.getResponseCode();
+			        if (responseCode == HttpURLConnection.HTTP_OK) {
+				        try (InputStream in = conn.getInputStream()) {
+				        	byte[] bytes = in.readAllBytes();
+				        	cartoon.setCompactRedEnd(bytes);
+				        }
+			        }
+			        
+			        url = new URL(extendedUrl);
+		        	conn = (HttpURLConnection) url.openConnection();
+			        conn.setRequestMethod("GET");
+			        conn.setConnectTimeout(3000); 
+					conn.setReadTimeout(3000);  
+			        responseCode = conn.getResponseCode();
+				    if (responseCode == HttpURLConnection.HTTP_OK) {
+				        try (InputStream in = conn.getInputStream()) {
+				        	byte[] bytes = in.readAllBytes();
+				        	cartoon.setExtendedRedEnd(bytes);
+				        }
+			        }
+	        	} catch (Exception e) {
+	        		logger.warn("Could not get standard cartoons with glytoucanid " + glycan.getGlytoucanID(), e);
+	        	}
 	        }
         	
         	if (glycan.getGlytoucanID() == null || cartoon.getExtendedRedEnd() == null) {
@@ -4029,14 +4042,7 @@ public class DataController {
 	        requests.add(req3);
 	        
 	        submitImageTasks (glymageUrl, requests, taskMap);
-	        
-	        /*try {
-		        Thread.sleep(20); // wait 20ms between submit/retrieve
-		    } catch (InterruptedException e) {
-		        Thread.currentThread().interrupt(); // restore interrupted status
-		   
-		    }*/
-	        
+	  
 	        retrieveImages (glymageUrl, taskMap, cartoon);
 	        
 	        File imageFolder = new File (imageLocation + File.separator + glycan.getGlycanId());

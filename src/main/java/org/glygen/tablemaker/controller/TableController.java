@@ -558,7 +558,7 @@ public class TableController {
 							}
         			        
         				}
-        			} else {
+        			} else if (col != null){
         				try {
         					double cellValue = Double.parseDouble(col);
         					cell.setCellValue(cellValue);
