@@ -1,9 +1,7 @@
 services:
-  glymage:
-    image: glyomics/glymage:latest
-    ports: 
-      - 10985:10985
-networks:
-  default:
-    name: ${GLYGEN_NETWORK:-glygen-network}
-    external: true
+   glymage:
+     image: glyomics/glymage:latest
+     ports:
+       - 10985:10985
+     volumes:
+       - ./glymage-local.ini:/code/glymage-local.ini
