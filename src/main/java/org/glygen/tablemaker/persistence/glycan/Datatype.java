@@ -28,6 +28,7 @@ public class Datatype {
     UserEntity user;
     Boolean multiple = false;
     List<String> allowedValues;
+    Boolean allowOther = false;
     
     /**
      * @return the id
@@ -143,6 +144,14 @@ public class Datatype {
 	}
 	public void setWikiUrl(String wikiUrl) {
 		this.wikiUrl = wikiUrl;
+	}
+	
+	@Column
+	public Boolean getAllowOther() {
+		return allowOther;
+	}
+	public void setAllowOther(Boolean allowOther) {
+		this.allowOther = allowOther;
 	}
 
 }
