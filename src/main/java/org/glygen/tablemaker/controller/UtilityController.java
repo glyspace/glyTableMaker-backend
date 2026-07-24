@@ -201,7 +201,7 @@ public class UtilityController {
             @ApiResponse(responseCode="400", description="Invalid request, validation error"),
             @ApiResponse(responseCode="415", description="Media type is not supported"),
             @ApiResponse(responseCode="500", description="Internal Server Error")})
-    public ResponseEntity<SuccessResponse<List<String>>> r (
+    public ResponseEntity<SuccessResponse<List<String>>> getTypeAhead (
             @Parameter(required=true, description="Name of the namespace to retrieve matches ")
             @RequestParam("namespace")
             String namespace, 

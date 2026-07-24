@@ -386,7 +386,7 @@ public class GlytoucanUtil {
 		}
 		
 		try {
-			GlytoucanUtil.getInstance().checkBatchStatus("6407df5cefbbd62860b9f762158657f1663d51423e25d85e1293a903c0681031");
+			GlytoucanUtil.getInstance().checkBatchStatus("d11c7ed7c2990f89f2746934fd800c026106061d8a8d0f9da30f190f6bc66f0a");
 		} catch (GlytoucanFailedException e) {
 			System.out.println ("Received error: " + e.getErrorJson());
 		}
