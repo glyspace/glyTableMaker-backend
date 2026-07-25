@@ -119,7 +119,8 @@ public class GlytoucanUtil {
 	}
 	
 	public String registerGlycan (String wurcsSequence) throws GlytoucanFailedException {
-	    
+	    if (wurcsSequence == null)  return null;
+		
 	    Sequence input = new Sequence();
 	    input.setSequence(wurcsSequence);
 	    
@@ -175,6 +176,7 @@ public class GlytoucanUtil {
 	}
 	
 	public String getAccessionNumber (String wurcsSequence) throws GlytoucanAPIFailedException {
+		if (wurcsSequence == null) return null;
 		Sequence input = new Sequence();
 	    input.setSequence(wurcsSequence);
 	    
