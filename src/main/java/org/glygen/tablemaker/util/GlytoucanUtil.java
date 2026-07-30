@@ -145,9 +145,12 @@ public class GlytoucanUtil {
 	        JSONObject obj = new JSONObject(json);
 	        if (obj.has("contents")) {
 	        	JSONObject contents = obj.getJSONObject("contents");
-	        	if (contents.has("submission_number"))
+	        	if (contents.has("submission_number")) {
 	        		return contents.getString("submission_number");
-	        	else {
+	            } else if (contents.has("error")) {
+	        		String error = contents.getString("error");
+	    			throw new GlytoucanFailedException ("Cannot register the glycan. Reason: " + error, error);
+	        	} else {
 	        		// something has changed with the end-point
 		        	// log error
 		        	logger.error("GlyTouCan registration API has been changed. Cannot find submission number in the resppnse: " + json);
