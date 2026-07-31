@@ -153,7 +153,7 @@ public class GlytoucanUtil {
 	        	} else {
 	        		// something has changed with the end-point
 		        	// log error
-		        	logger.error("GlyTouCan registration API has been changed. Cannot find submission number in the resppnse: " + json);
+		        	logger.error("GlyTouCan registration API has been changed. Cannot find submission number in the response: " + json);
 		        	throw new GlytoucanFailedException ("GlyTouCan registration API has been modified!", null);
 	        	}
 	        } else {
@@ -204,12 +204,17 @@ public class GlytoucanUtil {
 	        JSONObject obj = new JSONObject(json);
 	        if (obj.has("contents")) {
 	        	JSONObject contents = obj.getJSONObject("contents");
-	        	if (contents.has("accession"))
+	        	if (contents.has("accession")) {
 	        		return contents.getString("accession");
+	        	} else if (contents.has("error")) {
+	        		String error = contents.getString("error");
+	    			logger.error("Cannot retrieve glytoucanId. Reason: " + error);
+	    			return null;
+	        	}
 	        	else {
 	        		// something has changed with the end-point
 		        	// log error
-		        	logger.error("GlyTouCan registration API has been changed. Cannot find submission number in the resppnse: " + json);
+		        	logger.error("GlyTouCan registration API has been changed. Cannot find submission number in the response: " + json);
 		        	throw new GlytoucanAPIFailedException ("GlyTouCan registration API has been modified!");
 	        	}
 	        } else {
