@@ -101,7 +101,8 @@ public class SequenceUtils {
 		byonicMapping.put("NeuAc", "Neu5Ac");
 		byonicMapping.put("NeuGc", "Neu5Gc");
 		byonicMapping.put("Acetyl", "Ac");
-		byonicMapping.put("Phospo", "p");
+		byonicMapping.put("DiNAcBac", "Bac");
+		byonicMapping.put("Phospo", "P");
 		byonicMapping.put("Sulfo", "S");
 		
 		queryList.add(new SearchQueryItem("HexNAc", "RES\n"
