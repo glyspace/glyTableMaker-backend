@@ -25,10 +25,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
@@ -110,6 +113,7 @@ import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.CollectionTag;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.CompositionType;
+import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanCartoon;
 import org.glygen.tablemaker.persistence.glycan.GlycanFileFormat;
@@ -117,6 +121,7 @@ import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
+import org.glygen.tablemaker.persistence.glycan.MetadataType;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
 import org.glygen.tablemaker.persistence.protein.GlycanInSite;
@@ -172,9 +177,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -186,11 +189,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -208,7 +214,7 @@ public class DataController {
     
     static Logger logger = org.slf4j.LoggerFactory.getLogger(DataController.class);
     static BuilderWorkspace glycanWorkspace = new BuilderWorkspace(new GlycanRendererAWT());
-    private final static RestTemplate restTemplate = new RestTemplate();
+    static Map<Long, String> metadataMapping = new HashMap<Long, String>();
     static {       
             glycanWorkspace.initData();
             // Set orientation of glycan: RL - right to left, LR - left to right, TB - top to bottom, BT - bottom to top
@@ -222,6 +228,18 @@ public class DataController {
 
             glycanWorkspace.setDisplay(GraphicOptions.DISPLAY_NORMALINFO);
             glycanWorkspace.setNotation(GraphicOptions.NOTATION_SNFG);
+            
+            metadataMapping.put(2L, "publication");
+            metadataMapping.put(3L, "species");
+            metadataMapping.put(4L, "strain");
+            metadataMapping.put(5L, "tissue");
+            metadataMapping.put(6L, "cellline");
+            metadataMapping.put(7L, "disease");
+            metadataMapping.put(12L, "experimentalTechnique");
+            metadataMapping.put(13L, "variant");
+            metadataMapping.put(16L, "contributor");
+            metadataMapping.put(17L, "comment");
+            metadataMapping.put(18L, "cellularComponent");
     }
     
     final private GlycanRepository glycanRepository;
@@ -994,7 +1012,22 @@ public class DataController {
     		collection.setType(CollectionType.GLYCAN);
     	cv.setType(collection.getType());
     	cv.setDescription(collection.getDescription());
-    	if (collection.getMetadata() != null) cv.setMetadata(new ArrayList<>(collection.getMetadata()));
+    	if (collection.getMetadata() != null) {
+    		// generate new JSON object
+    		cv.setMetadataValues (generateMetadataValues (collection.getMetadata()));
+    		collection.setMetadataValues(cv.getMetadataValues());
+    		// check if variant or cellline is in metadata values
+    		JsonNode variant = collection.getMetadataValues().findValue("variant");
+    		JsonNode cellline = collection.getMetadataValues().findValue("cellline");
+    		if (variant != null || cellline != null) {
+    			collection.setSampleType(MetadataType.BIOLOGICAL_SAMPLE_BACKGROUND_ALTERATION);
+    		} else {
+    			collection.setSampleType(MetadataType.BIOLOGICAL_SAMPLE);
+    		}
+    	} else if (collection.getMetadataValues() != null) {
+    		cv.setMetadataValues(collection.getMetadataValues());
+    		cv.setSampleType(collection.getSampleType());
+    	}
     	if (collection.getTags() != null) cv.setTags(new ArrayList<>(collection.getTags()));
     	if (collection.getType() == CollectionType.GLYCAN) {
 	    	if (collection.getGlycans() != null && !collection.getGlycans().isEmpty()) {
@@ -1034,7 +1067,14 @@ public class DataController {
 	    			c.setType(CollectionType.GLYCAN);
 	    		child.setType(c.getType());
 	    		child.setDescription(c.getDescription());
-	    		if (c.getMetadata() != null) child.setMetadata(new ArrayList<>(c.getMetadata()));
+	    		if (c.getMetadata() != null) { 
+	    			//TODO generate new Json object
+	    			child.setMetadata(new ArrayList<>(c.getMetadata()));
+	    		}
+	    		
+	    		if (c.getMetadataValues() != null) child.setMetadataValues(c.getMetadataValues());
+	        	child.setSampleType(c.getSampleType());
+	    		
 	    		if (c.getTags() != null) child.setTags(new ArrayList<>(c.getTags()));
 	    		if (c.getType() == CollectionType.GLYCAN) {
 	    	    	if (c.getGlycans() != null && !c.getGlycans().isEmpty()) {
@@ -1069,7 +1109,155 @@ public class DataController {
     	return cv;
     }
     
-    @Operation(summary = "Get collection of collections by the given id", security = { @SecurityRequirement(name = "bearer-key") })
+    private static JsonNode generateMetadataValues(java.util.Collection<Metadata> metadata) {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode json = mapper.createObjectNode();
+
+        for (Metadata m : metadata) {
+            Datatype datatype = m.getType();
+
+            if (datatype == null || datatype.getDatatypeId() == null) {
+                continue;
+            }
+
+            String fieldName = metadataMapping.get(datatype.getDatatypeId());
+
+            if (fieldName == null && datatype.getName() != null) {
+                fieldName = datatype.getName().toLowerCase();
+            }
+
+            boolean multiple = Boolean.TRUE.equals(datatype.getMultiple());
+
+            JsonNode valueNode;
+            if (fieldName.equals("contributor")) {
+            	valueNode = convertContributor(mapper, m.getValue());
+            }
+            else if (datatype.getNamespace() != null && Boolean.TRUE.equals(datatype.getNamespace().getHasId())) {
+                ObjectNode term = mapper.createObjectNode();
+                if (m.getValue() != null) {
+                    term.put("name", m.getValue());
+                }
+
+                if (m.getValueId() != null) {
+                    term.put("id", m.getValueId());
+                }
+
+                if (m.getValueUri() != null) {
+                    term.put("uri", m.getValueUri());
+                }
+                valueNode = term;
+            } else {
+                valueNode = TextNode.valueOf(
+                        m.getValue() == null ? "" : m.getValue());
+            }
+
+            if (multiple) {
+                ArrayNode array;
+                if (json.has(fieldName)) {
+                    array = (ArrayNode) json.get(fieldName);
+                } else {
+                    array = mapper.createArrayNode();
+                    json.set(fieldName, array);
+                }
+                array.add(valueNode);
+            } else {
+                json.set(fieldName, valueNode);
+            }
+        }
+        return json;
+    }
+    
+    private static JsonNode convertContributor(
+            ObjectMapper mapper,
+            String contributorString) {
+    	
+    	Set<String> userRoles = Set.of("curatedBy", "createdBy", "authoredBy", "contributedBy");
+
+        ObjectNode result = mapper.createObjectNode();
+
+        ArrayNode users = mapper.createArrayNode();
+        ArrayNode software = mapper.createArrayNode();
+
+        result.set("user", users);
+        result.set("software", software);
+
+        if (contributorString == null ||
+                contributorString.isBlank()) {
+            return result;
+        }
+
+        String[] entries = contributorString.split("\\|");
+
+        long userId = 1;
+        long softwareId = 1;
+
+        for (String entry : entries) {
+            int idx = entry.indexOf(':');
+            if (idx < 0) {
+                continue;
+            }
+
+            String role = entry.substring(0, idx).trim();
+            String value = entry.substring(idx + 1).trim();
+
+            if (!userRoles.contains(role)) {
+            	ObjectNode softwareNode = mapper.createObjectNode();
+
+                softwareNode.put("id", softwareId++);
+                softwareNode.put("role", role);
+
+                parseSoftware(value,softwareNode);
+                software.add(softwareNode);
+
+            } else {
+                ObjectNode userNode = mapper.createObjectNode();
+
+                userNode.put("id", userId++);
+                userNode.put("role", role);
+
+                parsePerson(value,userNode);
+                users.add(userNode);
+            }
+        }
+
+        return result;
+    }
+    
+    private static void parsePerson(String value,ObjectNode node) {
+    	Pattern p =Pattern.compile("^(.+?)\\s*\\((.*?)\\)$");
+        Matcher m = p.matcher(value);
+
+        if (!m.matches()) {
+            node.put("name", value);
+            return;
+        }
+
+        String name = m.group(1).trim();
+        String details = m.group(2).trim();
+        node.put("name", name);
+        String[] tokens = details.split(",");
+        for (String token : tokens) {
+            token = token.trim();
+            if (token.contains("@")) {
+                node.put("email", token);
+            } else {
+                node.put("organization", token);
+            }
+        }
+    }
+    
+    private static void parseSoftware(String value, ObjectNode node) {
+        Pattern p = Pattern.compile("^(.+?)\\s*\\((.*?)\\)$");
+        Matcher m = p.matcher(value);
+        if (m.matches()) {
+            node.put("name", m.group(1).trim());
+            node.put("url", m.group(2).trim());
+        } else {
+            node.put("name", value);
+        }
+    }
+
+	@Operation(summary = "Get collection of collections by the given id", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getcoc/{collectionId}")
     public ResponseEntity<SuccessResponse<CollectionView>> getCoCById(
     		@Parameter(required=true, description="id of the collection to be retrieved") 
@@ -1870,10 +2058,12 @@ public class DataController {
     		}
     	}
     	
+    	collection.setMetadataValues(c.getMetadataValues());
+    	collection.setSampleType(c.getSampleType());
         collection.setUser(user);
     	Collection saved = collectionRepository.save(collection);
     	
-    	if (c.getMetadata() != null) {
+    	/*if (c.getMetadata() != null) {
     		List<Metadata> metadataList = new ArrayList<>();
     		for (Metadata m: c.getMetadata()) {
     			Metadata newMetadata = null;
@@ -1900,7 +2090,8 @@ public class DataController {
     		}
     		saved.setMetadata(metadataList);
     		saved = collectionManager.saveCollectionWithMetadata(saved);
-    	}
+    	}*/
+    	
     	CollectionView sv = createCollectionView(saved, imageLocation);
     	return new ResponseEntity<>(new SuccessResponse<CollectionView>(sv, "collection added"), HttpStatus.OK);
     }
@@ -2299,6 +2490,8 @@ public class DataController {
 			break;
     	}
     	
+    	/*
+    	
     	if (existing.getMetadata() == null) {
     		existing.setMetadata(new ArrayList<>());
     	}
@@ -2362,8 +2555,12 @@ public class DataController {
     			}
     		}
     		UtilityController.getCanonicalForm (namespaceRepository, existing.getMetadata());
-    	}
-    	Collection saved = collectionManager.saveCollectionWithMetadata(existing);
+    	}*/
+    	existing.setMetadataValues(c.getMetadataValues());
+    	existing.setSampleType(c.getSampleType());
+    	//Collection saved = collectionManager.saveCollectionWithMetadata(existing);
+    	Collection saved = collectionRepository.save(existing);
+    	
     	CollectionView cv = createCollectionView(saved, imageLocation);
     	return new ResponseEntity<>(new SuccessResponse<CollectionView>(cv, "collection updated"), HttpStatus.OK);
     }
@@ -3278,11 +3475,13 @@ public class DataController {
     	collection.setUser(user);
     	collection.setName(dto.getName());
     	collection.setDescription(dto.getDescription());
-    	collection.setMetadata(dto.getMetadata());   // clear the ids
+    	/*collection.setMetadata(dto.getMetadata());   // clear the ids
     	for (Metadata m: collection.getMetadata()) {
     		m.setMetadataId(null);
     		m.setCollection(collection);
-    	}
+    	}*/
+    	collection.setMetadataValues(dto.getMetadataValues());
+    	collection.setSampleType(dto.getSampleType());
     	collection.setTags(dto.getTags());
     	if (collection.getTags() != null) {
 	    	for (CollectionTag t: collection.getTags()) {
@@ -3391,7 +3590,9 @@ public class DataController {
 	    dto.setName(collection.getName());
 	    dto.setDescription(collection.getDescription());
 	    dto.setType(collection.getType());
-	    dto.setMetadata(new ArrayList<>(collection.getMetadata()));
+	    //dto.setMetadata(new ArrayList<>(collection.getMetadata()));
+	    dto.setSampleType(collection.getSampleType());
+	    dto.setMetadataValues(collection.getMetadataValues());
 	    dto.setTags(new ArrayList<>(collection.getTags()));
 	    dto.setGlycans(collection.getGlycans().stream()
 	        .map(gc -> toGlycanDTO(gc.getGlycan(), gc.getDateAdded()))

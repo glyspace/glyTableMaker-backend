@@ -5,6 +5,9 @@ import java.util.List;
 import org.glygen.tablemaker.persistence.glycan.CollectionTag;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
+import org.glygen.tablemaker.persistence.glycan.MetadataType;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class CollectionDTO {
     String name;
@@ -12,7 +15,8 @@ public class CollectionDTO {
     CollectionType type;
     List<GlycanDTO> glycans;
     List<GlycoproteinDTO> glycoproteins;
-    List<Metadata> metadata;
+    JsonNode metadataValues;
+    MetadataType sampleType;
     List<CollectionTag> tags;
 	public String getName() {
 		return name;
@@ -44,11 +48,17 @@ public class CollectionDTO {
 	public void setGlycoproteins(List<GlycoproteinDTO> glycoproteins) {
 		this.glycoproteins = glycoproteins;
 	}
-	public List<Metadata> getMetadata() {
-		return metadata;
+	public JsonNode getMetadataValues() {
+		return metadataValues;
 	}
-	public void setMetadata(List<Metadata> metadata) {
-		this.metadata = metadata;
+	public void setMetadataValues(JsonNode metadataValues) {
+		this.metadataValues = metadataValues;
+	}
+	public MetadataType getSampleType() {
+		return sampleType;
+	}
+	public void setSampleType(MetadataType sampleType) {
+		this.sampleType = sampleType;
 	}
 	public List<CollectionTag> getTags() {
 		return tags;
