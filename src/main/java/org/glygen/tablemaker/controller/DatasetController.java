@@ -1,11 +1,14 @@
 package org.glygen.tablemaker.controller;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 
 import org.glygen.tablemaker.exception.DuplicateException;
@@ -18,6 +21,7 @@ import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
+import org.glygen.tablemaker.persistence.dao.DatatypeRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.NotificationRepository;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
@@ -29,7 +33,10 @@ import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
+import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadataRecord;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
+import org.glygen.tablemaker.persistence.dataset.DatasetMetadataGroup;
+import org.glygen.tablemaker.persistence.dataset.DatasetMetadataRecord;
 import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Grant;
@@ -42,12 +49,14 @@ import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
 import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
+import org.glygen.tablemaker.persistence.glycan.MetadataType;
 import org.glygen.tablemaker.persistence.protein.GlycanInSite;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinSiteType;
 import org.glygen.tablemaker.persistence.protein.Position;
 import org.glygen.tablemaker.persistence.protein.Site;
 import org.glygen.tablemaker.persistence.protein.SitePosition;
+import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.service.DatasetManager;
@@ -68,6 +77,7 @@ import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -113,6 +123,7 @@ public class DatasetController {
 	final private TemplateRepository templateRepository;
 	final private CollectionRepository collectionRepository;
 	private final DatatypeCategoryRepository datatypeCategoryRepository;
+	private final DatatypeRepository datatypeRepository;
 	private final DatasetManager datasetManager;
 	private final PublicationRepository publicationRepository;
 	private final GlycanImageRepository glycanImageRepository;
@@ -138,12 +149,19 @@ public class DatasetController {
     @Autowired
     private ObjectMapper mapper;
 	
-	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, TemplateRepository templateRepository, CollectionRepository collectionRepository, DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository, RetractionRepository retractionRepository, SoftwareRepository softwareRepository, UserManager userManager, EmailManager emailManager, TransferRequestRepository transferRequestRepository, NotificationRepository notificationRepository) {
+	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, 
+			TemplateRepository templateRepository, CollectionRepository collectionRepository, 
+			DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, 
+			PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository, 
+			RetractionRepository retractionRepository, SoftwareRepository softwareRepository, 
+			UserManager userManager, EmailManager emailManager, TransferRequestRepository transferRequestRepository, 
+			NotificationRepository notificationRepository, DatatypeRepository datatypeRepository) {
 		this.datasetRepository = datasetRepository;
 		this.userRepository = userRepository;
 		this.templateRepository = templateRepository;
 		this.collectionRepository = collectionRepository;
 		this.datatypeCategoryRepository = datatypeCategoryRepository;
+		this.datatypeRepository = datatypeRepository;
 		this.datasetManager = datasetManager;
 		this.publicationRepository = publicationRepository;
 		this.glycanImageRepository = glycanImageRepository;
@@ -597,16 +615,19 @@ public class DatasetController {
         }
         
         if (type == CollectionType.GLYCAN) {
-        	version.setData(generateData(version, d.getCollections()));
+        	version.setRecords(generateJsonData(version, d.getCollections()));
         	
-        	if (version.getData() == null || version.getData().isEmpty()) {
+        	//version.setData(generateData(version, d.getCollections()));
+        	
+        	if (version.getRecords() == null || version.getRecords().isEmpty()) {
         		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
         	}
         	version.setType(type);
         } else {
-        	version.setGlycoproteinData(generateGlycoproteinData(version, d.getCollections()));
+        	//version.setGlycoproteinData(generateGlycoproteinData(version, d.getCollections()));
+        	version.setGlycoproteinRecords(generateGlycoproteinJsonData(version, d.getCollections()));
         	
-        	if (version.getGlycoproteinData() == null || version.getGlycoproteinData().isEmpty()) {
+        	if (version.getGlycoproteinRecords() == null || version.getGlycoproteinRecords().isEmpty()) {
         		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
         	}
         	version.setType(type);
@@ -618,6 +639,61 @@ public class DatasetController {
         return new ResponseEntity<>(new SuccessResponse<DatasetView>(dv, "dataset has been published"), HttpStatus.OK);
 	}
 	
+	private java.util.Collection<DatasetGlycoproteinMetadataRecord> generateGlycoproteinJsonData(DatasetVersion version,
+			List<CollectionView> collections) {
+		List<DatasetGlycoproteinMetadataRecord> metadata = new ArrayList<>();
+		// generate the data
+        for (CollectionView cv: collections) {
+        	// glycoprotein collection
+        	Optional<Collection> collectionHandle = collectionRepository.findById(cv.getCollectionId());
+        	Collection collection = collectionHandle.get();
+			for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+				for (Site s: gp.getGlycoprotein().getSites()) {
+					if (s.getPositionString() != null) {
+        				ObjectMapper om = new ObjectMapper();
+        				try {
+							s.setPosition(om.readValue(s.getPositionString(), SitePosition.class));
+						} catch (JsonProcessingException e) {
+							logger.warn ("Position string is invalid: " + s.getPositionString());
+						}
+        			}
+					if (s.getGlycans().isEmpty()) {
+						// unknown site
+						// put values other than the glycan
+						DatasetGlycoproteinMetadataRecord dm = new DatasetGlycoproteinMetadataRecord();
+	            		dm.setDataset(version);
+	            		dm.setUniProtId(gp.getGlycoprotein().getUniprotId());
+	            		dm.setAminoAcid(s.getAminoAcidString());
+	            		dm.setSite(s.getLocationString());
+	            		DatasetMetadataGroup mg = new DatasetMetadataGroup();
+	    				mg.setValue(collection.getMetadataValues());
+	    				mg.setSampleType(collection.getSampleType());				
+	    				dm.setMetadataGroup(mg);
+	    				metadata.add(dm);
+					} 
+					
+					for (GlycanInSite g: s.getGlycans()) {
+						DatasetGlycoproteinMetadataRecord dm = new DatasetGlycoproteinMetadataRecord();
+	            		dm.setDataset(version);
+	            		dm.setGlytoucanId(g.getGlycan().getGlytoucanID());
+	            		dm.setGlycosylationType(g.getGlycosylationType());
+	            		dm.setGlycosylationSubType(g.getGlycosylationSubType());
+	            		dm.setUniProtId(gp.getGlycoprotein().getUniprotId());
+	            		dm.setAminoAcid(s.getAminoAcidString());
+	            		dm.setSite(s.getLocationString());
+	            		DatasetMetadataGroup mg = new DatasetMetadataGroup();
+	    				mg.setValue(collection.getMetadataValues());
+	    				mg.setSampleType(collection.getSampleType());				
+	    				dm.setMetadataGroup(mg);
+	    				metadata.add(dm);
+					}
+				}
+			}
+        }
+	
+		return metadata;
+	}
+
 	List<DatasetGlycoproteinMetadata> generateGlycoproteinData(DatasetVersion version,
 			List<CollectionView> collections) {
 		
@@ -748,7 +824,29 @@ public class DatasetController {
 			
         return metadata;
 	}
-
+	
+	List<DatasetMetadataRecord> generateJsonData (DatasetVersion version, List<CollectionView> collections) {
+		List<DatasetMetadataRecord> metadata = new ArrayList<>();
+		for (CollectionView cv: collections) {
+        	Optional<Collection> collectionHandle = collectionRepository.findById(cv.getCollectionId());
+        	Collection collection = collectionHandle.get();
+        	for (GlycanInCollection g: collection.getGlycans()) {
+        		JsonNode values = collection.getMetadataValues();
+        		DatasetMetadataRecord dm = new DatasetMetadataRecord();
+        		dm.setDataset(version);
+				dm.setGlytoucanId(g.getGlycan().getGlytoucanID());
+				metadata.add(dm);
+				
+				DatasetMetadataGroup mg = new DatasetMetadataGroup();
+				mg.setValue(values);
+				mg.setSampleType(collection.getSampleType());				
+				dm.setMetadataGroup(mg);
+        	}
+		}
+				
+		return metadata;
+	}
+	
 	List<DatasetMetadata> generateData (DatasetVersion version, List<CollectionView> collections) {
 		List<DatasetMetadata> metadata = new ArrayList<>();
 		TableMakerTemplate glygenTemplate = templateRepository.findById(1L).get();
@@ -1236,42 +1334,57 @@ public class DatasetController {
     			
     			if (head.getType() == CollectionType.GLYCAN) {
     				
+    				version.setRecords(new ArrayList<DatasetMetadataRecord>());
+    				
     				// data is the same, copy data, errors and publications to the new version
-        			for (DatasetMetadata m: head.getData()) {
+        			/*for (DatasetMetadata m: head.getData()) {
         				DatasetMetadata copy = new DatasetMetadata(m);
         				copy.setDataset(version);
         				version.getData().add(copy);
-        			}	
+        			}	*/
+        			
+        			for (DatasetMetadataRecord dm: head.getRecords()) {
+        				DatasetMetadataRecord copy = new DatasetMetadataRecord(dm);
+        				copy.setDataset(version);
+        				version.getRecords().add(copy);
+        				
+        			}
         			version.setPublications(new ArrayList<>());
         			for (Publication p: head.getPublications()) {
         				version.getPublications().add(p);
         			}
     				
-    	        	if (version.getData() == null || version.getData().isEmpty()) {
+    	        	if (version.getRecords() == null || version.getRecords().isEmpty()) {
     	        		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
     	        	}
     	        	version.setType(head.getType());
     	        } else {
     	        	// data is the same, copy data, errors and publications to the new version
-        			for (DatasetGlycoproteinMetadata m: head.getGlycoproteinData()) {
+        			/*for (DatasetGlycoproteinMetadata m: head.getGlycoproteinData()) {
         				DatasetGlycoproteinMetadata copy = new DatasetGlycoproteinMetadata(m);
         				copy.setDataset(version);
         				version.getGlycoproteinData().add(copy);
-        			}	
+        			}*/	
+        			
+    	        	version.setGlycoproteinRecords(new ArrayList<DatasetGlycoproteinMetadataRecord>());
+        			for (DatasetGlycoproteinMetadataRecord dm: head.getGlycoproteinRecords()) {
+        				DatasetGlycoproteinMetadataRecord copy = new DatasetGlycoproteinMetadataRecord(dm);
+        				copy.setDataset(version);
+        				version.getGlycoproteinRecords().add(copy);
+        				
+        			}
         			version.setPublications(new ArrayList<>());
         			for (Publication p: head.getPublications()) {
         				version.getPublications().add(p);
         			}
     	        	
-    	        	if (version.getGlycoproteinData() == null || version.getGlycoproteinData().isEmpty()) {
+    	        	if (version.getGlycoproteinRecords() == null || version.getGlycoproteinRecords().isEmpty()) {
     	        		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
     	        	}
     	        	version.setType(head.getType());
     	        }
-    			
-    			
-    			version.setData(new ArrayList<>());
-    			
+ 
+    			//version.setData(new ArrayList<>());   			
     		} else {
     			// create new metadata from the selected collections
     			
@@ -1297,17 +1410,41 @@ public class DatasetController {
     	        }
     	        
     	        if (type == CollectionType.GLYCAN) {
-    	        	version.setData(generateData(version, d.getCollections()));
+    	        	version.setRecords(generateJsonData(version, d.getCollections()));
     	        	
-    	        	if (version.getData() == null || version.getData().isEmpty()) {
+    	        	//version.setData(generateData(version, d.getCollections()));
+    	        	
+    	        	if (version.getRecords() == null || version.getRecords().isEmpty()) {
     	        		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
     	        	}
     	        	version.setType(type);
     	        	
     	        	version.setPublications(new ArrayList<>());
-        	        for (DatasetMetadata m: version.getData()) {
+        	        for (DatasetMetadataRecord m: version.getRecords()) {
         	        	// find the publications
-        	        	if (m.getDatatype() != null && m.getDatatype().getName().equals("Evidence")) {
+        	        	DatasetMetadataGroup dg = m.getMetadataGroup();
+        	        	// find the publications
+        	        	if (dg != null) {
+        	        		JsonNode metadataValue = dg.getValue();
+        	        		// check if there is a publication in Json object
+        	        		JsonNode publication = metadataValue.path("publication");
+
+        	        		if (!publication.isMissingNode() && !publication.isNull()) {
+        	        		    String publicationValue = publication.asText();
+        	        		    try {
+        							Publication pub = UtilityController.getPublication(publicationValue, publicationRepository, new PubmedUtil(apiKey));
+        							if (pub != null && !version.getPublications().contains(pub)) {
+        								version.getPublications().add(pub);
+        							}
+        						} catch (Exception e) {
+        							logger.error("Failed to retrieve the publication", e);
+        						}
+        	        		}
+        	        		else {
+        	        			logger.warn("There is no publication in dataset " + existing.getDatasetIdentifier());
+        	        		}
+        	        	}
+        	        	/*if (m.getDatatype() != null && m.getDatatype().getName().equals("Evidence")) {
         	        		try {
     							Publication pub = UtilityController.getPublication(m.getValue(), publicationRepository, new PubmedUtil(apiKey));
     							if (pub != null && !version.getPublications().contains(pub)) {
@@ -1316,20 +1453,42 @@ public class DatasetController {
     						} catch (Exception e) {
     							logger.error("Failed to retrieve the publication", e);
     						}
-        	        	}
+        	        	}*/
         	        }
     	        } else {
-    	        	version.setGlycoproteinData(generateGlycoproteinData(version, d.getCollections()));
+    	        	//version.setGlycoproteinData(generateGlycoproteinData(version, d.getCollections()));
+    	        	version.setGlycoproteinRecords(generateGlycoproteinJsonData(version, d.getCollections()));
     	        	
-    	        	if (version.getGlycoproteinData() == null || version.getGlycoproteinData().isEmpty()) {
+    	        	if (version.getGlycoproteinRecords() == null || version.getGlycoproteinRecords().isEmpty()) {
     	        		throw new IllegalArgumentException ("Cannot publish datasets with no data!");
     	        	}
     	        	version.setType(type);
     	        	
     	        	version.setPublications(new ArrayList<>());
-        	        for (DatasetGlycoproteinMetadata m: version.getGlycoproteinData()) {
+        	        for (DatasetGlycoproteinMetadataRecord m: version.getGlycoproteinRecords()) {
+        	        	DatasetMetadataGroup dg = m.getMetadataGroup();
         	        	// find the publications
-        	        	if (m.getDatatype() != null && m.getDatatype().getName().equals("Evidence")) {
+        	        	if (dg != null) {
+        	        		JsonNode metadataValue = dg.getValue();
+        	        		// check if there is a publication in Json object
+        	        		JsonNode publication = metadataValue.path("publication");
+
+        	        		if (!publication.isMissingNode() && !publication.isNull()) {
+        	        		    String publicationValue = publication.asText();
+        	        		    try {
+        							Publication pub = UtilityController.getPublication(publicationValue, publicationRepository, new PubmedUtil(apiKey));
+        							if (pub != null && !version.getPublications().contains(pub)) {
+        								version.getPublications().add(pub);
+        							}
+        						} catch (Exception e) {
+        							logger.error("Failed to retrieve the publication", e);
+        						}
+        	        		}
+        	        		else {
+        	        			logger.warn("There is no publication in dataset " + existing.getDatasetIdentifier());
+        	        		}
+        	        	}
+        	        	/*if (m.getDatatype() != null && m.getDatatype().getName().equals("Evidence")) {
         	        		try {
     							Publication pub = UtilityController.getPublication(m.getValue(), publicationRepository, new PubmedUtil(apiKey));
     							if (pub != null && !version.getPublications().contains(pub)) {
@@ -1338,7 +1497,7 @@ public class DatasetController {
     						} catch (Exception e) {
     							logger.error("Failed to retrieve the publication", e);
     						}
-        	        	}
+        	        	}*/
         	        }
     	        }
     		}
@@ -1482,6 +1641,8 @@ public class DatasetController {
     		v.setPublications(null);
     		v.setData(null);
     		v.setGlycoproteinData(null);
+    		v.setGlycoproteinRecords(null);
+    		v.setRecords(null);
     	}
 		return dv;
 	}

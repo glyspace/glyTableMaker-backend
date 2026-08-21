@@ -4,8 +4,6 @@ import java.util.List;
 
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
-import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
-import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
 import org.glygen.tablemaker.persistence.dataset.License;
 import org.springframework.data.domain.Page;
@@ -16,7 +14,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpecificationExecutor<Dataset>, DatasetRepositoryCustom {
+public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpecificationExecutor<Dataset> {
 	
     Page<DatasetProjection> findAllBy(Pageable pageable);
 	public Page<DatasetProjection> findAllByUser (UserEntity user, Pageable pageable);
@@ -32,28 +30,28 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	public List<Dataset> findAllByNameAndUser (String name, UserEntity user);
 	public List<Dataset> findByNameContainingIgnoreCase (String name);
 	
-	@Query ("select count(distinct(element(dv.glycoproteinData).value)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true and element(dv.glycoproteinData).glycoproteinColumn='UNIPROTID'")
+	@Query ("select count(distinct(element(dv.glycoproteinRecords).value)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true")
 	public int getProteinCount (@Param("datasetId")Long datasetId);
 	
-	@Query ("select count(distinct(element(dv.glycoproteinData).value)) from DatasetVersion dv WHERE dv.version = :version and element(dv.glycoproteinData).glycoproteinColumn='UNIPROTID'")
+	@Query ("select count(distinct(element(dv.glycoproteinRecords).value)) from DatasetVersion dv WHERE dv.version = :version")
 	public int getProteinCountByVersion (@Param("version")String version);
 	
-	@Query ("select count(distinct(element(dv.data).value)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true and element(dv.data).glycanColumn='GLYTOUCANID'")
+	@Query ("select count(distinct(element(dv.records).value)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true")
 	public int getGlycanCount (@Param("datasetId")Long datasetId);
 	
-	@Query ("select count(distinct(element(dv.data).value)) from DatasetVersion dv WHERE dv.head = true and element(dv.data).glycanColumn='GLYTOUCANID'")
+	@Query ("select count(distinct(element(dv.records).value)) from DatasetVersion dv WHERE dv.head = true")
 	public int getAllGlycanCount ();
 	
-	@Query ("select count(distinct(element(dv.glycoproteinData).value)) from DatasetVersion dv WHERE dv.head = true and element(dv.glycoproteinData).glycoproteinColumn='UNIPROTID'")
+	@Query ("select count(distinct(element(dv.glycoproteinRecords).value)) from DatasetVersion dv WHERE dv.head = true")
 	public int getAllGlycoproteinCount ();
 	
-	@Query("select count(g)from DatasetMetadata g where g.dataset.head = true and g.dataset.dataset.datasetId = :datasetId and g.glycanColumn='GLYTOUCANID'")
+	@Query("select count(g)from DatasetMetadataRecord g where g.dataset.head = true and g.dataset.dataset.datasetId = :datasetId")
 	public int getGlycanMetadataCount(@Param("datasetId")Long datasetId);
 	
-	@Query("select count(g) from DatasetGlycoproteinMetadata g where g.dataset.head = true and g.dataset.dataset.datasetId = :datasetId and g.glycoproteinColumn='UNIPROTID'")
+	@Query("select count(g) from DatasetGlycoproteinMetadataRecord g where g.dataset.head = true and g.dataset.dataset.datasetId = :datasetId")
 	public int getGlycoproteinMetadataCount(@Param("datasetId")Long datasetId);
 	
-	@Query ("select distinct(element(dv.data).value) from DatasetVersion dv WHERE dv.head = true and element(dv.data).glycanColumn='GLYTOUCANID'")
+	@Query ("select distinct(element(dv.records).glytoucanId) from DatasetVersion dv WHERE dv.head = true")
 	public List<String> getAllPublicGlytoucanIds ();
 	
 	@Query("Select DISTINCT d.datasetId FROM Dataset d WHERE d.user = :user")
@@ -86,16 +84,16 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	public List<Long> getAllDatasetIdsByFundingOrganization (@Param("fundingOrg") String fundingOrg);
 	
 
-	@Query("SELECT m FROM DatasetMetadata m WHERE m.rowId IN :rowIds and m.dataset.versionId = :versionId")
+	/*@Query("SELECT m FROM DatasetMetadata m WHERE m.rowId IN :rowIds and m.dataset.versionId = :versionId")
 	List<DatasetMetadata> findByRowIdInWithVersion(@Param("rowIds") List<String> rowIds, @Param("versionId") Long versionId);
 	
 	@Query("SELECT m FROM DatasetGlycoproteinMetadata m WHERE m.rowId IN :rowIds and m.dataset.versionId = :versionId")
 	List<DatasetGlycoproteinMetadata> findGlycoproteinByRowIdInWithVersion(@Param("rowIds") List<String> rowIds, @Param("versionId") Long versionId);
+	*/
 	
 	@Query("Select DISTINCT d.datasetId FROM Dataset d JOIN d.integratedIn g WHERE LOWER(g.resource.name) = :resource")
 	List<Dataset> getDatasetsIntegratedIn (@Param("resource")String resourceName);
 	
 	@Query("Select DISTINCT g.errorJson FROM DatabaseResourceDataset g WHERE LOWER(g.resource.name) = 'glygen' and g.dataset.datasetId = :datasetId and g.errorJson is not null")
 	String getGlygenErrors (@Param("datasetId") Long datasetId);
-	
 }

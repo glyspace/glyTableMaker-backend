@@ -7,7 +7,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -37,9 +39,19 @@ import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResourceDataset;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
+import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
+import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadataRecord;
+import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
+import org.glygen.tablemaker.persistence.dataset.DatasetMetadataGroup;
+import org.glygen.tablemaker.persistence.dataset.DatasetMetadataRecord;
+import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
+import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
+import org.glygen.tablemaker.persistence.glycan.MetadataType;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
+import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
+import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.SequenceUtils;
 import org.json.JSONArray;
@@ -54,6 +66,8 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import jakarta.transaction.Transactional;
 
@@ -108,6 +122,209 @@ public class ScheduledTasksService {
 		this.datasetManager = datasetManager;
 		this.emailManager = emailManager;
 		this.userManager = userManager;
+	}
+	
+	@Scheduled(fixedDelay = 604800000, initialDelay=2000)
+	public void migrateDatasets () {
+		logger.info("Migrating Datasets on " + new Date());
+		JsonNode metadataDefinitions = null;
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			try (InputStream is = getClass().getClassLoader().getResourceAsStream("metadata.json")) {
+				metadataDefinitions = mapper.readTree(is);
+			}
+		} catch (Exception e) {
+			logger.error("could not load metadata.json, migration cannot be done at this moment", e);
+			return;
+		}
+		
+		List<Dataset> datasets = datasetRepository.findAll();
+		int count = 0;
+		for (Dataset d: datasets) {
+			Collection<DatasetVersion> versions = d.getVersions();
+			boolean updated = false;
+			for (DatasetVersion version: versions) {
+				if (version.getData() != null && !version.getData().isEmpty() 
+						&& (version.getRecords() == null || version.getRecords().isEmpty())) {
+					// old version
+					// migrate to the new metadata version
+					
+					Collection<DatasetMetadata> data = version.getData();
+					Map<String, List<DatasetMetadata>> rowMap = new HashMap<>();
+					for (DatasetMetadata m: data) {
+						if (rowMap.get(m.getRowId()) == null) {
+							rowMap.put(m.getRowId(), new ArrayList<>());
+						}
+						rowMap.get(m.getRowId()).add(m);
+					}
+					
+					ObjectMapper mapper = new ObjectMapper();
+					List<DatasetMetadataRecord> records = new ArrayList<>();
+					for (String key: rowMap.keySet()) {
+						DatasetMetadataRecord rec = new DatasetMetadataRecord();
+						ObjectNode metadataNode = mapper.createObjectNode();
+
+					    for (DatasetMetadata col : rowMap.get(key)) {
+					        if (col.getGlycanColumn() != null &&
+					            col.getGlycanColumn() == GlycanColumns.GLYTOUCANID) {
+					            rec.setGlytoucanId(col.getValue());
+					            continue;
+					        }
+
+					        if (col.getDatatype() == null) {
+					            continue;
+					        }
+
+					        String fieldName = getFieldForDatatype(col.getDatatype(), metadataDefinitions);
+
+					        if (fieldName == null) {
+					            fieldName = col.getDatatype().getName().toLowerCase();
+					        }
+					        addDatatype(col.getDatatype(), metadataNode, fieldName, mapper, 
+					        		col.getValue(), col.getValueId(), col.getValueUri());
+					    }
+
+					    DatasetMetadataGroup group = new DatasetMetadataGroup();
+					    group.setValue(metadataNode);
+					    rec.setMetadataGroup(group);
+					    records.add(rec);
+					}
+					
+					version.setRecords(records);
+					updated = true;
+				}
+				
+				if (version.getGlycoproteinData() != null && !version.getGlycoproteinData().isEmpty() 
+						&& (version.getGlycoproteinRecords() == null || version.getGlycoproteinRecords().isEmpty())) {
+					Collection<DatasetGlycoproteinMetadata> data = version.getGlycoproteinData();
+					Map<String, List<DatasetGlycoproteinMetadata>> rowMap = new HashMap<>();
+					for (DatasetGlycoproteinMetadata m: data) {
+						if (rowMap.get(m.getRowId()) == null) {
+							rowMap.put(m.getRowId(), new ArrayList<>());
+						}
+						rowMap.get(m.getRowId()).add(m);
+					}
+					ObjectMapper mapper = new ObjectMapper();
+					List<DatasetGlycoproteinMetadataRecord> records = new ArrayList<>();
+					for (String key: rowMap.keySet()) {
+						DatasetGlycoproteinMetadataRecord rec = new DatasetGlycoproteinMetadataRecord();
+						ObjectNode metadataNode = mapper.createObjectNode();
+
+					    for (DatasetGlycoproteinMetadata col : rowMap.get(key)) {
+					        if (col.getGlycoproteinColumn() != null) {
+					        	switch (col.getGlycoproteinColumn()) {
+					        	case AMINOACID:
+					        		rec.setAminoAcid(col.getValue());
+					        		break;
+					        	case GLYCOSYLATIONSUBTYPE:
+					        		rec.setGlycosylationSubType(col.getValue());
+					        		break;
+								case GLYCOSYLATIONTYPE:
+									rec.setGlycosylationType(col.getValue());
+									break;
+								case GLYTOUCANID:
+									rec.setGlytoucanId(col.getValue());
+									break;
+								case SITE:
+									rec.setSite(col.getValue());
+									break;
+								case UNIPROTID:
+									rec.setUniProtId(col.getValue());
+									break;
+								default:
+									break;
+					        		
+					        	}
+					        }
+					        
+					        if (col.getDatatype() == null) {
+					            continue;
+					        }
+
+					        String fieldName = getFieldForDatatype(col.getDatatype(), metadataDefinitions);
+
+					        if (fieldName == null) {
+					            fieldName = col.getDatatype().getName().toLowerCase();
+					        }
+					        addDatatype(col.getDatatype(), metadataNode, fieldName, mapper, 
+					        		col.getValue(), col.getValueId(), col.getValueUri());
+					    }
+
+					    DatasetMetadataGroup group = new DatasetMetadataGroup();
+					    group.setValue(metadataNode);
+					    rec.setMetadataGroup(group);
+					    records.add(rec);
+					}
+					
+					version.setGlycoproteinRecords(records);
+					updated = true;
+				}
+			}
+			
+			if (updated) {
+				count++;
+				datasetRepository.save(d);
+			}
+		}
+		logger.info("Done migrating " + count + " datasets on " + new Date());
+	}
+	
+	private void addDatatype (Datatype datatype, ObjectNode metadataNode, String fieldName, 
+			ObjectMapper mapper, String value, String valueId, String valueUri) {
+		if (datatype.getNamespace() != null &&
+	            datatype.getNamespace().getHasId()) { // Ontology fields
+	            if (datatype.getMultiple()) {
+	                ArrayNode array = getOrCreateArray(metadataNode, fieldName);
+	                ObjectNode valueNode = mapper.createObjectNode();
+	                valueNode.put("id", valueId);
+	                valueNode.put("name", value);
+	                valueNode.put("uri", valueUri);
+	                array.add(valueNode);
+	            } else {
+	                ObjectNode valueNode = mapper.createObjectNode();
+	                valueNode.put("id", valueId);
+	                valueNode.put("name", value);
+	                valueNode.put("uri", valueUri);
+	                metadataNode.set(fieldName, valueNode);
+	            }  
+	        } else if (datatype.getDatatypeId() == 16L) { // Contributor
+	            JsonNode contrib = DataController.convertContributor(mapper, value);
+	            metadataNode.set(fieldName, contrib);
+	        } else {
+	            if (datatype.getMultiple()) {
+	                ArrayNode array = getOrCreateArray(metadataNode, fieldName);
+	                array.add(value);
+	            } else {
+	                metadataNode.put(fieldName, value);
+	            }
+	        }
+	}
+	
+	private ArrayNode getOrCreateArray(
+	        ObjectNode parent,
+	        String fieldName) {
+
+	    JsonNode existing = parent.get(fieldName);
+
+	    if (existing != null && existing.isArray()) {
+	        return (ArrayNode) existing;
+	    }
+
+	    ArrayNode array = parent.arrayNode();
+	    parent.set(fieldName, array);
+
+	    return array;
+	}
+	
+	private String getFieldForDatatype (Datatype datatype, JsonNode metadataDefinitions) {
+		JsonNode fieldDefinitions = metadataDefinitions.path("biological_sample_background_alteration").path("fields");
+
+		for (JsonNode field : fieldDefinitions) {
+		    if (datatype.getDatatypeId().equals(field.path("datatypeId").asLong())) {
+		        return field.path("id").asText();
+		    }
+		}
+		return null;
 	}
 	
 	@Scheduled(fixedDelay = 604800000, initialDelay=2000)

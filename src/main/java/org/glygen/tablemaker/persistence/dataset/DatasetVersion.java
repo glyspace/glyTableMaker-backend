@@ -35,11 +35,14 @@ public class DatasetVersion {
 	License license;
 	Boolean head;
 	CollectionType type;
-	String glygenExportVersion = "1";
+	String glygenExportVersion = "2";
 	
 	Collection<DatasetMetadata> data;
 	Collection<DatasetGlycoproteinMetadata> glycoproteinData;
 	Collection<Publication> publications;
+	
+	Collection<DatasetMetadataRecord> records;
+	Collection<DatasetGlycoproteinMetadataRecord> glycoproteinRecords;
 	
 	Dataset dataset;
 	
@@ -152,5 +155,21 @@ public class DatasetVersion {
 	}
 	public void setGlygenExportVersion(String glygenExportVersion) {
 		this.glygenExportVersion = glygenExportVersion;
+	}
+	
+	@OneToMany(mappedBy = "dataset", cascade=CascadeType.ALL, orphanRemoval = true, fetch=FetchType.LAZY)
+	public Collection<DatasetMetadataRecord> getRecords() {
+		return records;
+	}
+	public void setRecords(Collection<DatasetMetadataRecord> records) {
+		this.records = records;
+	}
+	
+	@OneToMany(mappedBy = "dataset", cascade=CascadeType.ALL, orphanRemoval = true, fetch=FetchType.LAZY)
+	public Collection<DatasetGlycoproteinMetadataRecord> getGlycoproteinRecords() {
+		return glycoproteinRecords;
+	}
+	public void setGlycoproteinRecords(Collection<DatasetGlycoproteinMetadataRecord> glycoproteinRecords) {
+		this.glycoproteinRecords = glycoproteinRecords;
 	}
 }

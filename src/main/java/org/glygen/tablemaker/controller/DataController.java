@@ -103,7 +103,6 @@ import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
 import org.glygen.tablemaker.persistence.dao.GlycanTagRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinSpecification;
-import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
 import org.glygen.tablemaker.persistence.dao.SettingRepository;
 import org.glygen.tablemaker.persistence.dao.TableReportRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
@@ -136,8 +135,6 @@ import org.glygen.tablemaker.persistence.protein.SitePosition;
 import org.glygen.tablemaker.persistence.table.TableReport;
 import org.glygen.tablemaker.persistence.table.TableReportDetail;
 import org.glygen.tablemaker.service.AsyncService;
-import org.glygen.tablemaker.service.CollectionManager;
-import org.glygen.tablemaker.service.EmailManager;
 import org.glygen.tablemaker.service.ErrorReportingService;
 import org.glygen.tablemaker.service.GlycanManagerImpl;
 import org.glygen.tablemaker.service.ScheduledTasksService;
@@ -251,10 +248,7 @@ public class DataController {
     final private AsyncService batchUploadService;
     final private GlycanManagerImpl glycanManager;
     final private UploadErrorRepository uploadErrorRepository;
-    final private EmailManager emailManager;
-    final private CollectionManager collectionManager;
     final private TableReportRepository reportRepository;
-    final private NamespaceRepository namespaceRepository;
     final private GlycanImageRepository glycanImageRepository;
     final private DatasetRepository datasetRepository;
     final private GlycoproteinRepository glycoproteinRepository;
@@ -280,8 +274,8 @@ public class DataController {
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository,
     		BatchUploadRepository uploadRepository, AsyncService uploadService, 
     		CollectionRepository collectionRepository, GlycanManagerImpl glycanManager, 
-    		UploadErrorRepository uploadErrorRepository, EmailManager emailManager, CollectionManager collectionManager, 
-    		TableReportRepository reportRepository, NamespaceRepository namespaceRepository, 
+    		UploadErrorRepository uploadErrorRepository, 
+    		TableReportRepository reportRepository, 
     		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
     		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository, 
     		ErrorReportingService errorReportingService, GlycanTagRepository glycanTagRepository, 
@@ -296,10 +290,7 @@ public class DataController {
 		this.batchUploadService = uploadService;
 		this.glycanManager = glycanManager;
 		this.uploadErrorRepository = uploadErrorRepository;
-		this.emailManager = emailManager;
-		this.collectionManager = collectionManager;
 		this.reportRepository = reportRepository;
-		this.namespaceRepository = namespaceRepository;
 		this.glycanImageRepository = glycanImageRepository;
 		this.datasetRepository = datasetRepository;
 		this.glycoproteinRepository = glycoproteinRepository;
@@ -1012,7 +1003,7 @@ public class DataController {
     		collection.setType(CollectionType.GLYCAN);
     	cv.setType(collection.getType());
     	cv.setDescription(collection.getDescription());
-    	if (collection.getMetadata() != null) {
+    	if (collection.getMetadata() != null && !collection.getMetadata().isEmpty()) {
     		// generate new JSON object
     		cv.setMetadataValues (generateMetadataValues (collection.getMetadata()));
     		collection.setMetadataValues(cv.getMetadataValues());
@@ -1167,7 +1158,7 @@ public class DataController {
         return json;
     }
     
-    private static JsonNode convertContributor(
+    public static JsonNode convertContributor(
             ObjectMapper mapper,
             String contributorString) {
     	
@@ -1181,8 +1172,7 @@ public class DataController {
         result.set("user", users);
         result.set("software", software);
 
-        if (contributorString == null ||
-                contributorString.isBlank()) {
+        if (contributorString == null || contributorString.isBlank()) {
             return result;
         }
 
