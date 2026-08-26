@@ -32,6 +32,7 @@ import org.glygen.tablemaker.persistence.NotificationEntity;
 import org.glygen.tablemaker.persistence.dao.ApplicationSettingsRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadJobRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
+import org.glygen.tablemaker.persistence.dao.DatasetMetadataGroupRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
@@ -89,6 +90,7 @@ public class ScheduledTasksService {
 	final private DatasetManager datasetManager;
 	final private EmailManager emailManager;
 	final private UserManager userManager;
+	final private DatasetMetadataGroupRepository datasetMetadataGroupRepository;
 	
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
@@ -109,7 +111,7 @@ public class ScheduledTasksService {
 	String glymage;
 			
 	
-	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, ErrorReportingService errorReportingService, UserRepository userRepository, GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, ApplicationSettingsRepository settingRepository, DatasetManager datasetManager, EmailManager emailManager, UserManager userManager) {
+	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, ErrorReportingService errorReportingService, UserRepository userRepository, GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, ApplicationSettingsRepository settingRepository, DatasetManager datasetManager, EmailManager emailManager, UserManager userManager, DatasetMetadataGroupRepository datasetMetadataGroupRepository) {
 		this.batchUploadJobRepository = batchUploadJobRepository;
 		this.batchUploadService = batchUploadService;
 		this.uploadRepository = uploadRepository;
@@ -122,6 +124,7 @@ public class ScheduledTasksService {
 		this.datasetManager = datasetManager;
 		this.emailManager = emailManager;
 		this.userManager = userManager;
+		this.datasetMetadataGroupRepository = datasetMetadataGroupRepository;
 	}
 	
 	@Scheduled(fixedDelay = 604800000, initialDelay=2000)
@@ -144,6 +147,7 @@ public class ScheduledTasksService {
 			Collection<DatasetVersion> versions = d.getVersions();
 			boolean updated = false;
 			for (DatasetVersion version: versions) {
+				MetadataType sampleType = MetadataType.BIOLOGICAL_SAMPLE;
 				if (version.getData() != null && !version.getData().isEmpty() 
 						&& (version.getRecords() == null || version.getRecords().isEmpty())) {
 					// old version
@@ -160,8 +164,22 @@ public class ScheduledTasksService {
 					
 					ObjectMapper mapper = new ObjectMapper();
 					List<DatasetMetadataRecord> records = new ArrayList<>();
+					Map<String, DatasetMetadataGroup> metadataGroupMap = new HashMap<String, DatasetMetadataGroup>();
 					for (String key: rowMap.keySet()) {
+						String collectionId = null;
+						String[] parts = key.split("-");
+						if (parts.length > 0) collectionId = parts[0];
+						
 						DatasetMetadataRecord rec = new DatasetMetadataRecord();
+						
+						boolean metadataExists = false;
+						if (collectionId != null && metadataGroupMap.get(collectionId) != null) {
+							rec.setMetadataGroup(metadataGroupMap.get(collectionId));
+							rec.setDataset(version);
+							records.add(rec);
+							metadataExists = true;
+						}
+						
 						ObjectNode metadataNode = mapper.createObjectNode();
 
 					    for (DatasetMetadata col : rowMap.get(key)) {
@@ -174,23 +192,42 @@ public class ScheduledTasksService {
 					        if (col.getDatatype() == null) {
 					            continue;
 					        }
-
-					        String fieldName = getFieldForDatatype(col.getDatatype(), metadataDefinitions);
-
-					        if (fieldName == null) {
-					            fieldName = col.getDatatype().getName().toLowerCase();
+					        
+					        if (metadataExists) { // no need to get the other metadata
+					        	continue;
 					        }
-					        addDatatype(col.getDatatype(), metadataNode, fieldName, mapper, 
-					        		col.getValue(), col.getValueId(), col.getValueUri());
+							
+					        if (col.getValue() != null && !col.getValue().isBlank()) {
+					        	if(col.getDatatype().getDatatypeId() == 13L || col.getDatatype().getDatatypeId() == 6L ) {
+					        		sampleType = MetadataType.BIOLOGICAL_SAMPLE_BACKGROUND_ALTERATION;
+					        	}
+					        
+						        String fieldName = getFieldForDatatype(col.getDatatype(), metadataDefinitions);
+	
+						        if (fieldName == null) {
+						            fieldName = col.getDatatype().getName().toLowerCase();
+						        }
+						        addDatatype(col.getDatatype(), metadataNode, fieldName, mapper, 
+						        		col.getValue(), col.getValueId(), col.getValueUri());
+					        }
 					    }
-
-					    DatasetMetadataGroup group = new DatasetMetadataGroup();
-					    group.setValue(metadataNode);
-					    rec.setMetadataGroup(group);
-					    records.add(rec);
+					    
+					    if (!metadataExists) {
+						    DatasetMetadataGroup group = new DatasetMetadataGroup();
+						    group.setValue(metadataNode);
+						    group.setSampleType(sampleType);
+						    group = datasetMetadataGroupRepository.save(group);
+						    metadataGroupMap.put(collectionId, group);
+						    rec.setMetadataGroup(group);
+						    rec.setDataset(version);
+						    
+						    if (collectionId != null) metadataGroupMap.put (collectionId, group);
+						    records.add(rec);
+					    }
 					}
 					
-					version.setRecords(records);
+					version.getRecords().clear();
+					version.getRecords().addAll(records);
 					updated = true;
 				}
 				
@@ -206,8 +243,22 @@ public class ScheduledTasksService {
 					}
 					ObjectMapper mapper = new ObjectMapper();
 					List<DatasetGlycoproteinMetadataRecord> records = new ArrayList<>();
+					Map<String, DatasetMetadataGroup> metadataGroupMap = new HashMap<String, DatasetMetadataGroup>();
 					for (String key: rowMap.keySet()) {
+						String collectionId = null;
+						String[] parts = key.split("-");
+						if (parts.length > 0) collectionId = parts[0];
+						
 						DatasetGlycoproteinMetadataRecord rec = new DatasetGlycoproteinMetadataRecord();
+						
+						boolean metadataExists = false;
+						if (collectionId != null && metadataGroupMap.get(collectionId) != null) {
+							rec.setMetadataGroup(metadataGroupMap.get(collectionId));
+							rec.setDataset(version);
+							records.add(rec);
+							metadataExists = true;
+						}
+						
 						ObjectNode metadataNode = mapper.createObjectNode();
 
 					    for (DatasetGlycoproteinMetadata col : rowMap.get(key)) {
@@ -240,23 +291,41 @@ public class ScheduledTasksService {
 					        if (col.getDatatype() == null) {
 					            continue;
 					        }
-
-					        String fieldName = getFieldForDatatype(col.getDatatype(), metadataDefinitions);
-
-					        if (fieldName == null) {
-					            fieldName = col.getDatatype().getName().toLowerCase();
+					        
+					        if (metadataExists) { // no need to get the other metadata
+					        	continue;
 					        }
-					        addDatatype(col.getDatatype(), metadataNode, fieldName, mapper, 
-					        		col.getValue(), col.getValueId(), col.getValueUri());
-					    }
+					        
+					        if (col.getValue() != null && !col.getValue().isBlank()) {
+					        	if(col.getDatatype().getDatatypeId() == 13L || col.getDatatype().getDatatypeId() == 6L ) {
+					        		sampleType = MetadataType.BIOLOGICAL_SAMPLE_BACKGROUND_ALTERATION;
+					        	}
 
-					    DatasetMetadataGroup group = new DatasetMetadataGroup();
-					    group.setValue(metadataNode);
-					    rec.setMetadataGroup(group);
-					    records.add(rec);
+						        String fieldName = getFieldForDatatype(col.getDatatype(), metadataDefinitions);
+	
+						        if (fieldName == null) {
+						            fieldName = col.getDatatype().getName().toLowerCase();
+						        }
+						        addDatatype(col.getDatatype(), metadataNode, fieldName, mapper, 
+						        		col.getValue(), col.getValueId(), col.getValueUri());
+					        }
+					    }
+					    
+					    if (!metadataExists) {
+						    DatasetMetadataGroup group = new DatasetMetadataGroup();
+						    group.setValue(metadataNode);
+						    group.setSampleType(sampleType);
+						    group = datasetMetadataGroupRepository.save(group);
+						    metadataGroupMap.put(collectionId, group);
+						    
+						    rec.setMetadataGroup(group);
+						    rec.setDataset(version);
+						    records.add(rec);
+					    }
 					}
 					
-					version.setGlycoproteinRecords(records);
+					version.getGlycoproteinRecords().clear();
+					version.getGlycoproteinRecords().addAll(records);
 					updated = true;
 				}
 			}
@@ -272,7 +341,7 @@ public class ScheduledTasksService {
 	private void addDatatype (Datatype datatype, ObjectNode metadataNode, String fieldName, 
 			ObjectMapper mapper, String value, String valueId, String valueUri) {
 		if (datatype.getNamespace() != null &&
-	            datatype.getNamespace().getHasId()) { // Ontology fields
+	            Boolean.TRUE.equals(datatype.getNamespace().getHasId())) { // Ontology fields
 	            if (datatype.getMultiple()) {
 	                ArrayNode array = getOrCreateArray(metadataNode, fieldName);
 	                ObjectNode valueNode = mapper.createObjectNode();
@@ -291,9 +360,17 @@ public class ScheduledTasksService {
 	            JsonNode contrib = DataController.convertContributor(mapper, value);
 	            metadataNode.set(fieldName, contrib);
 	        } else {
-	            if (datatype.getMultiple()) {
-	                ArrayNode array = getOrCreateArray(metadataNode, fieldName);
-	                array.add(value);
+	            if (Boolean.TRUE.equals(datatype.getMultiple())) {
+	            	if (value.contains("|")) {
+	            		String[] values = value.split("|");
+	            		for (String val: values) {
+	            			ArrayNode array = getOrCreateArray(metadataNode, fieldName);
+	    	                array.add(val);
+	            		}
+	            	} else {
+	            		ArrayNode array = getOrCreateArray(metadataNode, fieldName);
+	            		array.add(value);
+	            	}
 	            } else {
 	                metadataNode.put(fieldName, value);
 	            }
@@ -320,10 +397,17 @@ public class ScheduledTasksService {
 		JsonNode fieldDefinitions = metadataDefinitions.path("biological_sample_background_alteration").path("fields");
 
 		for (JsonNode field : fieldDefinitions) {
-		    if (datatype.getDatatypeId().equals(field.path("datatypeId").asLong())) {
+		    if (datatype.getDatatypeId().equals(field.path("datatype").asLong())) {
 		        return field.path("id").asText();
 		    }
 		}
+		fieldDefinitions = metadataDefinitions.path("general");
+		for (JsonNode field : fieldDefinitions) {
+		    if (datatype.getDatatypeId().equals(field.path("datatype").asLong())) {
+		        return field.path("id").asText();
+		    }
+		}
+		
 		return null;
 	}
 	

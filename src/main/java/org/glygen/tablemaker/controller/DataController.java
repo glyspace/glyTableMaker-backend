@@ -806,7 +806,7 @@ public class DataController {
         
         List<CollectionView> collections = new ArrayList<>();
         for (Collection c: collectionsInPage.getContent()) {
-        	CollectionView cv = createCollectionView (c, imageLocation);
+        	CollectionView cv = createCollectionView (c, imageLocation, collectionRepository);
         	collections.add(cv);
         }
         
@@ -961,7 +961,7 @@ public class DataController {
         
         List<CollectionView> collections = new ArrayList<>();
         for (Collection c: collectionsInPage.getContent()) {
-        	CollectionView cv = createCollectionView (c, imageLocation);
+        	CollectionView cv = createCollectionView (c, imageLocation, collectionRepository);
         	collections.add(cv);
         }
         
@@ -990,12 +990,12 @@ public class DataController {
             throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
         }
         
-        CollectionView cv = createCollectionView (existing, imageLocation);
+        CollectionView cv = createCollectionView (existing, imageLocation, collectionRepository);
         
         return new ResponseEntity<>(new SuccessResponse<CollectionView>(cv, "collection retrieved"), HttpStatus.OK);
     }
     
-    static CollectionView createCollectionView (Collection collection, String imageLocation) {
+    static CollectionView createCollectionView (Collection collection, String imageLocation, CollectionRepository collectionRepository) {
     	CollectionView cv = new CollectionView();
         cv.setCollectionId(collection.getCollectionId());
     	cv.setName(collection.getName());
@@ -1003,7 +1003,7 @@ public class DataController {
     		collection.setType(CollectionType.GLYCAN);
     	cv.setType(collection.getType());
     	cv.setDescription(collection.getDescription());
-    	if (collection.getMetadata() != null && !collection.getMetadata().isEmpty()) {
+    	if (collection.getMetadata() != null && !collection.getMetadata().isEmpty() && collection.getMetadataValues() == null) {
     		// generate new JSON object
     		cv.setMetadataValues (generateMetadataValues (collection.getMetadata()));
     		collection.setMetadataValues(cv.getMetadataValues());
@@ -1015,6 +1015,7 @@ public class DataController {
     		} else {
     			collection.setSampleType(MetadataType.BIOLOGICAL_SAMPLE);
     		}
+    		collectionRepository.save(collection);
     	} else if (collection.getMetadataValues() != null) {
     		cv.setMetadataValues(collection.getMetadataValues());
     		cv.setSampleType(collection.getSampleType());
@@ -1263,7 +1264,7 @@ public class DataController {
             throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
         }
         
-        CollectionView cv = createCollectionView(existing, imageLocation);
+        CollectionView cv = createCollectionView(existing, imageLocation, collectionRepository);
         
         return new ResponseEntity<>(new SuccessResponse<CollectionView>(cv, "collection retrieved"), HttpStatus.OK);
     }
@@ -2082,7 +2083,7 @@ public class DataController {
     		saved = collectionManager.saveCollectionWithMetadata(saved);
     	}*/
     	
-    	CollectionView sv = createCollectionView(saved, imageLocation);
+    	CollectionView sv = createCollectionView(saved, imageLocation, collectionRepository);
     	return new ResponseEntity<>(new SuccessResponse<CollectionView>(sv, "collection added"), HttpStatus.OK);
     }
     
@@ -2351,7 +2352,7 @@ public class DataController {
         if (existing.isEmpty()) {
         	throw new EntityNotFoundException("collection with the given name does not exist!");
         }
-        CollectionView result = createCollectionView(existing.get(0), imageLocation);
+        CollectionView result = createCollectionView(existing.get(0), imageLocation, collectionRepository);
         return new ResponseEntity<>(new SuccessResponse<CollectionView>(result, "collection retrieved"), HttpStatus.OK);
     }
 
@@ -2551,7 +2552,7 @@ public class DataController {
     	//Collection saved = collectionManager.saveCollectionWithMetadata(existing);
     	Collection saved = collectionRepository.save(existing);
     	
-    	CollectionView cv = createCollectionView(saved, imageLocation);
+    	CollectionView cv = createCollectionView(saved, imageLocation, collectionRepository);
     	return new ResponseEntity<>(new SuccessResponse<CollectionView>(cv, "collection updated"), HttpStatus.OK);
     }
     
@@ -2623,7 +2624,7 @@ public class DataController {
     	}
     	
     	Collection saved = collectionRepository.save(existing);
-    	CollectionView cv = createCollectionView(saved, imageLocation);
+    	CollectionView cv = createCollectionView(saved, imageLocation, collectionRepository);
     	return new ResponseEntity<>(new SuccessResponse<CollectionView>(cv, "collection of collections updated"), HttpStatus.OK);
     }
     

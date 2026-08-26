@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface DatasetMetadataRecordRepository extends JpaRepository<DatasetMetadataRecord, Long>, JpaSpecificationExecutor<DatasetMetadataRecord> {
 
-    Page<DatasetMetadataRecord> findByDatasetVersionVersionId(Long versionId, Pageable pageable);
-    Page<DatasetMetadataRecord> findByDatasetVersionDatasetDatasetIdentifierIdAndDatasetVersionHeadTrue(String datasetIdentifier,Pageable pageable);
+    Page<DatasetMetadataRecord> findByDatasetVersionId(Long versionId, Pageable pageable);
+    Page<DatasetMetadataRecord> findByDatasetDatasetDatasetIdentifierAndDatasetHeadTrue(String datasetIdentifier,Pageable pageable);
     Page<DatasetMetadataRecord> findAll(Specification<DatasetMetadataRecord> spec, Pageable pageable);
 }

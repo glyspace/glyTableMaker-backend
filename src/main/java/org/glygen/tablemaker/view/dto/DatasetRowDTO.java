@@ -1,5 +1,7 @@
 package org.glygen.tablemaker.view.dto;
 
+import org.glygen.tablemaker.persistence.glycan.MetadataType;
+
 import com.fasterxml.jackson.databind.JsonNode;
 
 public class DatasetRowDTO {
@@ -7,6 +9,7 @@ public class DatasetRowDTO {
     private String glytoucanId;
     private JsonNode metadata;
     private String version;
+    private MetadataType sampleType;
     
 	public Long getId() {
 		return id;
@@ -31,5 +34,11 @@ public class DatasetRowDTO {
 	}
 	public void setVersion(String version) {
 		this.version = version;
+	}
+	public MetadataType getSampleType() {
+		return sampleType;
+	}
+	public void setSampleType(MetadataType sampleType) {
+		this.sampleType = sampleType;
 	}
 }

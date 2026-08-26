@@ -202,9 +202,9 @@ public class PublicDataController {
         if (type.equalsIgnoreCase("glycoprotein")) { 
         	Page<DatasetGlycoproteinMetadataRecord> rows = null;
         	if (versionId != null) {
-        		rows = datasetGlycoproteinDataRepository.findByDatasetVersionVersionId(versionId, PageRequest.of(start, size, Sort.by(sortOrders)));
+        		rows = datasetGlycoproteinDataRepository.findByDatasetVersionId(versionId, PageRequest.of(start, size, Sort.by(sortOrders)));
         	} else {
-        		rows = datasetGlycoproteinDataRepository.findByDatasetVersionDatasetDatasetIdentifierIdAndDatasetVersionHeadTrue(datasetId, PageRequest.of(start, size, Sort.by(sortOrders)));
+        		rows = datasetGlycoproteinDataRepository.findByDatasetDatasetDatasetIdentifierAndDatasetHeadTrue(datasetId, PageRequest.of(start, size, Sort.by(sortOrders)));
         	}
         	
         	List<DatasetGlycoproteinRowDTO> result = new ArrayList<DatasetGlycoproteinRowDTO>();
@@ -217,7 +217,10 @@ public class PublicDataController {
         		dto.setGlycosylationType(rec.getGlycosylationType());
         		dto.setSite(rec.getSite());
         		dto.setUniProtId(rec.getUniProtId());
-        		if (rec.getMetadataGroup() != null) dto.setMetadata(rec.getMetadataGroup().getValue());
+        		if (rec.getMetadataGroup() != null) {
+        			dto.setMetadata(rec.getMetadataGroup().getValue());
+        			dto.setSampleType(rec.getMetadataGroup().getSampleType());
+        		}
         		dto.setVersion(rec.getDataset().getVersion());
         		result.add(dto);
         	}
@@ -257,9 +260,9 @@ public class PublicDataController {
         } else {
         	Page<DatasetMetadataRecord> rows = null;
         	if (versionId != null) {
-        		rows = datasetDataRepository.findByDatasetVersionVersionId(versionId, PageRequest.of(start, size, Sort.by(sortOrders)));
+        		rows = datasetDataRepository.findByDatasetVersionId(versionId, PageRequest.of(start, size, Sort.by(sortOrders)));
         	} else {
-        		rows = datasetDataRepository.findByDatasetVersionDatasetDatasetIdentifierIdAndDatasetVersionHeadTrue(datasetId, PageRequest.of(start, size, Sort.by(sortOrders)));
+        		rows = datasetDataRepository.findByDatasetDatasetDatasetIdentifierAndDatasetHeadTrue(datasetId, PageRequest.of(start, size, Sort.by(sortOrders)));
         	}
         	
         	List<DatasetRowDTO> result = new ArrayList<DatasetRowDTO>();
@@ -267,7 +270,10 @@ public class PublicDataController {
         		DatasetRowDTO dto = new DatasetRowDTO();
         		dto.setId( rec.getId());
         		dto.setGlytoucanId(rec.getGlytoucanId());
-        		if (rec.getMetadataGroup() != null) dto.setMetadata(rec.getMetadataGroup().getValue());
+        		if (rec.getMetadataGroup() != null) {
+        			dto.setMetadata(rec.getMetadataGroup().getValue());
+        			dto.setSampleType(rec.getMetadataGroup().getSampleType());
+        		}
         		dto.setVersion(rec.getDataset().getVersion());
         		result.add(dto);
         	}

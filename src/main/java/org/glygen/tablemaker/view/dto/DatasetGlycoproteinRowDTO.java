@@ -1,5 +1,7 @@
 package org.glygen.tablemaker.view.dto;
 
+import org.glygen.tablemaker.persistence.glycan.MetadataType;
+
 import com.fasterxml.jackson.databind.JsonNode;
 
 public class DatasetGlycoproteinRowDTO {
@@ -12,6 +14,7 @@ public class DatasetGlycoproteinRowDTO {
     private String glycosylationSubType;
     private JsonNode metadata;
     private String version;
+    private MetadataType sampleType;
     
 	public Long getId() {
 		return id;
@@ -66,5 +69,11 @@ public class DatasetGlycoproteinRowDTO {
 	}
 	public void setGlycosylationSubType(String glycosylationSubType) {
 		this.glycosylationSubType = glycosylationSubType;
+	}
+	public MetadataType getSampleType() {
+		return sampleType;
+	}
+	public void setSampleType(MetadataType sampleType) {
+		this.sampleType = sampleType;
 	}
 }

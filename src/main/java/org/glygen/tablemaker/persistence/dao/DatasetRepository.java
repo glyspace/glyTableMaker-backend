@@ -30,19 +30,19 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	public List<Dataset> findAllByNameAndUser (String name, UserEntity user);
 	public List<Dataset> findByNameContainingIgnoreCase (String name);
 	
-	@Query ("select count(distinct(element(dv.glycoproteinRecords).value)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true")
+	@Query ("select count(distinct(element(dv.glycoproteinRecords).uniProtId)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true")
 	public int getProteinCount (@Param("datasetId")Long datasetId);
 	
-	@Query ("select count(distinct(element(dv.glycoproteinRecords).value)) from DatasetVersion dv WHERE dv.version = :version")
+	@Query ("select count(distinct(element(dv.glycoproteinRecords).uniProtId)) from DatasetVersion dv WHERE dv.version = :version")
 	public int getProteinCountByVersion (@Param("version")String version);
 	
-	@Query ("select count(distinct(element(dv.records).value)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true")
+	@Query ("select count(distinct(element(dv.records).glytoucanId)) from DatasetVersion dv WHERE dv.dataset.datasetId = :datasetId AND dv.head = true")
 	public int getGlycanCount (@Param("datasetId")Long datasetId);
 	
-	@Query ("select count(distinct(element(dv.records).value)) from DatasetVersion dv WHERE dv.head = true")
+	@Query ("select count(distinct(element(dv.records).glytoucanId)) from DatasetVersion dv WHERE dv.head = true")
 	public int getAllGlycanCount ();
 	
-	@Query ("select count(distinct(element(dv.glycoproteinRecords).value)) from DatasetVersion dv WHERE dv.head = true")
+	@Query ("select count(distinct(element(dv.glycoproteinRecords).uniProtId)) from DatasetVersion dv WHERE dv.head = true")
 	public int getAllGlycoproteinCount ();
 	
 	@Query("select count(g)from DatasetMetadataRecord g where g.dataset.head = true and g.dataset.dataset.datasetId = :datasetId")
