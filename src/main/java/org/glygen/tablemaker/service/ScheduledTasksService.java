@@ -362,10 +362,10 @@ public class ScheduledTasksService {
 	        } else {
 	            if (Boolean.TRUE.equals(datatype.getMultiple())) {
 	            	if (value.contains("|")) {
-	            		String[] values = value.split("|");
+	            		String[] values = value.split("\\|");
 	            		for (String val: values) {
 	            			ArrayNode array = getOrCreateArray(metadataNode, fieldName);
-	    	                array.add(val);
+	    	                array.add(val.trim());
 	            		}
 	            	} else {
 	            		ArrayNode array = getOrCreateArray(metadataNode, fieldName);

@@ -225,31 +225,6 @@ public class PublicDataController {
         		result.add(dto);
         	}
         	
-        	/*Page<String> rows = null;
-        	if (versionId != null) {
-        		rows = datasetRepository.getGlycoproteinDataByVersion(versionId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
-            } else {
-            	rows = datasetRepository.getGlycoproteinData(datasetId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
-            	versionId = datasetRepository.getLatestVersionIdByDatasetIdentifier(datasetId);
-            }
-        	List<DatasetGlycoproteinMetadata> data = datasetRepository.findGlycoproteinByRowIdInWithVersion(rows.getContent(), versionId);
-        	
-        	Map<String, List<DatasetGlycoproteinMetadata>> rowMap = new HashMap<>();
-			for (DatasetGlycoproteinMetadata m: data) {
-				if (rowMap.get(m.getRowId()) == null) {
-					rowMap.put(m.getRowId(), new ArrayList<>());
-				}
-				rowMap.get(m.getRowId()).add(m);
-			}
-			
-			List<GlygenProteinMetadataRow> result = new ArrayList<>();
-			for (String key: rowMap.keySet()) {
-				GlygenProteinMetadataRow row = new GlygenProteinMetadataRow();
-				row.setRowId(key);
-				row.setColumns(rowMap.get(key));
-				result.add(row);
-			}*/
-        	
         	Map<String, Object> response = new HashMap<>();
             response.put("objects", result);
             response.put("currentPage", rows.getNumber());
@@ -277,29 +252,6 @@ public class PublicDataController {
         		dto.setVersion(rec.getDataset().getVersion());
         		result.add(dto);
         	}
-        	
-        	/*Page<String> rows = null;
-        	if (versionId != null) {
-        		rows = datasetRepository.getDataByVersion(versionId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
-            } else {
-            	rows = datasetRepository.getData(datasetId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
-            	versionId = datasetRepository.getLatestVersionIdByDatasetIdentifier(datasetId);
-            }
-        	List<DatasetMetadata> data = datasetRepository.findByRowIdInWithVersion(rows.getContent(), versionId);
-        	Map<String, List<DatasetMetadata>> rowMap = new HashMap<>();
-			for (DatasetMetadata m: data) {
-				if (rowMap.get(m.getRowId()) == null) {
-					rowMap.put(m.getRowId(), new ArrayList<>());
-				}
-				rowMap.get(m.getRowId()).add(m);
-			}
-			List<GlygenMetadataRow> result = new ArrayList<>();
-			for (String key: rowMap.keySet()) {
-				GlygenMetadataRow row = new GlygenMetadataRow();
-				row.setRowId(key);
-				row.setColumns(rowMap.get(key));
-				result.add(row);
-			}*/
 			
         	Map<String, Object> response = new HashMap<>();
             response.put("objects", result);
@@ -459,7 +411,8 @@ public class PublicDataController {
 		String filename = table.getFilename() != null ? table.getFilename() : "GlygenDataset";
 		File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ".csv");
 		
-		
+		//TODO update below to use "records" and generate JSON??
+
 		try {
 			if (table.getData() != null && !table.getData().isEmpty()) {
 				// get GlygenTemplate
@@ -565,8 +518,7 @@ public class PublicDataController {
 			return FileController.download(newFile, filename+".csv", null);
 		} catch (IOException e) {
 			throw new IllegalArgumentException ("Failed to generate download file. Reason: " + e.getMessage());
-		}
-		
+		}	
 	}
 	
 	@Operation(summary = "Generate table for the given dataset and download")
@@ -604,9 +556,9 @@ public class PublicDataController {
 		DatasetTableDownloadView downloadView = new DatasetTableDownloadView();
 		downloadView.setFilename(fileName);
 		if (type.equalsIgnoreCase("glycoprotein")) {
-			downloadView.setGlycoproteinData((List<GlygenProteinMetadataRow>) data.getBody().getData().get("objects"));
+			downloadView.setGlycoproteinRecords((List<DatasetGlycoproteinRowDTO>) data.getBody().getData().get("objects"));
 		} else {
-			downloadView.setData((List<GlygenMetadataRow>) data.getBody().getData().get("objects"));
+			downloadView.setRecords((List<DatasetRowDTO>) data.getBody().getData().get("objects"));
 		}
 		downloadView.setVersion(dv.getVersion());
 		
