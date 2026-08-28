@@ -96,7 +96,6 @@ import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
 import org.glygen.tablemaker.persistence.dao.CollectionTagRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
-import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
@@ -105,7 +104,6 @@ import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinSpecification;
 import org.glygen.tablemaker.persistence.dao.SettingRepository;
 import org.glygen.tablemaker.persistence.dao.TableReportRepository;
-import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
@@ -254,8 +252,6 @@ public class DataController {
     final private GlycoproteinRepository glycoproteinRepository;
     final private BatchUploadJobRepository batchUploadJobRepository;
     final private ErrorReportingService errorReportingService;
-    final private TemplateRepository templateRepository;
-	private final DatatypeCategoryRepository datatypeCategoryRepository;
 	final private SettingRepository settingRepository;
     
     @Value("${spring.file.imagedirectory}")
@@ -279,8 +275,7 @@ public class DataController {
     		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
     		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository, 
     		ErrorReportingService errorReportingService, GlycanTagRepository glycanTagRepository, 
-    		CollectionTagRepository collectionTagRepository, TemplateRepository templateRepository, 
-    		DatatypeCategoryRepository datatypeCategoryRepository, SettingRepository settingRepository) {
+    		CollectionTagRepository collectionTagRepository, SettingRepository settingRepository) {
         this.glycanRepository = glycanRepository;
 		this.glycanTagRepository = glycanTagRepository;
 		this.collectionRepository = collectionRepository;
@@ -296,8 +291,6 @@ public class DataController {
 		this.glycoproteinRepository = glycoproteinRepository;
 		this.batchUploadJobRepository = batchUploadJobRepository;
 		this.errorReportingService = errorReportingService;
-		this.templateRepository = templateRepository;
-		this.datatypeCategoryRepository = datatypeCategoryRepository;
 		this.settingRepository = settingRepository;
     }
     
@@ -686,7 +679,8 @@ public class DataController {
         
         //populate errors/warnings
         for (CollectionView col: collections) {
-        	DatasetController.getErrorsForCollection(col, templateRepository, datatypeCategoryRepository, collectionRepository);
+        	//DatasetController.getErrorsForCollection(col, templateRepository, datatypeCategoryRepository, collectionRepository);
+        	DatasetController.validateMetadataForCollection(getClass(), col, collectionRepository);
         }
         return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
     }
@@ -852,7 +846,8 @@ public class DataController {
         
         //populate errors/warnings
         for (CollectionView col: collections) {
-        	DatasetController.getErrorsForCollection(col, templateRepository, datatypeCategoryRepository, collectionRepository);
+        	//DatasetController.getErrorsForCollection(col, templateRepository, datatypeCategoryRepository, collectionRepository);
+        	DatasetController.validateMetadataForCollection(getClass(), col, collectionRepository);
         }
         return new ResponseEntity<>(new SuccessResponse(response, "collections of collections retrieved"), HttpStatus.OK);
     }

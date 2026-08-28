@@ -336,6 +336,20 @@ public class ScheduledTasksService {
 			}
 		}
 		logger.info("Done migrating " + count + " datasets on " + new Date());
+		
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			for (Dataset d: datasets) {
+				for (DatasetVersion v: d.getVersions()) {
+					v.getData().clear();
+					v.getGlycoproteinData().clear();
+				}
+			}
+			mapper.writerWithDefaultPrettyPrinter().writeValue(new File("datasets.json"), datasets);
+		} catch (Exception e) {
+			logger.info("Could not generate dataset Json", e);
+		}
+		logger.info("Done generating dataset json");
 	}
 	
 	private void addDatatype (Datatype datatype, ObjectNode metadataNode, String fieldName, 

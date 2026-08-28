@@ -1,22 +1,21 @@
 {
-    "biological_sample" : {
+    "biological_sample": {
         "fields": [
             {
                 "id": "species",
                 "label": "Species",
-                "datatype": 3,
                 "description": "Select the organism from which the sample was obtained. Use the species-level taxonomy entry whenever possible; the submitted value should correspond to an NCBI Taxonomy term.",
                 "example": "Home sapiens",
                 "required": true,
                 "multiple": false,
                 "namespace": "NCBI Taxonomy",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 3
             },
             {
                 "id": "tissue",
                 "label": "Tissue",
-                "datatype": 5,
                 "description": "Specify the tissue or anatomical structure from which the sample was collected. Select the most specific tissue term available from the Uberon for animals and PlantOntology for plants.",
                 "example": "Liver",
                 "required": false,
@@ -24,56 +23,56 @@
                 "namespace": "UBERON",
                 "alternativeNamespace": "Plant",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 5
             },
             {
                 "id": "strain",
                 "label": "Strain",
-                "datatype": 4,
                 "description": "Enter the strain the organism if known. Use the designation commonly reported in publications or vendor documentation.",
                 "example": "C57BL/6J",
                 "required": false,
                 "multiple": false,
-                "type": "text"
+                "type": "text",
+                "datatype": 4
             },
             {
                 "id": "disease",
                 "label": "Disease",
-                "datatype": 7,
                 "description": "Specify any disease or pathological condition associated with the organism or sample source. Add multiple entries if more than one disease is relevant.",
                 "example": "Type 2 diabetes mellitus",
                 "required": false,
                 "multiple": true,
                 "namespace": "Disease",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 7
             },
             {
                 "id": "cellularComponent",
                 "label": "Cellular Component",
-                "datatype": 18,
                 "description": "Indicate the cellular location from which glycans or glycoproteins were isolated or are known to reside. Select the most appropriate Gene Ontology cellular component term.",
                 "example": "Plasma membrane",
                 "required": false,
                 "multiple": true,
                 "namespace": "Cellular Component",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 18
             },
             {
                 "id": "developmentalStage",
                 "label": "Developmental Stage",
-                "datatype": 19,
                 "description": "Describe the developmental, growth, or life-cycle stage of the organism at the time of sampling. Use a clear and commonly accepted stage description.",
                 "example": "Adult",
                 "required": false,
                 "multiple": false,
-                "type": "text"
+                "type": "text",
+                "datatype": 19
             },
             {
                 "id": "perturbation",
                 "label": "Other perturbation",
-                "datatype": 22,
                 "title": "Were there external perturbations that might have an effect on the provided data?",
                 "type": "complex",
                 "required": false,
@@ -82,55 +81,55 @@
                     {
                         "id": "radiation",
                         "label": "Radiation",
-                        "datatype": 30,
                         "description": "Describe any exposure of the sample or organism to ionizing or non-ionizing radiation before collection. Include radiation type and dose when available.",
                         "example": "5 Gy gamma irradiation",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 30
                     },
                     {
                         "id": "chemical",
                         "label": "Chemical",
-                        "datatype": 31,
                         "description": "List chemicals or media additives to which the sample was exposed prior to collection. Include concentration and treatment duration when known.",
                         "example": "Additional 25 mM glucose added to culture media",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 31
                     },
                     {
                         "id": "drug",
                         "label": "Drug",
-                        "datatype": 32,
                         "description": "Record any drug treatment administered to the organism, tissue, or cells before sample collection. Include the drug name and, if available, concentration or dosage.",
                         "example": "Doxorubicin, 1 µM for 24 hours",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 32
                     }
-                ]
+                ],
+                "datatype": 22
             }
         ]
     },
-    "biological_sample_background_alteration" : {
+    "biological_sample_background_alteration": {
         "fields": [
             {
                 "id": "species",
                 "label": "Species",
-                "datatype": 3,
                 "description": "Select the organism from which the sample was obtained. Use the species-level taxonomy entry whenever possible; the submitted value should correspond to an NCBI Taxonomy term.",
                 "example": "Home sapiens",
                 "required": true,
                 "multiple": false,
                 "namespace": "NCBI Taxonomy",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 3
             },
             {
                 "id": "tissue",
                 "label": "Tissue",
-                "datatype": 5,
                 "description": "Specify the tissue or anatomical structure from which the sample was collected. Select the most specific tissue term available from the Uberon for animals and PlantOntology for plants.",
                 "example": "Liver",
                 "required": false,
@@ -138,67 +137,67 @@
                 "namespace": "UBERON",
                 "alternativeNamespace": "Plant",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 5
             },
             {
                 "id": "strain",
                 "label": "Strain",
-                "datatype": 4,
                 "description": "Enter the strain the organism if known. Use the designation commonly reported in publications or vendor documentation.",
                 "example": "C57BL/6J",
                 "required": false,
                 "multiple": false,
-                "type": "text"
+                "type": "text",
+                "datatype": 4
             },
             {
                 "id": "disease",
                 "label": "Disease",
-                "datatype": 7,
                 "description": "Specify any disease or pathological condition associated with the organism or sample source. Add multiple entries if more than one disease is relevant.",
                 "example": "Type 2 diabetes mellitus",
                 "required": false,
                 "multiple": true,
                 "namespace": "Disease",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 7
             },
             {
                 "id": "cellularComponent",
                 "label": "Cellular Component",
-                "datatype": 18,
                 "description": "Indicate the cellular location from which glycans or glycoproteins were isolated or are known to reside. Select the most appropriate Gene Ontology cellular component term.",
                 "example": "Plasma membrane",
                 "required": false,
                 "multiple": true,
                 "namespace": "Cellular Component",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 18
             },
             {
                 "id": "developmentalStage",
                 "label": "Developmental Stage",
-                "datatype": 19,
                 "description": "Describe the developmental, growth, or life-cycle stage of the organism at the time of sampling. Use a clear and commonly accepted stage description.",
                 "example": "Adult",
                 "required": false,
                 "multiple": false,
-                "type": "text"
+                "type": "text",
+                "datatype": 19
             },
             {
                 "id": "variant",
                 "label": "Variant",
-                "datatype": 13,
                 "description": "Enter the name or identifier of the organism variant being studied. Use the designation reported in publications, stock centers, or laboratory records so the variant can be traced to its underlying genetic alterations.",
                 "example": "Mgat5-/- mouse",
                 "required": false,
                 "multiple": false,
                 "secondSection": true,
-                "type": "text"
+                "type": "text",
+                "datatype": 13
             },
             {
                 "id": "cellline",
                 "label": "Cell line",
-                "datatype": 6,
                 "description": "Select the cell line from Cellosaurus whenever available. If a modified or derivative cell line was used, choose the corresponding Cellosaurus entry or provide an approved 'other' value when necessary.",
                 "example": "HEK293",
                 "required": false,
@@ -206,12 +205,12 @@
                 "namespace": "Cellosaurus",
                 "allowOther": true,
                 "secondSection": true,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 6
             },
             {
                 "id": "geneticBackgroundAlteration",
                 "label": "Genetic Background Alteration",
-                "datatype": 21,
                 "title": "How was origin of the biological sample altered?",
                 "description": "Describe each natural or engineered genetic alteration that could affect glycan composition or glycosylation. Add a separate entry for every relevant modification present in the sample.",
                 "type": "complex",
@@ -226,7 +225,8 @@
                         "example": "rt(2/P)",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 24
                     },
                     {
                         "id": "molecularPhenotype",
@@ -236,7 +236,15 @@
                         "multiple": false,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["Knockout", "gain of function", "loss of function", "Hypermorph", "Hypomorph", "knockin", "other"]
+                        "options": [
+                            "Knockout",
+                            "gain of function",
+                            "loss of function",
+                            "Hypermorph",
+                            "Hypomorph",
+                            "knockin"
+                        ],
+                        "datatype": 25
                     },
                     {
                         "id": "gene",
@@ -245,7 +253,8 @@
                         "example": "Mgat5",
                         "required": true,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 29
                     },
                     {
                         "id": "mutantSpecies",
@@ -253,10 +262,15 @@
                         "description": "For knock-in experiments involving a gene from another organism, specify the source species of the inserted gene. Select the organism using an NCBI Taxonomy term.",
                         "example": "Home sapiens",
                         "required": true,
+                        "requiredWhen": {
+                            "field": "molecularPhenotype",
+                            "value": "knockin"
+                        },
                         "multiple": false,
                         "namespace": "NCBI Taxonomy",
                         "allowOther": false,
-                        "type": "autocomplete"
+                        "type": "autocomplete",
+                        "datatype": 3
                     },
                     {
                         "id": "mutantPosition",
@@ -265,7 +279,8 @@
                         "example": "G66D",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 26
                     },
                     {
                         "id": "mutantOrigin",
@@ -275,7 +290,11 @@
                         "multiple": false,
                         "allowOther": false,
                         "type": "select",
-                        "options": ["targeted", "spontanous"]
+                        "options": [
+                            "targeted",
+                            "spontanous"
+                        ],
+                        "datatype": 27
                     },
                     {
                         "id": "technique",
@@ -285,14 +304,21 @@
                         "multiple": true,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["X-Ray", "Chemical", "Transposon", "UV", "Crisp", "Other"]
+                        "options": [
+                            "X-Ray",
+                            "Chemical",
+                            "Transposon",
+                            "UV",
+                            "Crisp"
+                        ],
+                        "datatype": 28
                     }
-                ]
+                ],
+                "datatype": 21
             },
             {
                 "id": "perturbation",
                 "label": "Other perturbation",
-                "datatype": 22,
                 "title": "Were there external perturbations that might have an effect on the provided data?",
                 "type": "complex",
                 "required": false,
@@ -305,16 +331,18 @@
                         "example": "5 Gy gamma irradiation",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 30
                     },
                     {
                         "id": "chemical",
-                        "label": "Chemical", 
+                        "label": "Chemical",
                         "description": "List chemicals or media additives to which the sample was exposed prior to collection. Include concentration and treatment duration when known.",
                         "example": "Additional 25 mM glucose added to culture media",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 31
                     },
                     {
                         "id": "drug",
@@ -323,9 +351,11 @@
                         "example": "Doxorubicin, 1 µM for 24 hours",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 32
                     }
-                ]
+                ],
+                "datatype": 22
             }
         ]
     },
@@ -334,19 +364,18 @@
             {
                 "id": "species",
                 "label": "Species",
-                "datatype": 3,
                 "description": "Select the organism from which the sample was obtained. Use the species-level taxonomy entry whenever possible; the submitted value should correspond to an NCBI Taxonomy term.",
                 "example": "Home sapiens",
                 "required": true,
                 "multiple": false,
                 "namespace": "NCBI Taxonomy",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 3
             },
             {
                 "id": "tissue",
                 "label": "Tissue",
-                "datatype": 5,
                 "description": "Specify the tissue or anatomical structure from which the sample was collected. Select the most specific tissue term available from the Uberon for animals and PlantOntology for plants.",
                 "example": "Liver",
                 "required": false,
@@ -354,56 +383,56 @@
                 "namespace": "UBERON",
                 "alternativeNamespace": "Plant",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 5
             },
             {
                 "id": "strain",
                 "label": "Strain",
-                "datatype": 4,
                 "description": "Enter the strain the organism if known. Use the designation commonly reported in publications or vendor documentation.",
                 "example": "C57BL/6J",
                 "required": false,
                 "multiple": false,
-                "type": "text"
+                "type": "text",
+                "datatype": 4
             },
             {
                 "id": "disease",
                 "label": "Disease",
-                "datatype": 7,
                 "description": "Specify any disease or pathological condition associated with the organism or sample source. Add multiple entries if more than one disease is relevant.",
                 "example": "Type 2 diabetes mellitus",
                 "required": false,
                 "multiple": true,
                 "namespace": "Disease",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 7
             },
             {
                 "id": "cellularComponent",
                 "label": "Cellular Component",
-                "datatype": 18,
                 "description": "Indicate the cellular location from which glycans or glycoproteins were isolated or are known to reside. Select the most appropriate Gene Ontology cellular component term.",
                 "example": "Plasma membrane",
                 "required": false,
                 "multiple": true,
                 "namespace": "Cellular Component",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 18
             },
             {
                 "id": "developmentalStage",
                 "label": "Developmental Stage",
-                "datatype": 19,
                 "description": "Describe the developmental, growth, or life-cycle stage of the organism at the time of sampling. Use a clear and commonly accepted stage description.",
                 "example": "Adult",
                 "required": false,
                 "multiple": false,
-                "type": "text"
+                "type": "text",
+                "datatype": 19
             },
             {
                 "id": "analyzedProteinMutation",
                 "label": "Analyzed Protein Mutation",
-                "datatype": 20,
                 "title": "How was the analyzed protein altered?",
                 "description": "Describe each amino acid change, deletion, insertion, or engineered modification present in the analyzed protein. Add a separate entry for each protein alteration that may affect protein function, glycosylation, or glycan occupancy.",
                 "type": "complex",
@@ -418,7 +447,8 @@
                         "example": "HER2-N571Q",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 24
                     },
                     {
                         "id": "molecularPhenotype",
@@ -428,7 +458,13 @@
                         "multiple": false,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["gain of function", "loss of function", "Hypermorph", "Hypomorph", "Other"]
+                        "options": [
+                            "gain of function",
+                            "loss of function",
+                            "Hypermorph",
+                            "Hypomorph"
+                        ],
+                        "datatype": 25
                     },
                     {
                         "id": "mutantPosition",
@@ -437,7 +473,8 @@
                         "example": "N66K",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 26
                     },
                     {
                         "id": "mutantOrigin",
@@ -447,7 +484,11 @@
                         "multiple": false,
                         "allowOther": false,
                         "type": "select",
-                        "options": ["targeted", "spontanous"]
+                        "options": [
+                            "targeted",
+                            "spontanous"
+                        ],
+                        "datatype": 27
                     },
                     {
                         "id": "technique",
@@ -457,14 +498,21 @@
                         "multiple": true,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["X-Ray", "Chemical", "Transposon", "UV", "Crisp", "Other"]
+                        "options": [
+                            "X-Ray",
+                            "Chemical",
+                            "Transposon",
+                            "UV",
+                            "Crisp"
+                        ],
+                        "datatype": 28
                     }
-                ]
+                ],
+                "datatype": 20
             },
             {
                 "id": "perturbation",
                 "label": "Other perturbation",
-                "datatype": 22,
                 "title": "Were there external perturbations that might have an effect on the provided data?",
                 "type": "complex",
                 "required": false,
@@ -477,16 +525,18 @@
                         "example": "5 Gy gamma irradiation",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 30
                     },
                     {
                         "id": "chemical",
-                        "label": "Chemical", 
+                        "label": "Chemical",
                         "description": "List chemicals or media additives to which the sample was exposed prior to collection. Include concentration and treatment duration when known.",
                         "example": "Additional 25 mM glucose added to culture media",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 31
                     },
                     {
                         "id": "drug",
@@ -495,30 +545,31 @@
                         "example": "Doxorubicin, 1 µM for 24 hours",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 32
                     }
-                ]
+                ],
+                "datatype": 22
             }
         ]
     },
-    "protein_mutation_background_alteration" : {
+    "protein_mutation_background_alteration": {
         "fields": [
             {
                 "id": "species",
                 "label": "Species",
-                "datatype": 3,
                 "description": "Select the organism from which the sample was obtained. Use the species-level taxonomy entry whenever possible; the submitted value should correspond to an NCBI Taxonomy term.",
                 "example": "Home sapiens",
                 "required": true,
                 "multiple": false,
                 "namespace": "NCBI Taxonomy",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 3
             },
             {
                 "id": "tissue",
                 "label": "Tissue",
-                "datatype": 5,
                 "description": "Specify the tissue or anatomical structure from which the sample was collected. Select the most specific tissue term available from the Uberon for animals and PlantOntology for plants.",
                 "example": "Liver",
                 "required": false,
@@ -526,78 +577,78 @@
                 "namespace": "UBERON",
                 "alternativeNamespace": "Plant",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 5
             },
             {
                 "id": "strain",
                 "label": "Strain",
-                "datatype": 4,
                 "description": "Enter the strain the organism if known. Use the designation commonly reported in publications or vendor documentation.",
                 "example": "C57BL/6J",
                 "required": false,
                 "multiple": false,
-                "type": "text"
+                "type": "text",
+                "datatype": 4
             },
             {
                 "id": "disease",
                 "label": "Disease",
-                "datatype": 7,
                 "description": "Specify any disease or pathological condition associated with the organism or sample source. Add multiple entries if more than one disease is relevant.",
                 "example": "Type 2 diabetes mellitus",
                 "required": false,
                 "multiple": true,
                 "namespace": "Disease",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 7
             },
             {
                 "id": "cellularComponent",
                 "label": "Cellular Component",
-                "datatype": 18,
                 "description": "Indicate the cellular location from which glycans or glycoproteins were isolated or are known to reside. Select the most appropriate Gene Ontology cellular component term.",
                 "example": "Plasma membrane",
                 "required": false,
                 "multiple": true,
                 "namespace": "Cellular Component",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 18
             },
             {
                 "id": "developmentalStage",
                 "label": "Developmental Stage",
-                "datatype": 19,
                 "description": "Describe the developmental, growth, or life-cycle stage of the organism at the time of sampling. Use a clear and commonly accepted stage description.",
                 "example": "Adult",
                 "required": false,
                 "multiple": false,
-                "type": "text"
+                "type": "text",
+                "datatype": 19
             },
             {
                 "id": "variant",
                 "label": "Variant",
-                "datatype": 13,
                 "description": "Name of the variant that was studied. In theory the name/ID should be resolvable to the provide the detailed genetic alterations. Realistically this will not be possible across all species.",
                 "required": false,
                 "multiple": false,
                 "secondSection": true,
-                "type": "text"
+                "type": "text",
+                "datatype": 13
             },
             {
                 "id": "cellline",
                 "label": "Cell line",
-                "datatype": 6,
                 "description": "Id of (modified) cell line. We are using Cellosaurus as controlled dictionary for this field.",
                 "required": false,
                 "multiple": false,
                 "namespace": "Cellosaurus",
                 "allowOther": true,
                 "secondSection": true,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 6
             },
             {
                 "id": "analyzedProteinMutation",
                 "label": "Analyzed Protein Mutation",
-                "datatype": 20,
                 "title": "How was the analyzed protein altered?",
                 "description": "Describe each amino acid change, deletion, insertion, or engineered modification present in the analyzed protein. Add a separate entry for each protein alteration that may affect protein function, glycosylation, or glycan occupancy.",
                 "type": "complex",
@@ -612,7 +663,8 @@
                         "example": "HER2-N571Q",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 24
                     },
                     {
                         "id": "molecularPhenotype",
@@ -622,7 +674,13 @@
                         "multiple": false,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["gain of function", "loss of function", "Hypermorph", "Hypomorph", "other"]
+                        "options": [
+                            "gain of function",
+                            "loss of function",
+                            "Hypermorph",
+                            "Hypomorph"
+                        ],
+                        "datatype": 25
                     },
                     {
                         "id": "mutantPosition",
@@ -631,7 +689,8 @@
                         "example": "N66K",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 26
                     },
                     {
                         "id": "mutantOrigin",
@@ -641,7 +700,11 @@
                         "multiple": false,
                         "allowOther": false,
                         "type": "select",
-                        "options": ["targeted", "spontanous"]
+                        "options": [
+                            "targeted",
+                            "spontanous"
+                        ],
+                        "datatype": 27
                     },
                     {
                         "id": "technique",
@@ -651,14 +714,21 @@
                         "multiple": true,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["X-Ray", "Chemical", "Transposon", "UV", "Crisp", "Other"]
+                        "options": [
+                            "X-Ray",
+                            "Chemical",
+                            "Transposon",
+                            "UV",
+                            "Crisp"
+                        ],
+                        "datatype": 28
                     }
-                ]
+                ],
+                "datatype": 20
             },
             {
                 "id": "geneticBackgroundAlteration",
                 "label": "Genetic Background Alteration",
-                "datatype": 21,
                 "title": "How was origin of the biological sample altered?",
                 "description": "Describe each natural or engineered genetic alteration that could affect glycan composition or glycosylation. Add a separate entry for every relevant modification present in the sample.",
                 "type": "complex",
@@ -673,7 +743,8 @@
                         "example": "rt(2/P)",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 24
                     },
                     {
                         "id": "molecularPhenotype",
@@ -683,7 +754,15 @@
                         "multiple": false,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["knockout", "gain of function", "loss of function", "Hypermorph", "Hypomorph", "knockin", "other"]
+                        "options": [
+                            "knockout",
+                            "gain of function",
+                            "loss of function",
+                            "Hypermorph",
+                            "Hypomorph",
+                            "knockin"
+                        ],
+                        "datatype": 25
                     },
                     {
                         "id": "gene",
@@ -692,7 +771,8 @@
                         "example": "Mgat5",
                         "required": true,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 29
                     },
                     {
                         "id": "mutantSpecies",
@@ -700,10 +780,15 @@
                         "description": "For knock-in experiments involving a gene from another organism, specify the source species of the inserted gene. Select the organism using an NCBI Taxonomy term.",
                         "example": "Home sapiens",
                         "required": true,
+                        "requiredWhen": {
+                            "field": "molecularPhenotype",
+                            "value": "knockin"
+                        },
                         "multiple": false,
                         "namespace": "NCBI Taxonomy",
                         "allowOther": false,
-                        "type": "autocomplete"
+                        "type": "autocomplete",
+                        "datatype": 3
                     },
                     {
                         "id": "mutantPosition",
@@ -712,7 +797,8 @@
                         "example": "G66D",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 26
                     },
                     {
                         "id": "mutantOrigin",
@@ -722,7 +808,11 @@
                         "multiple": false,
                         "allowOther": false,
                         "type": "select",
-                        "options": ["targeted", "spontanous"]
+                        "options": [
+                            "targeted",
+                            "spontanous"
+                        ],
+                        "datatype": 27
                     },
                     {
                         "id": "technique",
@@ -732,14 +822,21 @@
                         "multiple": true,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["X-Ray", "Chemical", "Transposon", "UV", "Crisp", "Other"]
+                        "options": [
+                            "X-Ray",
+                            "Chemical",
+                            "Transposon",
+                            "UV",
+                            "Crisp"
+                        ],
+                        "datatype": 28
                     }
-                ]
+                ],
+                "datatype": 21
             },
             {
                 "id": "perturbation",
                 "label": "Other perturbation",
-                "datatype": 22,
                 "title": "Were there external perturbations that might have an effect on the provided data?",
                 "type": "complex",
                 "required": false,
@@ -752,16 +849,18 @@
                         "example": "5 Gy gamma irradiation",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 30
                     },
                     {
                         "id": "chemical",
-                        "label": "Chemical", 
+                        "label": "Chemical",
                         "description": "List chemicals or media additives to which the sample was exposed prior to collection. Include concentration and treatment duration when known.",
                         "example": "Additional 25 mM glucose added to culture media",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 31
                     },
                     {
                         "id": "drug",
@@ -770,40 +869,41 @@
                         "example": "Doxorubicin, 1 µM for 24 hours",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 32
                     }
-                ]
+                ],
+                "datatype": 22
             }
         ]
     },
-    "expressed_protein" : {
+    "expressed_protein": {
         "fields": [
             {
                 "id": "speciesOrigin",
                 "label": "Origin species of protein",
-                "datatype": 3,
                 "description": "Specify the species from which the protein sequence originates, regardless of where it was expressed. This should correspond to the native source organism of the gene or protein being studied.",
                 "example": "Home sapiens",
                 "required": true,
                 "multiple": false,
                 "namespace": "NCBI Taxonomy",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 3
             },
             {
                 "id": "strainOrigin",
                 "label": "Strain of origin species",
-                "datatype": 4,
                 "description": "If known, provide the strain, isolate, or genetic background from which the protein sequence was derived. This is particularly useful for microbial proteins and proteins from genetically distinct model organisms.",
                 "example": "K-12 MG1655",
                 "required": false,
                 "multiple": false,
-                "type": "text"
+                "type": "text",
+                "datatype": 4
             },
             {
                 "id": "analyzedProteinMutation",
                 "label": "Analyzed Protein Mutation",
-                "datatype": 20,
                 "title": "How was the analyzed protein altered?",
                 "description": "Describe each amino acid change, deletion, insertion, or engineered modification present in the analyzed protein. Add a separate entry for each protein alteration that may affect protein function, glycosylation, or glycan occupancy.",
                 "type": "complex",
@@ -818,7 +918,8 @@
                         "example": "HER2-N571Q",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 24
                     },
                     {
                         "id": "molecularPhenotype",
@@ -828,7 +929,13 @@
                         "multiple": false,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["gain of function", "loss of function", "Hypermorph", "Hypomorph", "Other"]
+                        "options": [
+                            "gain of function",
+                            "loss of function",
+                            "Hypermorph",
+                            "Hypomorph"
+                        ],
+                        "datatype": 25
                     },
                     {
                         "id": "mutantPosition",
@@ -837,7 +944,8 @@
                         "example": "N66K",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 26
                     },
                     {
                         "id": "mutantOrigin",
@@ -847,7 +955,11 @@
                         "multiple": false,
                         "allowOther": false,
                         "type": "select",
-                        "options": ["targeted", "spontanous"]
+                        "options": [
+                            "targeted",
+                            "spontanous"
+                        ],
+                        "datatype": 27
                     },
                     {
                         "id": "technique",
@@ -857,14 +969,21 @@
                         "multiple": true,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["X-Ray", "Chemical", "Transposon", "UV", "Crisp", "Other"]
+                        "options": [
+                            "X-Ray",
+                            "Chemical",
+                            "Transposon",
+                            "UV",
+                            "Crisp"
+                        ],
+                        "datatype": 28
                     }
-                ]
+                ],
+                "datatype": 20
             },
             {
                 "id": "expressionSystem",
                 "label": "Expression System",
-                "datatype": 23,
                 "type": "complex",
                 "required": true,
                 "multiple": false,
@@ -909,13 +1028,12 @@
                         "allowOther": true,
                         "type": "autocomplete"
                     }
-                   
-                ]
+                ],
+                "datatype": 23
             },
             {
                 "id": "perturbation",
                 "label": "Other perturbation",
-                "datatype": 22,
                 "title": "Were there external perturbations that might have an effect on the provided data?",
                 "type": "complex",
                 "required": false,
@@ -928,16 +1046,18 @@
                         "example": "5 Gy gamma irradiation",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 30
                     },
                     {
                         "id": "chemical",
-                        "label": "Chemical", 
+                        "label": "Chemical",
                         "description": "List chemicals or media additives to which the sample was exposed prior to collection. Include concentration and treatment duration when known.",
                         "example": "Additional 25 mM glucose added to culture media",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 31
                     },
                     {
                         "id": "drug",
@@ -946,40 +1066,41 @@
                         "example": "Doxorubicin, 1 µM for 24 hours",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 32
                     }
-                ]
+                ],
+                "datatype": 22
             }
         ]
     },
-    "expressed_protein_altered_system" : {
+    "expressed_protein_altered_system": {
         "fields": [
             {
                 "id": "speciesOrigin",
                 "label": "Origin species of protein",
-                "datatype": 3,
                 "description": "Specify the species from which the protein sequence originates, regardless of where it was expressed. This should correspond to the native source organism of the gene or protein being studied.",
                 "example": "Home sapiens",
                 "required": true,
                 "multiple": false,
                 "namespace": "NCBI Taxonomy",
                 "allowOther": false,
-                "type": "autocomplete"
+                "type": "autocomplete",
+                "datatype": 3
             },
             {
                 "id": "strainOrigin",
                 "label": "Strain of origin species",
-                "datatype": 4,
                 "description": "If known, provide the strain, isolate, or genetic background from which the protein sequence was derived. This is particularly useful for microbial proteins and proteins from genetically distinct model organisms.",
                 "example": "K-12 MG1655",
                 "required": false,
                 "multiple": false,
-                "type": "text"
+                "type": "text",
+                "datatype": 4
             },
             {
                 "id": "analyzedProteinMutation",
                 "label": "Analyzed Protein Mutation",
-                "datatype": 20,
                 "title": "How was the analyzed protein altered?",
                 "description": "Describe each amino acid change, deletion, insertion, or engineered modification present in the analyzed protein. Add a separate entry for each protein alteration that may affect protein function, glycosylation, or glycan occupancy.",
                 "type": "complex",
@@ -994,7 +1115,8 @@
                         "example": "HER2-N571Q",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 24
                     },
                     {
                         "id": "molecularPhenotype",
@@ -1004,7 +1126,13 @@
                         "multiple": false,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["gain of function", "loss of function", "Hypermorph", "Hypomorph", "Other"]
+                        "options": [
+                            "gain of function",
+                            "loss of function",
+                            "Hypermorph",
+                            "Hypomorph"
+                        ],
+                        "datatype": 25
                     },
                     {
                         "id": "mutantPosition",
@@ -1013,7 +1141,8 @@
                         "example": "N66K",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 26
                     },
                     {
                         "id": "mutantOrigin",
@@ -1023,7 +1152,11 @@
                         "multiple": false,
                         "allowOther": false,
                         "type": "select",
-                        "options": ["targeted", "spontanous"]
+                        "options": [
+                            "targeted",
+                            "spontanous"
+                        ],
+                        "datatype": 27
                     },
                     {
                         "id": "technique",
@@ -1033,14 +1166,21 @@
                         "multiple": true,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["X-Ray", "Chemical", "Transposon", "UV", "Crisp", "Other"]
+                        "options": [
+                            "X-Ray",
+                            "Chemical",
+                            "Transposon",
+                            "UV",
+                            "Crisp"
+                        ],
+                        "datatype": 28
                     }
-                ]
+                ],
+                "datatype": 20
             },
             {
                 "id": "expressionSystem",
                 "label": "Expression System",
-                "datatype": 23,
                 "type": "complex",
                 "required": true,
                 "multiple": false,
@@ -1085,13 +1225,12 @@
                         "allowOther": true,
                         "type": "autocomplete"
                     }
-                   
-                ]
+                ],
+                "datatype": 23
             },
             {
                 "id": "geneticBackgroundAlteration",
                 "label": "Genetic Background Alteration",
-                "datatype": 21,
                 "title": "How was origin of the biological sample altered?",
                 "description": "Describe each natural or engineered genetic alteration that could affect glycan composition or glycosylation. Add a separate entry for every relevant modification present in the sample.",
                 "type": "complex",
@@ -1102,84 +1241,104 @@
                     {
                         "id": "allele",
                         "label": "Allele",
-                        "datatype": 24,
                         "description": "Provide the allele designation or textual description of the genetic alteration. Use the nomenclature commonly employed in your organism model or publication.",
                         "example": "rt(2/P)",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 24
                     },
                     {
                         "id": "molecularPhenotype",
                         "label": "Molecular Phenotype",
-                        "datatype": 25,
                         "description": "Specify the functional consequence of the genetic alteration using the controlled vocabulary. Choose the term that best reflects the expected effect on gene or protein function.",
                         "required": true,
                         "multiple": false,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["knockout", "gain of function", "loss of function", "Hypermorph", "Hypomorph", "knockin", "other"]
+                        "options": [
+                            "knockout",
+                            "gain of function",
+                            "loss of function",
+                            "Hypermorph",
+                            "Hypomorph",
+                            "knockin"
+                        ],
+                        "datatype": 25
                     },
                     {
                         "id": "gene",
                         "label": "Gene",
-                        "datatype": 29,
                         "description": "Enter the name of the gene affected by the alteration. Use the standard gene symbol recognized for the organism being studied.",
                         "example": "Mgat5",
                         "required": true,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 29
                     },
                     {
                         "id": "mutantSpecies",
                         "label": "Species",
-                        "datatype": 3,
                         "description": "For knock-in experiments involving a gene from another organism, specify the source species of the inserted gene. Select the organism using an NCBI Taxonomy term.",
                         "example": "Home sapiens",
                         "required": true,
+                        "requiredWhen": {
+                            "field": "molecularPhenotype",
+                            "value": "knockin"
+                        },
                         "multiple": false,
                         "namespace": "NCBI Taxonomy",
                         "allowOther": false,
-                        "type": "autocomplete"
+                        "type": "autocomplete",
+                        "datatype": 3
                     },
                     {
                         "id": "mutantPosition",
                         "label": "Mutant position",
-                        "datatype": 26,
                         "description": "Provide the position and sequence change when describing a mutation within a gene. Use a standard mutation notation whenever possible to allow unambiguous interpretation.",
                         "example": "G66D",
                         "required": false,
                         "multiple": false,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 26
                     },
                     {
                         "id": "mutantOrigin",
                         "label": "Mutant Origin",
-                        "datatype": 27,
                         "description": "Indicate whether the mutation arose naturally/spontaneously or was intentionally introduced. This helps distinguish engineered models from naturally occurring variants.",
                         "required": true,
                         "multiple": false,
                         "allowOther": false,
                         "type": "select",
-                        "options": ["targeted", "spontanous"]
+                        "options": [
+                            "targeted",
+                            "spontanous"
+                        ],
+                        "datatype": 27
                     },
                     {
                         "id": "technique",
                         "label": "Technique",
-                        "datatype": 28,
                         "description": "Specify the method used to generate the genetic alteration. Include all relevant techniques if multiple approaches contributed to the final genotype.",
                         "required": true,
                         "multiple": true,
                         "allowOther": true,
                         "type": "select",
-                        "options": ["X-Ray", "Chemical", "Transposon", "UV", "Crisp", "Other"]
+                        "options": [
+                            "X-Ray",
+                            "Chemical",
+                            "Transposon",
+                            "UV",
+                            "Crisp"
+                        ],
+                        "datatype": 28
                     }
-                ]
+                ],
+                "datatype": 21
             },
             {
                 "id": "perturbation",
                 "label": "Other perturbation",
-                "datatype": 22,
                 "title": "Were there external perturbations that might have an effect on the provided data?",
                 "type": "complex",
                 "required": false,
@@ -1188,80 +1347,90 @@
                     {
                         "id": "radiation",
                         "label": "Radiation",
-                        "datatype": 30,
                         "description": "Describe any exposure of the sample or organism to ionizing or non-ionizing radiation before collection. Include radiation type and dose when available.",
                         "example": "5 Gy gamma irradiation",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 30
                     },
                     {
                         "id": "chemical",
-                        "label": "Chemical", 
-                        "datatype": 31,
+                        "label": "Chemical",
                         "description": "List chemicals or media additives to which the sample was exposed prior to collection. Include concentration and treatment duration when known.",
                         "example": "Additional 25 mM glucose added to culture media",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 31
                     },
                     {
                         "id": "drug",
                         "label": "Drug",
-                        "datatype": 32,
                         "description": "Record any drug treatment administered to the organism, tissue, or cells before sample collection. Include the drug name and, if available, concentration or dosage.",
                         "example": "Doxorubicin, 1 µM for 24 hours",
                         "required": false,
                         "multiple": true,
-                        "type": "text"
+                        "type": "text",
+                        "datatype": 32
                     }
-                ]
+                ],
+                "datatype": 22
             }
         ]
     },
-    "synthetic" : {
-
-    },
+    "synthetic": {},
     "general": [
         {
             "id": "contributor",
             "label": "Contributor",
-            "datatype": 16,
             "description": "List the people and software tools that contributed to generating, processing, analyzing, or curating the dataset. Include all major contributors and assign the role that best describes their involvement.",
             "url": "",
             "required": true,
             "multiple": false,
-            "type": "contributor"
+            "type": "contributor",
+            "datatype": 16
         },
         {
             "id": "experimentalTechnique",
             "label": "Experimental Technique",
-            "datatype": 12,
             "description": "Select all experimental techniques used to generate the reported data. Include both acquisition and analytical methods when multiple techniques were part of the workflow.",
-            "url":"",
+            "url": "",
             "required": true,
             "multiple": true,
-            "options": ["MS", "MS/MS", "LC-MS/MS", "LC-MS", "CE-MS", "CE-MS/MS", "CE", "HPLC", "GC", "GC-MS"],
+            "options": [
+                "MS",
+                "MS/MS",
+                "LC-MS/MS",
+                "LC-MS",
+                "CE-MS",
+                "CE-MS/MS",
+                "CE",
+                "HPLC",
+                "GC",
+                "GC-MS"
+            ],
             "allowOther": true,
-            "type": "select"
+            "type": "select",
+            "datatype": 12
         },
         {
             "id": "publication",
             "label": "Publication",
-            "datatype": 2,
             "description": "Provide the PubMed ID (PMID) or DOI of the publication describing this dataset. Use the primary publication associated with the reported experiment whenever available.",
             "required": false,
             "multiple": false,
-            "type": "publication"
+            "type": "publication",
+            "datatype": 2
         },
         {
             "id": "comment",
             "label": "Comment",
-            "datatype": 17,
             "description": "Add any additional information that may help others understand, interpret, or reproduce the experiment. Use this field for details that are not captured elsewhere in the submission form.",
             "required": false,
             "multiple": false,
-            "type": "text"
+            "type": "text",
+            "datatype": 17
         }
     ]
 }

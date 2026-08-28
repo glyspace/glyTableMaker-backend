@@ -414,6 +414,15 @@ public class PublicDataController {
 		//TODO update below to use "records" and generate JSON??
 
 		try {
+			/*if (table.getRecords() != null && !table.getRecords().isEmpty()) {
+				List<DatasetRowDTO> records = table.getRecords();
+				List<String[]> rows = new ArrayList<>();
+				boolean first = false;
+				for (DatasetRowDTO rec: records) {
+					String[] row = new String[]
+				}
+			}*/
+			
 			if (table.getData() != null && !table.getData().isEmpty()) {
 				// get GlygenTemplate
 				TableMakerTemplate glygenTemplate = templateRepository.findById(1L).get();

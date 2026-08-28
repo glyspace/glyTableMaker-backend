@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -507,7 +508,8 @@ public class DatasetController {
         
         //populate errors/warnings
         for (CollectionView col: collections) {
-        	getErrorsForCollection(col);
+        	validateMetadataForCollection(col);
+        	//getErrorsForCollection(col);
         }
         
         return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
@@ -540,7 +542,8 @@ public class DatasetController {
         
         //populate errors/warnings
         for (CollectionView col: collections) {
-        	getErrorsForCollection(col);
+        	//getErrorsForCollection(col);
+        	validateMetadataForCollection(col);
         }
         
         return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
@@ -573,7 +576,8 @@ public class DatasetController {
 	        // check for errors in the collections
 	        StringBuffer errorMessage = new StringBuffer();
 	        for (CollectionView cv: d.getCollections()) {
-	        	getErrorsForCollection (cv);
+	        	//getErrorsForCollection (cv);
+	        	validateMetadataForCollection(cv);
 	        	if (!cv.getErrors().isEmpty()) {
 	        		errorMessage.append ("Collection" + cv.getName() + " has errors!\n");       		
 	        	}
@@ -1391,7 +1395,8 @@ public class DatasetController {
     			// check for errors in the collections
     	        StringBuffer errorMessage = new StringBuffer();
     	        for (CollectionView cv: d.getCollections()) {
-    	        	getErrorsForCollection (cv);
+    	        	//getErrorsForCollection (cv);
+    	        	validateMetadataForCollection(cv);
     	        	if (!cv.getErrors().isEmpty()) {
     	        		errorMessage.append ("Collection" + cv.getName() + " has errors!\n");       		
     	        	}
@@ -1674,8 +1679,281 @@ public class DatasetController {
         }
         return userView;
     }
+    public static Map<String, String> validateMetadata(
+            JsonNode schema,
+            JsonNode values) {
+
+        Map<String, String> errors = new LinkedHashMap<>();
+
+        validateFields(schema.get("fields"), values, "", errors);
+
+        return errors;
+    }
     
-    public void getErrorsForCollection(CollectionView cv) {
+    private static void validateFields(
+            JsonNode fieldDefinitions,
+            JsonNode values,
+            String prefix,
+            Map<String, String> errors) {
+
+        if (fieldDefinitions == null || !fieldDefinitions.isArray()) {
+            return;
+        }
+
+        for (JsonNode field : fieldDefinitions) {
+
+            String fieldId = field.path("id").asText();
+
+            JsonNode value = values != null ? values.get(fieldId) : null;
+
+            validateRequired(field, value, values, prefix, errors);
+
+            if ("complex".equals(field.path("type").asText())
+                    && field.has("fields")
+                    && value != null
+                    && !value.isNull()) {
+
+                if (field.path("multiple").asBoolean(false)) {
+
+                    if (value.isArray()) {
+
+                        for (int i = 0; i < value.size(); i++) {
+                            validateFields(
+                                    field.get("fields"),
+                                    value.get(i),
+                                    prefix + fieldId + "[" + i + "].",
+                                    errors);
+                        }
+                    }
+                } else {
+
+                    validateFields(
+                            field.get("fields"),
+                            value,
+                            prefix + fieldId + ".",
+                            errors);
+                }
+            }
+        }
+    }
+    
+    private static void validateRequired(
+            JsonNode fieldDef,
+            JsonNode value,
+            JsonNode parentValues,
+            String prefix,
+            Map<String, String> errors) {
+
+        String fieldId = fieldDef.path("id").asText();
+
+        boolean required = fieldDef.path("required").asBoolean(false);
+
+        if (fieldDef.has("requiredWhen")) {
+
+            JsonNode condition = fieldDef.get("requiredWhen");
+
+            String dependentField =
+                    condition.path("field").asText();
+
+            String expectedValue =
+                    condition.path("value").asText();
+
+            JsonNode dependentNode =
+                    parentValues.get(dependentField);
+
+            String actualValue = extractValue(dependentNode);
+
+            required = expectedValue.equalsIgnoreCase(actualValue);
+        }
+
+        if (required && isEmpty(value)) {
+            errors.put(
+                    prefix + fieldId,
+                    fieldDef.path("label").asText() + " is required");
+        }
+    }
+    
+    private static String extractValue(JsonNode node) {
+
+        if (node == null || node.isNull()) {
+            return null;
+        }
+
+        if (node.isTextual()) {
+            return node.asText();
+        }
+
+        if (node.has("value")) {
+            return node.get("value").asText();
+        }
+
+        if (node.has("id")) {
+            return node.get("id").asText();
+        }
+
+        if (node.has("name")) {
+            return node.get("name").asText();
+        }
+
+        return node.asText();
+    }
+    
+    private static boolean isEmpty(JsonNode node) {
+
+        if (node == null || node.isNull()) {
+            return true;
+        }
+
+        if (node.isTextual()) {
+            return node.asText().trim().isEmpty();
+        }
+
+        if (node.isArray()) {
+            return node.isEmpty();
+        }
+
+        if (node.isObject()) {
+            if (node.has("id")) {
+                return node.path("id").asText().isBlank();
+            }
+
+            if (node.has("name")) {
+                return node.path("name").asText().isBlank();
+            }
+
+            return node.isEmpty();
+        }
+
+        return false;
+    }
+    
+    public void validateMetadataForCollection (CollectionView cv) {
+    	validateMetadataForCollection(getClass(), cv, collectionRepository);
+    }
+    
+    public static void validateMetadataForCollection (Class cls, CollectionView cv, CollectionRepository collectionRepository) {
+    	JsonNode metadataDefinition = null;
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			try (InputStream is = cls.getClassLoader().getResourceAsStream("metadata.json")) {
+				metadataDefinition = mapper.readTree(is);
+			}
+		} catch (Exception e) {
+			logger.error("could not load metadata.json, validation cannot be done at this moment", e);
+			return;
+		}
+		
+		Optional<Collection> collectionHandle = collectionRepository.findById(cv.getCollectionId());
+		if (!collectionHandle.isPresent()) {
+			throw new IllegalArgumentException("Given collection " + cv.getCollectionId() + " cannot be found!");
+		}
+		
+		Collection collection = collectionHandle.get();
+		
+		if (cv.getChildren() == null || cv.getChildren().isEmpty()) {
+			validateMetadataForCollection(metadataDefinition, cv, collection);
+		} else {  //CoC
+			for (CollectionView colV: cv.getChildren()) {
+				for (Collection col: collection.getCollections()) {
+					if (colV.getCollectionId().equals(col.getCollectionId())) {
+						validateMetadataForCollection(metadataDefinition, colV, col);
+						break;
+					}
+				}
+			}
+		}
+		
+		
+    }
+    
+    private static void validateMetadataForCollection(JsonNode metadataDefinition, CollectionView cv, Collection collection) {
+    	Map<String, String> errors = new LinkedHashMap<>();
+		
+		// check for errors in molecule related columns first
+		switch (cv.getType()) {
+		case GLYCAN:
+			int i=0;
+			for (GlycanInCollection g: collection.getGlycans()) {
+				if (g.getGlycan().getGlytoucanID() == null) {
+					// error
+					errors.put("Glycan " + i + " GlyToucanId", 
+							"Glycan " + g.getGlycan().getGlycanId() + " in collection " + collection.getName() + " does not have a value for GlytoucanID.");
+				}
+				i++;
+			}
+			break;
+		case GLYCOPROTEIN:
+			i=0;
+			for (GlycoproteinInCollection gp: collection.getGlycoproteins()) {
+				String name = gp.getGlycoprotein().getName() != null ? gp.getGlycoprotein().getName() : gp.getGlycoprotein().getUniprotId();
+				if (gp.getGlycoprotein().getUniprotId() == null) {
+					// error
+					errors.put("Glycoprotein " + i + " UniprotId", "Glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for UniprotID.");
+				}
+				int j=0;
+				for (Site s: gp.getGlycoprotein().getSites()) {
+					if (s.getType () != GlycoproteinSiteType.UNKNOWN && (s.getPositionString() == null || s.getPositionString().length() == 0)) {
+						// error
+						errors.put("Glycoprotein " + i + " in Site " + j + " Location", "Glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for Site/Location.");
+					}
+					
+					if (s.getType() !=GlycoproteinSiteType.UNKNOWN && (s.getPositionString() == null || s.getPositionString().length() == 0)) {
+						// error
+						errors.put("Glycoprotein " + i + " in Site " + j + " Aminoacid","Glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for Amino Acid.");
+					}
+					else if (s.getPositionString() != null) {
+        				ObjectMapper om = new ObjectMapper();
+        				try {
+							s.setPosition(om.readValue(s.getPositionString(), SitePosition.class));
+							for (Position pos: s.getPosition().getPositionList()) {
+								if (pos.getAminoAcid() == null) {
+									errors.put("Glycoprotein " + i + " in Site " + j + " Aminoacid","Glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for Amino Acid.");
+								}
+							}
+						} catch (JsonProcessingException e) {
+							logger.warn ("Position string is invalid: " + s.getPositionString());
+							// error
+							errors.put("Glycoprotein " + i + " in Site " + j + " Aminoacid","Glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for Amino Acid.");
+						}
+        			}
+					int k=0;
+					for (GlycanInSite g: s.getGlycans()) {
+						if (g.getGlycan() != null && g.getGlycan().getGlytoucanID() == null) {
+							// error
+							errors.put("Glycoprotein " + i + " in site " + j + " Glycan " + k + " GlyToucanId", "Glycan " + g.getGlycan().getGlycanId() + " in glycoprotein " + name + " in collection " + collection.getName() + " does not have a value for GlytoucanID.");	
+						}
+						k++;
+					}
+					j++;
+					
+				}
+				i++;
+			}
+			break;
+		}
+
+		JsonNode sampleSchema = metadataDefinition.get(cv.getSampleType().name().toLowerCase());
+		JsonNode generalSchema = metadataDefinition.get("general");
+
+		errors.putAll(
+		        validateMetadata(sampleSchema, cv.getMetadataValues()));
+
+		validateFields(
+		        generalSchema,
+		        cv.getMetadataValues(),
+		        "",
+		        errors);
+		
+		List<DatasetError> errorList = new ArrayList<>();
+		for (String key: errors.keySet()) {
+			DatasetError error = new DatasetError(key + ":" + errors.get(key), 1);
+			errorList.add(error);
+		}
+		cv.setErrors(errorList);
+		
+	}
+
+	/*public void getErrorsForCollection(CollectionView cv) {
     	getErrorsForCollection(cv, templateRepository, datatypeCategoryRepository, collectionRepository);
     }
 
@@ -1716,6 +1994,8 @@ public class DatasetController {
 			}
 		}
 	}
+	
+	
 		
 		
 	static void getErrorsForCollection (CollectionView cv, Collection collection, TableMakerTemplate template, DatatypeCategory glygenCategory) {
@@ -1842,5 +2122,5 @@ public class DatasetController {
 				return dc.getMandatory() == null ? false : dc.getMandatory();
 		}
 		return false;
-	}
+	}*/
 }
