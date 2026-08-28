@@ -1701,9 +1701,7 @@ public class DatasetController {
         }
 
         for (JsonNode field : fieldDefinitions) {
-
             String fieldId = field.path("id").asText();
-
             JsonNode value = values != null ? values.get(fieldId) : null;
 
             validateRequired(field, value, values, prefix, errors);
@@ -1718,20 +1716,12 @@ public class DatasetController {
                     if (value.isArray()) {
 
                         for (int i = 0; i < value.size(); i++) {
-                            validateFields(
-                                    field.get("fields"),
-                                    value.get(i),
-                                    prefix + fieldId + "[" + i + "].",
-                                    errors);
+                            validateFields(field.get("fields"), value.get(i), prefix + fieldId + "[" + i + "].", errors);
                         }
                     }
                 } else {
 
-                    validateFields(
-                            field.get("fields"),
-                            value,
-                            prefix + fieldId + ".",
-                            errors);
+                    validateFields(field.get("fields"), value, prefix + fieldId + ".", errors);
                 }
             }
         }

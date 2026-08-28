@@ -1054,9 +1054,20 @@ public class DataController {
 	    			c.setType(CollectionType.GLYCAN);
 	    		child.setType(c.getType());
 	    		child.setDescription(c.getDescription());
-	    		if (c.getMetadata() != null) { 
-	    			//TODO generate new Json object
-	    			child.setMetadata(new ArrayList<>(c.getMetadata()));
+	    		if (c.getMetadata() != null && !c.getMetadata().isEmpty() && c.getMetadataValues() == null) {
+	    			//generate new Json object
+	    			child.setMetadataValues (generateMetadataValues (c.getMetadata()));
+	        		c.setMetadataValues(child.getMetadataValues());
+	        		// check if variant or cellline is in metadata values
+	        		JsonNode variant = c.getMetadataValues().findValue("variant");
+	        		JsonNode cellline = c.getMetadataValues().findValue("cellline");
+	        		if (variant != null || cellline != null) {
+	        			c.setSampleType(MetadataType.BIOLOGICAL_SAMPLE_BACKGROUND_ALTERATION);
+	        		} else {
+	        			c.setSampleType(MetadataType.BIOLOGICAL_SAMPLE);
+	        		}
+	        		collectionRepository.save(c);
+	    			//child.setMetadata(new ArrayList<>(c.getMetadata()));
 	    		}
 	    		
 	    		if (c.getMetadataValues() != null) child.setMetadataValues(c.getMetadataValues());
@@ -1134,8 +1145,7 @@ public class DataController {
                 }
                 valueNode = term;
             } else {
-                valueNode = TextNode.valueOf(
-                        m.getValue() == null ? "" : m.getValue());
+                valueNode = TextNode.valueOf(m.getValue() == null ? "" : m.getValue());
             }
 
             if (multiple) {
