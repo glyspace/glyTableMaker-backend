@@ -9,9 +9,11 @@ import java.util.Map;
 
 import org.glygen.tablemaker.persistence.dao.DatasetGlycoproteinMetadataRecordRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetMetadataRecordRepository;
+import org.glygen.tablemaker.persistence.dao.DatasetMetadataSpecificationBuilder;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
+import org.glygen.tablemaker.persistence.dao.GlycoproteinMetadataSpecificationBuilder;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dao.RetractionRepository;
 import org.glygen.tablemaker.persistence.dao.SoftwareRepository;
@@ -41,6 +43,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.domain.Sort.Order;
@@ -78,6 +81,8 @@ public class PublicDataController {
 	final private PublicationRepository publicationRepository;
 	final private RetractionRepository retractionRepository;
 	final private SoftwareRepository softwareRepository;
+	final private GlycoproteinMetadataSpecificationBuilder glycoproteinSpecBuilder;
+	final private DatasetMetadataSpecificationBuilder metadataSpecBuilder;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -85,7 +90,7 @@ public class PublicDataController {
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
 	
-	public PublicDataController(DatasetRepository datasetRepository, GlycanImageRepository glycanImageRepository, TemplateRepository templateRepository, PublicationRepository publicationRepository, RetractionRepository retractionRepository, SoftwareRepository softwareRepository, DatasetGlycoproteinMetadataRecordRepository datasetGlycoproteinDataRepository, DatasetMetadataRecordRepository datasetDataRepository) {
+	public PublicDataController(DatasetRepository datasetRepository, GlycanImageRepository glycanImageRepository, TemplateRepository templateRepository, PublicationRepository publicationRepository, RetractionRepository retractionRepository, SoftwareRepository softwareRepository, DatasetGlycoproteinMetadataRecordRepository datasetGlycoproteinDataRepository, DatasetMetadataRecordRepository datasetDataRepository, GlycoproteinMetadataSpecificationBuilder glycoproteinSpecBuilder, DatasetMetadataSpecificationBuilder metadataSpecBuilder) {
 		this.datasetRepository = datasetRepository;
 		this.datasetDataRepository = datasetDataRepository;
 		this.datasetGlycoproteinDataRepository = datasetGlycoproteinDataRepository;
@@ -94,6 +99,8 @@ public class PublicDataController {
 		this.publicationRepository = publicationRepository;
 		this.retractionRepository = retractionRepository;
 		this.softwareRepository = softwareRepository;
+		this.glycoproteinSpecBuilder = glycoproteinSpecBuilder;
+		this.metadataSpecBuilder = metadataSpecBuilder;
 	}
 	
 	@Operation(summary = "Get public dataset's publications")
@@ -186,20 +193,74 @@ public class PublicDataController {
             }
         }
         List<Sorting> sortingList = null;
-        List<Order> sortOrders = new ArrayList<>();
         if (sorting != null && !sorting.equals("[]")) {
             try {
                 sortingList = mapper.readValue(sorting, 
                     new TypeReference<ArrayList<Sorting>>() {});
-                for (Sorting s: sortingList) {
-                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
-                }
             } catch (JsonProcessingException e) {
                 throw new InternalError("sorting parameter is invalid " + sorting, e);
             }
         }
+
+        Pageable pageable = PageRequest.of(start, size); // no Sort — handled in the Specification
+
+        if (type.equalsIgnoreCase("glycoprotein")) {
+            Specification<DatasetGlycoproteinMetadataRecord> spec = 
+                glycoproteinSpecBuilder.build(filterList, sortingList, versionId, datasetId);
+            Page<DatasetGlycoproteinMetadataRecord> rows = datasetGlycoproteinDataRepository.findAll(spec, pageable);
+            List<DatasetGlycoproteinRowDTO> result = new ArrayList<DatasetGlycoproteinRowDTO>();
+        	for (DatasetGlycoproteinMetadataRecord rec: rows) {
+        		DatasetGlycoproteinRowDTO dto = new DatasetGlycoproteinRowDTO();
+        		dto.setId( rec.getId());
+        		dto.setGlytoucanId(rec.getGlytoucanId());
+        		dto.setAminoAcid(rec.getAminoAcid());
+        		dto.setGlycosylationSubType(rec.getGlycosylationSubType());
+        		dto.setGlycosylationType(rec.getGlycosylationType());
+        		dto.setSite(rec.getSite());
+        		dto.setUniProtId(rec.getUniProtId());
+        		if (rec.getMetadataGroup() != null) {
+        			dto.setMetadata(rec.getMetadataGroup().getValue());
+        			dto.setSampleType(rec.getMetadataGroup().getSampleType());
+        		}
+        		dto.setVersion(rec.getDataset().getVersion());
+        		result.add(dto);
+        	}
+        	
+        	Map<String, Object> response = new HashMap<>();
+            response.put("objects", result);
+            response.put("currentPage", rows.getNumber());
+            response.put("totalItems", rows.getTotalElements());
+            response.put("totalPages", rows.getTotalPages());
+            
+            return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
+        } else {
+            Specification<DatasetMetadataRecord> spec = 
+                metadataSpecBuilder.build(filterList, sortingList, versionId, datasetId);
+            Page<DatasetMetadataRecord> rows = datasetDataRepository.findAll(spec, pageable);
+            List<DatasetRowDTO> result = new ArrayList<DatasetRowDTO>();
+        	for (DatasetMetadataRecord rec: rows) {
+        		DatasetRowDTO dto = new DatasetRowDTO();
+        		dto.setId( rec.getId());
+        		dto.setGlytoucanId(rec.getGlytoucanId());
+        		if (rec.getMetadataGroup() != null) {
+        			dto.setMetadata(rec.getMetadataGroup().getValue());
+        			dto.setSampleType(rec.getMetadataGroup().getSampleType());
+        		}
+        		dto.setVersion(rec.getDataset().getVersion());
+        		result.add(dto);
+        	}
+			
+        	Map<String, Object> response = new HashMap<>();
+            response.put("objects", result);
+            response.put("currentPage", rows.getNumber());
+            response.put("totalItems", rows.getTotalElements());
+            response.put("totalPages", rows.getTotalPages());
+            
+            return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
+        }
         
-        if (type.equalsIgnoreCase("glycoprotein")) { 
+        
+      /*  if (type.equalsIgnoreCase("glycoprotein")) { 
         	Page<DatasetGlycoproteinMetadataRecord> rows = null;
         	if (versionId != null) {
         		rows = datasetGlycoproteinDataRepository.findByDatasetVersionId(versionId, PageRequest.of(start, size, Sort.by(sortOrders)));
@@ -260,7 +321,7 @@ public class PublicDataController {
             response.put("totalPages", rows.getTotalPages());
             
             return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
-        }
+        }*/
 	}
 	
 	@Operation(summary = "Get public datasets")

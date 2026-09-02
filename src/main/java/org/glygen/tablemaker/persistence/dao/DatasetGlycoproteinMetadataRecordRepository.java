@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DatasetGlycoproteinMetadataRecordRepository extends JpaRepository<DatasetGlycoproteinMetadataRecord, Long>, 
-JpaSpecificationExecutor<DatasetGlycoproteinMetadataRecord> {
+		JpaSpecificationExecutor<DatasetGlycoproteinMetadataRecord> {
 
     Page<DatasetGlycoproteinMetadataRecord> findByDatasetVersionId(Long versionId, Pageable pageable);
     Page<DatasetGlycoproteinMetadataRecord> findByDatasetDatasetDatasetIdentifierAndDatasetHeadTrue(String datasetIdentifier,Pageable pageable);

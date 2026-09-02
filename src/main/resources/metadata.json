@@ -1401,6 +1401,7 @@
             "options": [
                 "MS",
                 "MS/MS",
+                "MALDI-TOF-TOF",
                 "LC-MS/MS",
                 "LC-MS",
                 "CE-MS",
