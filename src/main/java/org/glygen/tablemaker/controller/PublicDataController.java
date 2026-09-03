@@ -2,6 +2,7 @@ package org.glygen.tablemaker.controller;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,10 +26,12 @@ import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadataRecord;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Publication;
+import org.glygen.tablemaker.persistence.glycan.MetadataType;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
+import org.glygen.tablemaker.util.ResidueUtil;
 import org.glygen.tablemaker.view.DatasetTableDownloadView;
 import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.Filter;
@@ -60,6 +63,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -208,6 +212,15 @@ public class PublicDataController {
             Specification<DatasetGlycoproteinMetadataRecord> spec = 
                 glycoproteinSpecBuilder.build(filterList, sortingList, versionId, datasetId);
             Page<DatasetGlycoproteinMetadataRecord> rows = datasetGlycoproteinDataRepository.findAll(spec, pageable);
+            for (DatasetGlycoproteinMetadataRecord rec: rows) {
+            	// check if the residue is built and saved, if not, save it
+            	if (rec.getResidue() == null || rec.getResidue().isBlank()) {
+            		rec.setResidue(ResidueUtil.buildResidue(rec.getAminoAcid(), rec.getSite(), true));
+            		if (!rec.getResidue().isEmpty()) {
+            			datasetGlycoproteinDataRepository.save(rec);
+            		}
+            	}
+            }
             List<DatasetGlycoproteinRowDTO> result = new ArrayList<DatasetGlycoproteinRowDTO>();
         	for (DatasetGlycoproteinMetadataRecord rec: rows) {
         		DatasetGlycoproteinRowDTO dto = new DatasetGlycoproteinRowDTO();
@@ -472,119 +485,125 @@ public class PublicDataController {
 		String filename = table.getFilename() != null ? table.getFilename() : "GlygenDataset";
 		File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ".csv");
 		
-		//TODO update below to use "records" and generate JSON??
+		JsonNode metadataDefinitions = null;
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			try (InputStream is = getClass().getClassLoader().getResourceAsStream("metadata.json")) {
+				metadataDefinitions = mapper.readTree(is);
+			}
+		} catch (Exception e) {
+			logger.error("could not load metadata.json, download cannot be done at this moment", e);
+			throw new IllegalArgumentException ("Failed to generate download file. Reason: " + e.getMessage());
+		}
 
 		try {
-			/*if (table.getRecords() != null && !table.getRecords().isEmpty()) {
+			if (table.getRecords() != null && !table.getRecords().isEmpty()) {
 				List<DatasetRowDTO> records = table.getRecords();
 				List<String[]> rows = new ArrayList<>();
-				boolean first = false;
+				
+				JsonNode general = metadataDefinitions.path("general");
+				JsonNode typeFields = metadataDefinitions.path(MetadataType.BIOLOGICAL_SAMPLE_BACKGROUND_ALTERATION.name().toLowerCase()).path("fields");
+				int columnCount = 2; // glytoucanId and sampleType
+				for (JsonNode field: general) {
+					columnCount++;
+				}
+				if (typeFields != null && typeFields.isArray() && !typeFields.isEmpty()) {
+					for (JsonNode field: typeFields) {
+						columnCount++;
+					}
+				}
+				String[] row = new String[columnCount];
+				
+				row[0] = "GlyTouCan ID";
+				row[1] = "Sample Type";
+				int i=2;
+				for (JsonNode field: general) {
+					row[i++] = field.path("label").asText();
+				}
+				for (JsonNode field: typeFields) {
+					row[i++] = field.path("label").asText();
+				}
+				
+				rows.add(row);
+				
 				for (DatasetRowDTO rec: records) {
-					String[] row = new String[]
+					row = new String[columnCount];
+					row[0] = rec.getGlytoucanId();
+					row[1] = rec.getSampleType().name();
+					i = 2;
+					for (JsonNode field: general) {
+						String fieldId = field.path("id").asText();
+						row[i++] = rec.getMetadata().path(fieldId).toPrettyString();
+					}
+					for (JsonNode field: typeFields) {
+						String fieldId = field.path("id").asText();
+						row[i++] = rec.getMetadata().path(fieldId).toPrettyString();
+					}
+					
+					rows.add(row);
 				}
-			}*/
-			
-			if (table.getData() != null && !table.getData().isEmpty()) {
-				// get GlygenTemplate
-				TableMakerTemplate glygenTemplate = templateRepository.findById(1L).get();
-				String[] header = new String[glygenTemplate.getColumns().size()+1];
-				for (TableColumn col: glygenTemplate.getColumns()) {
-					header[col.getOrder()-1] = col.getName();
-				}
-				header[header.length-1] = "version";
+				
+				TableController.writeToCSV(rows, newFile);
+			} else if (table.getGlycoproteinRecords() != null && !table.getGlycoproteinRecords().isEmpty()) {
+				List<DatasetGlycoproteinRowDTO> records = table.getGlycoproteinRecords();
 				List<String[]> rows = new ArrayList<>();
-				// generate rows from the data
-				rows.add(header);
-				List<GlygenMetadataRow> data = table.getData();
-				if (data != null) {
-					for (GlygenMetadataRow r: data) {
-						String[] row = new String[glygenTemplate.getColumns().size()+1];
-						for (TableColumn col: glygenTemplate.getColumns()) {
-							for (DatasetMetadata c: r.getColumns()) {
-								if (col.getGlycanColumn() != null && col.getGlycanColumn().equals(c.getGlycanColumn())) {
-									row[col.getOrder()-1] = c.getValue();
-									break;
-								} else if (col.getDatatype() != null && c.getDatatype() != null &&
-										col.getDatatype().getName().equals (c.getDatatype().getName())) {
-									switch (col.getType()) {
-									case ID:
-										String value = c.getValueId();
-										if (c.getValueId()!= null && c.getValueId().startsWith("UBERON"))
-											value = value.replace("_", ":");
-										row[col.getOrder()-1] = value;
-										break;
-									case URI:
-										row[col.getOrder()-1] = c.getValueUri();
-										break;
-									case VALUE:
-										row[col.getOrder()-1] = c.getValue();
-										break;
-									default:
-										row[col.getOrder()-1] = c.getValue();
-										break;
-									
-									}
-									break;
-								}
-							}
-						}
-						row[row.length-1] = table.getVersion();
-						rows.add(row);
+				
+				JsonNode general = metadataDefinitions.path("general");
+				JsonNode typeFields = metadataDefinitions.path(MetadataType.PROTEIN_MUTATION_BACKGROUND_ALTERATION.name().toLowerCase()).path("fields");
+				int columnCount = 5; 
+				for (JsonNode field: general) {
+					columnCount++;
+				}
+				if (typeFields != null && typeFields.isArray() && !typeFields.isEmpty()) {
+					for (JsonNode field: typeFields) {
+						columnCount++;
 					}
 				}
-				TableController.writeToCSV(rows, newFile);
-			} else if (table.getGlycoproteinData() != null && !table.getGlycoproteinData().isEmpty()) {
-				// get GlygenTemplate
-				TableMakerTemplate glygenTemplate = templateRepository.findById(2L).get();   // glycoprotein template
-				String[] header = new String[glygenTemplate.getColumns().size()+1];
-				for (TableColumn col: glygenTemplate.getColumns()) {
-					header[col.getOrder()-1] = col.getName();
+				columnCount++; // expression system
+				
+				String[] row = new String[columnCount];
+				row[0] = "Uniprot ID";
+				row[1] = "GlyTouCan ID";
+				row[2] = "Residue";
+				row[3] = "GlycosylationType";
+				row[4] = "Sample Type";
+				int i=5;
+				for (JsonNode field: general) {
+					row[i++] = field.path("label").asText();
 				}
-				header[header.length-1] = "version";
-				List<String[]> rows = new ArrayList<>();
-				// generate rows from the data
-				rows.add(header);
-				List<GlygenProteinMetadataRow> data = table.getGlycoproteinData();
-				if (data != null) {
-					for (GlygenProteinMetadataRow r: data) {
-						String[] row = new String[glygenTemplate.getColumns().size()+1];
-						for (TableColumn col: glygenTemplate.getColumns()) {
-							for (DatasetGlycoproteinMetadata c: r.getColumns()) {
-								if (col.getProteinColumn() != null && col.getProteinColumn().equals(c.getGlycoproteinColumn())) {
-									row[col.getOrder()-1] = c.getValue();
-									break;
-								} else if (col.getDatatype() != null && c.getDatatype() != null &&
-										col.getDatatype().getName().equals (c.getDatatype().getName())) {
-									switch (col.getType()) {
-									case ID:
-										String value = c.getValueId();
-										if (c.getValueId()!= null && c.getValueId().startsWith("UBERON"))
-											value = value.replace("_", ":");
-										row[col.getOrder()-1] = value;
-										break;
-									case URI:
-										row[col.getOrder()-1] = c.getValueUri();
-										break;
-									case VALUE:
-										row[col.getOrder()-1] = c.getValue();
-										break;
-									default:
-										row[col.getOrder()-1] = c.getValue();
-										break;
-									
-									}
-									break;
-								}
-							}
-						}
-						row[row.length-1] = table.getVersion();
-						rows.add(row);
+				for (JsonNode field: typeFields) {
+					row[i++] = field.path("label").asText();
+				}
+				row[i++] = "Expression System";
+				
+				rows.add(row);
+				
+				for (DatasetGlycoproteinRowDTO rec: records) {
+					row = new String[columnCount];
+					row[0] = rec.getUniProtId();
+					row[1] = rec.getGlytoucanId();
+					row[2] = ResidueUtil.buildResidue(rec.getAminoAcid(), rec.getSite(), false);
+					String subType = (rec.getGlycosylationSubType() != null && !rec.getGlycosylationSubType().isBlank() 
+							? ", " + rec.getGlycosylationSubType() : "");
+					row[3] = rec.getGlycosylationType() + subType;
+					row[4] = rec.getSampleType().name();
+					i = 5;
+					for (JsonNode field: general) {
+						String fieldId = field.path("id").asText();
+						row[i++] = rec.getMetadata().path(fieldId).toPrettyString();
 					}
+					for (JsonNode field: typeFields) {
+						String fieldId = field.path("id").asText();
+						row[i++] = rec.getMetadata().path(fieldId).toPrettyString();
+					}
+					row[i++] = rec.getMetadata().path("expressionSystem").toPrettyString();
+					
+					rows.add(row);
 				}
+				
 				TableController.writeToCSV(rows, newFile);
-			} else {
-				throw new IllegalArgumentException ("Failed to generate download file. There is no data!");
 			}
+			
 			return FileController.download(newFile, filename+".csv", null);
 		} catch (IOException e) {
 			throw new IllegalArgumentException ("Failed to generate download file. Reason: " + e.getMessage());

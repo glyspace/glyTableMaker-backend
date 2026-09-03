@@ -1,5 +1,7 @@
 package org.glygen.tablemaker.persistence.dataset;
 
+import org.glygen.tablemaker.util.ResidueUtil;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.CascadeType;
@@ -11,6 +13,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.xml.bind.annotation.XmlTransient;
 
 @Entity
@@ -30,6 +34,9 @@ public class DatasetGlycoproteinMetadataRecord {
 	
 	@Column
 	String site;
+	
+	@Column
+	String residue;
 	
 	@Column
 	String glycosylationType;
@@ -131,4 +138,18 @@ public class DatasetGlycoproteinMetadataRecord {
 	public void setGlycosylationSubType(String glycosylationSubType) {
 		this.glycosylationSubType = glycosylationSubType;
 	}
+	
+	public String getResidue() {
+		return residue;
+	}
+	
+	public void setResidue(String residue) {
+		this.residue = residue;
+	}
+	
+	@PrePersist
+    @PreUpdate
+    private void computeResidue() {
+        this.residue = ResidueUtil.buildResidue(this.aminoAcid, this.site, true);
+    }
 }

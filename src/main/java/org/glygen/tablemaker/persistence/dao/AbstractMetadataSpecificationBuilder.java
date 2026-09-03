@@ -21,17 +21,18 @@ public abstract class AbstractMetadataSpecificationBuilder<T> {
     protected abstract Map<String, String> nativeFieldPaths();
     protected abstract Map<String, List<String>> nestedSortPaths();
     
-    private static final Set<String> BLOCKED_FIELDS = Set.of("contributor");
+    private static final Set<String> BLOCKED_FIELDS = Set.of(
+    		"contributor", "perturbation", 
+    		"geneticBackgroundAlteration", "analyzedProteinMutation");
 
     // Top-level {id, name, uri} object — sort should compare on "name", not raw serialized object
     private static final Set<String> SINGLE_OBJECT_FIELDS = Set.of(
-        "species", "tissue", "cellline", "mutantSpecies", "speciesOrigin"
+        "species", "tissue", "cellline"
     );
 
     // multiple == true — filter works generically (serialized array text), sort has no sensible ordering
     private static final Set<String> MULTI_VALUE_FIELDS = Set.of(
-        "disease", "cellularComponent", "chemical", "drug", "radiation",
-        "experimentalTechnique", "technique"
+        "disease", "cellularComponent", "experimentalTechnique"
     );
     
     protected List<Order> defaultSortOrders(Root<T> root, CriteriaBuilder cb) {
@@ -62,7 +63,7 @@ public abstract class AbstractMetadataSpecificationBuilder<T> {
                 for (Sorting s : sortingList) {
                     orders.addAll(resolveSortOrders(root, cb, s));
                 }
-                orders.add(cb.asc(root.get("id"))); // stable tiebreaker, always last
+                orders.add(cb.asc(root.get("id"))); // tie breaker to ensure stability
                 query.orderBy(orders);
             } else {
                 query.orderBy(defaultSortOrders(root, cb));

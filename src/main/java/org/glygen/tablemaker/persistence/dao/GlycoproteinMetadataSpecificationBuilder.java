@@ -2,7 +2,6 @@ package org.glygen.tablemaker.persistence.dao;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadataRecord;
 import org.glygen.tablemaker.view.Filter;
@@ -25,15 +24,14 @@ public class GlycoproteinMetadataSpecificationBuilder extends AbstractMetadataSp
         "glytoucanId", "glytoucanId",
         "aminoAcid", "aminoAcid",
         "site", "site",
+        "residue", "residue",
         "glycosylationType", "glycosylationType",
         "glycosylationSubType", "glycosylationSubType",
         "sampleType", "metadataGroup.sampleType"
     );
     
     private static final Map<String, List<String>> NESTED_SORT_PATHS = Map.of(
-            "expressionSystem", List.of("expressionSystem", "speciesExpression", "name"),
-            "analyzedProteinMutation", List.of("analyzedProteinMutation", "molecularPhenotype"),
-            "geneticBackgroundAlteration", List.of("geneticBackgroundAlteration", "gene")
+        "expressionSystem", List.of("expressionSystem", "speciesExpression", "name")
     );
     
     @Override
@@ -44,13 +42,6 @@ public class GlycoproteinMetadataSpecificationBuilder extends AbstractMetadataSp
 
     @Override
     protected List<Order> resolveSortOrders(Root<DatasetGlycoproteinMetadataRecord> root, CriteriaBuilder cb, Sorting s) {
-        if (s.getId().equalsIgnoreCase("residue")) {
-            Direction dir = s.getDesc() ? Direction.DESC : Direction.ASC;
-            return List.of(
-                dir == Direction.DESC ? cb.desc(root.get("site")) : cb.asc(root.get("site")),
-                dir == Direction.DESC ? cb.desc(root.get("aminoAcid")) : cb.asc(root.get("aminoAcid"))
-            );
-        }
         if (s.getId().equalsIgnoreCase("glycosylationType")) {
         	Direction dir = s.getDesc() ? Direction.DESC : Direction.ASC;
             return List.of(
@@ -66,15 +57,6 @@ public class GlycoproteinMetadataSpecificationBuilder extends AbstractMetadataSp
     		Filter f) {
     	String fieldId = f.getId();
         String term = "%" + f.getValue().toLowerCase() + "%";
-        
-    	if (fieldId.equalsIgnoreCase("residue")) {
-            Expression<String> aminoAcid = cb.lower(cb.coalesce(root.get("aminoAcid"), ""));
-            Expression<String> site = cb.lower(cb.coalesce(root.get("site"), ""));
-            return cb.or(
-                cb.like(aminoAcid, term),
-                cb.like(site, term)
-            );
-        }
 
         if (fieldId.equalsIgnoreCase("glycosylationType")) {
             Expression<String> type = cb.lower(cb.coalesce(root.get("glycosylationType"), ""));
@@ -91,9 +73,8 @@ public class GlycoproteinMetadataSpecificationBuilder extends AbstractMetadataSp
     protected List<Order> defaultSortOrders(Root<DatasetGlycoproteinMetadataRecord> root, CriteriaBuilder cb) {
         return List.of(
             cb.asc(root.get("uniProtId")),
+            cb.asc(root.get("residue")),
             cb.asc(root.get("glytoucanId")),
-            cb.asc(root.get("site")),
-            cb.asc(root.get("aminoAcid")),
             cb.asc(root.get("id"))
         );
     }
