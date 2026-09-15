@@ -202,7 +202,8 @@ public class ScheduledTasksService {
 					        		sampleType = MetadataType.BIOLOGICAL_SAMPLE_BACKGROUND_ALTERATION;
 					        	}
 					        
-						        String fieldName = getFieldForDatatype(col.getDatatype(), metadataDefinitions);
+						        String fieldName = DataController.metadataMapping.get(col.getDatatype().getDatatypeId());
+						        		//getFieldForDatatype(col.getDatatype(), metadataDefinitions);
 	
 						        if (fieldName == null) {
 						            fieldName = col.getDatatype().getName().toLowerCase();
@@ -301,7 +302,8 @@ public class ScheduledTasksService {
 					        		sampleType = MetadataType.BIOLOGICAL_SAMPLE_BACKGROUND_ALTERATION;
 					        	}
 
-						        String fieldName = getFieldForDatatype(col.getDatatype(), metadataDefinitions);
+						       //String fieldName = getFieldForDatatype(col.getDatatype(), metadataDefinitions);
+						        String fieldName = DataController.metadataMapping.get(col.getDatatype().getDatatypeId());
 	
 						        if (fieldName == null) {
 						            fieldName = col.getDatatype().getName().toLowerCase();
@@ -407,7 +409,8 @@ public class ScheduledTasksService {
 	    return array;
 	}
 	
-	private String getFieldForDatatype (Datatype datatype, JsonNode metadataDefinitions) {
+	/*private String getFieldForDatatype (Datatype datatype, JsonNode metadataDefinitions) {
+		
 		JsonNode fieldDefinitions = metadataDefinitions.path("biological_sample_background_alteration").path("fields");
 
 		for (JsonNode field : fieldDefinitions) {
@@ -423,7 +426,7 @@ public class ScheduledTasksService {
 		}
 		
 		return null;
-	}
+	}*/
 	
 	@Scheduled(fixedDelay = 604800000, initialDelay=2000)
     public void checkGlyGenIntegration () {
@@ -689,13 +692,18 @@ public class ScheduledTasksService {
 		return identifiers;
 	}
 	
+	private static boolean isEmpty(File folder) {
+	    String[] contents = folder.list();
+	    return contents == null || contents.length == 0;
+	}
+	
 	@Scheduled(fixedDelay = 604800000, initialDelay=1000)
 	public void generateGlycanImages () {
 		logger.info("Checking glycan images on " + new Date());
 		List<Long> glycans = glycanRepository.findAllGlycanId();
 		for (Long id: glycans) {
 			File imageFolder = new File(imageLocation + File.separator + id);
-			if (!imageFolder.exists()) {
+			if (!imageFolder.exists() || isEmpty(imageFolder)) {
 				boolean copied = false;
 				Optional<Glycan> g = glycanRepository.findById(id);
 				if (g.isPresent()) {
@@ -732,7 +740,7 @@ public class ScheduledTasksService {
 			        	}
 					}
 					if (!copied) {
-						DataController.createImageForGlycan(imageLocation, scheme+glymage, g.get());
+						DataController.createImageForGlycan(imageLocation, scheme+glymage, g.get(), errorReportingService);
 					}
 				}
 			}
@@ -761,7 +769,10 @@ public class ScheduledTasksService {
     				// report the issue
     				ErrorReportEntity error = new ErrorReportEntity();
     				error.setMessage(e.getMessage());
-    				error.setDetails("Error occurred during retrieval of glytoucan ids for the newly registered glycans tasks");
+    				String additionalDetail = "";
+    				if (e.getCause() != null) additionalDetail += e.getCause().getMessage(); 
+    				error.setDetails("Error occurred during retrieval of glytoucan ids for the newly registered glycans tasks. Glycan with sequence: " + glycan.getWurcs() 
+    							+ "\n" + additionalDetail);
     				error.setDateReported(new Date());
     				error.setTicketLabel("GlytoucanAPI");
     				errorReportingService.reportError(error);
@@ -889,7 +900,9 @@ public class ScheduledTasksService {
 				logger.error (e.getMessage(), e);
 				ErrorReportEntity error = new ErrorReportEntity();
 				error.setMessage(e.getMessage());
-				error.setDetails("Error occurred during retrieval of glytoucan ids for \"not submitted\" glycans tasks");
+				String additionalDetail = "";
+				if (e.getCause() != null) additionalDetail += e.getCause().getMessage(); 
+				error.setDetails("Error occurred during retrieval of glytoucan ids for \"not submitted\" glycans tasks" + "\n" + additionalDetail);
 				error.setDateReported(new Date());
 				error.setTicketLabel("GlytoucanAPI");
 				errorReportingService.reportError(error);
@@ -944,7 +957,9 @@ public class ScheduledTasksService {
 				logger.error (e.getMessage(), e);
 				ErrorReportEntity error = new ErrorReportEntity();
 				error.setMessage(e.getMessage());
-				error.setDetails("Error occurred during retrieval of glytoucan ids for \"not submitted\" glycans tasks");
+				String additionalDetail = "";
+				if (e.getCause() != null) additionalDetail += e.getCause().getMessage(); 
+				error.setDetails("Error occurred during retrieval of glytoucan ids for \"not submitted\" glycans tasks" + "\n" + additionalDetail);
 				error.setDateReported(new Date());
 				error.setTicketLabel("GlytoucanAPI");
 				errorReportingService.reportError(error);

@@ -47,6 +47,7 @@ import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.service.EmailManager;
+import org.glygen.tablemaker.service.ErrorReportingService;
 import org.glygen.tablemaker.util.UniProtUtil;
 import org.glygen.tablemaker.util.pubmed.DOIUtil;
 import org.glygen.tablemaker.util.pubmed.DTOPublication;
@@ -99,6 +100,7 @@ public class UtilityController {
 	private final PublicationRepository publicationRepository;
 	private final GlycanImageRepository glycanImageRepository;
 	private final GlycoproteinRepository glycoproteinRepository;
+	private final ErrorReportingService errorReportingService;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -121,7 +123,7 @@ public class UtilityController {
 			DatasetRepository datasetRepository, 
 			PublicationRepository publicationRepository, 
 			GlycanImageRepository glycanImageRepository, 
-			GlycoproteinRepository glycoproteinRepository) {
+			GlycoproteinRepository glycoproteinRepository, ErrorReportingService errorReportingService) {
 		this.namespaceRepository = namespaceRepository;
 		this.feedbackRepository = feedbackRepository;
 		this.emailManager = emailManager;
@@ -132,6 +134,7 @@ public class UtilityController {
 		this.publicationRepository = publicationRepository;
 		this.glycanImageRepository = glycanImageRepository;
 		this.glycoproteinRepository = glycoproteinRepository;
+		this.errorReportingService = errorReportingService;
 	}
 	
 	@Operation(summary = "Get all namespaces")
@@ -769,7 +772,7 @@ public class UtilityController {
         
         GlycanCartoon cartoon = null;
         if (glytoucanId.startsWith("G")) {
-        	cartoon = getCartoon (glytoucanId, glycanImageRepository, imageLocation, scheme+glymage);
+        	cartoon = getCartoon (glytoucanId, glycanImageRepository, imageLocation, scheme+glymage, errorReportingService);
         } else {
         	try {
         		Long glycanId = Long.parseLong(glytoucanId);
@@ -796,7 +799,8 @@ public class UtilityController {
         return new ResponseEntity<>(new SuccessResponse<byte[]>(image, "Cartoon retrieved"), HttpStatus.OK);
     }
 	
-	public static GlycanCartoon getCartoon (String glytoucanId, GlycanImageRepository glycanImageRepository, String imageLocation, String glymageUrl) {
+	public static GlycanCartoon getCartoon (String glytoucanId, GlycanImageRepository glycanImageRepository, 
+			String imageLocation, String glymageUrl, ErrorReportingService errorReportingService) {
 		try {
         	List<GlycanImageEntity> images = glycanImageRepository.findByGlytoucanId(glytoucanId.trim());
         	if (images != null && images.size() > 0) {
@@ -810,7 +814,7 @@ public class UtilityController {
         			glycan.setGlycanId(glycanId);
         			glycan.setWurcs(image.getWurcs());
         			glycan.setGlytoucanID(image.getGlytoucanId());
-        			DataController.createImageForGlycan(imageLocation, glymageUrl, glycan);
+        			DataController.createImageForGlycan(imageLocation, glymageUrl, glycan, errorReportingService);
         			
         			return DataController.getImageForGlycan(imageLocation, glycanId);             
         		}	

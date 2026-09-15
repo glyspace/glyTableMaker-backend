@@ -1,5 +1,6 @@
 package org.glygen.tablemaker;
 
+import org.apache.catalina.connector.ClientAbortException;
 import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
@@ -24,6 +25,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jakarta.persistence.EntityNotFoundException;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.Instant;
@@ -113,6 +115,13 @@ public class ControllerAdvice {
     @ExceptionHandler({Exception.class})
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleAllExceptions(Exception ex) {
+    	
+    	if (isClientAbort(ex)) {
+            // client disconnected before the response could be sent — not a bug, don't report
+            log.warn("Client aborted connection before response completed: {}", ex.getMessage());
+            return new ErrorResponse(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), ex.getMessage(), TIMESTAMP);
+        }
+    	
     	//send an email and create a ticket with the stack trace
     	ErrorReportEntity error = new ErrorReportEntity();
     	error.setDateReported(new Date());
@@ -137,7 +146,22 @@ public class ControllerAdvice {
         return new ErrorResponse(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), ex.getMessage(), TIMESTAMP);
     }
     
-    @ExceptionHandler({MethodArgumentTypeMismatchException.class})
+    private boolean isClientAbort(Exception ex) {
+    	Throwable current = ex;
+        while (current != null) {
+            if (current instanceof ClientAbortException) {
+                return true;
+            }
+            if (current instanceof IOException && current.getMessage() != null
+                    && current.getMessage().toLowerCase().contains("broken pipe")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+	}
+
+	@ExceptionHandler({MethodArgumentTypeMismatchException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleTypeMismatchExceptions(MethodArgumentTypeMismatchException ex) {
         Map<String, String> errors = new HashMap<>();

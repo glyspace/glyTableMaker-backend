@@ -79,6 +79,7 @@ import org.glygen.tablemaker.exception.BadRequestException;
 import org.glygen.tablemaker.exception.BatchUploadException;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.DuplicateException;
+import org.glygen.tablemaker.exception.GlymageFailedException;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
@@ -209,7 +210,7 @@ public class DataController {
     
     static Logger logger = org.slf4j.LoggerFactory.getLogger(DataController.class);
     static BuilderWorkspace glycanWorkspace = new BuilderWorkspace(new GlycanRendererAWT());
-    static Map<Long, String> metadataMapping = new HashMap<Long, String>();
+    public static Map<Long, String> metadataMapping = new HashMap<Long, String>();
     static {       
             glycanWorkspace.initData();
             // Set orientation of glycan: RL - right to left, LR - left to right, TB - top to bottom, BT - bottom to top
@@ -455,7 +456,8 @@ public class DataController {
                 		g.setErrorJson(e.getErrorJson());
                 	} catch (GlytoucanAPIFailedException e) {
                 		// API failure
-                		logger.error(e.getMessage());
+                		if (e.getCause() != null) logger.error(e.getMessage(), e.getCause());
+                		else logger.error(e.getMessage());
                 	}
                 	// save glycan with the updated information
                 	glycanRepository.save(g);
@@ -1935,7 +1937,9 @@ public class DataController {
 	                	// report the error through email
 	                	ErrorReportEntity error = new ErrorReportEntity();
 	    				error.setMessage(e.getMessage());
-	    				error.setDetails("Error occurred in AddGlycan");
+	    				String additionalDetail = "";
+	    				if (e.getCause() != null) additionalDetail += e.getCause().getMessage(); 
+	    				error.setDetails("Error occurred in while adding glycan with sequence: " + glycan.getWurcs() + "\n" + additionalDetail);
 	    				error.setDateReported(new Date());
 	    				error.setTicketLabel("GlytoucanAPI");
 	    				errorReportingService.reportError(error);
@@ -1953,7 +1957,7 @@ public class DataController {
         Glycan added = glycanRepository.save(glycan);
         
         if (added != null) {
-            createImageForGlycan(imageLocation, scheme+glymage, added);
+            createImageForGlycan(imageLocation, scheme+glymage, added, errorReportingService);
             GlycanImageEntity imageEntity = new GlycanImageEntity();
             imageEntity.setGlycanId(added.getGlycanId());
             imageEntity.setGlytoucanId(added.getGlytoucanID());
@@ -4119,7 +4123,9 @@ public class DataController {
         	// report the error through email
         	ErrorReportEntity error = new ErrorReportEntity();
 			error.setMessage(e.getMessage());
-			error.setDetails("Error occurred in parse and register glycan");
+			String additionalDetail = "";
+			if (e.getCause() != null) additionalDetail += e.getCause().getMessage(); 
+			error.setDetails("Error occurred in parse and register glycan with sequence: " + glycan.getWurcs() + "\n" + additionalDetail);
 			error.setDateReported(new Date());
 			error.setTicketLabel("GlytoucanAPI");
 			errorReportingService.reportError(error);
@@ -4136,7 +4142,7 @@ public class DataController {
         return sequence;
     }
     
-    public static void createImageForGlycan(String imageLocation, String glymageUrl, Glycan glycan) {
+    public static void createImageForGlycan(String imageLocation, String glymageUrl, Glycan glycan, ErrorReportingService errorReportingService) {
     	List<GlymageRequest> requests = new ArrayList<GlymageRequest>();
         GlycanCartoon cartoon = new GlycanCartoon();
         String wurcs = null;
@@ -4180,7 +4186,7 @@ public class DataController {
 	        	String compactUrl = glymageUrl + "/image/snfg/compact/" + glycan.getGlytoucanID() + ".png";
 	        	String extendedUrl = glymageUrl + "/image/snfg/extended/" + glycan.getGlytoucanID() + ".png";
 	        	try {
-		        	URL url = new URL(compactUrl);
+		        	URL url = URI.create(compactUrl).toURL();
 		        	HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 			        conn.setRequestMethod("GET");
 					conn.setConnectTimeout(3000); 
@@ -4193,7 +4199,7 @@ public class DataController {
 				        }
 			        }
 			        
-			        url = new URL(extendedUrl);
+			        url = URI.create(extendedUrl).toURL();
 		        	conn = (HttpURLConnection) url.openConnection();
 			        conn.setRequestMethod("GET");
 			        conn.setConnectTimeout(3000); 
@@ -4303,13 +4309,26 @@ public class DataController {
             } else {
                 logger.warn ("Glycan image cannot be generated for glycan " + glycan.getGlycanId());
             }
+        } catch (GlymageFailedException e) { 
+    		// received error message from glymage
+    		ErrorReportEntity error = new ErrorReportEntity();
+			error.setMessage("Error occurred while getting glycan images from Glymage");
+			String additionalDetails = "";
+			if (glycan.getGlytoucanID() != null) additionalDetails = "GlyTouCanId: " + glycan.getGlytoucanID();
+			String formattedJson = e.getResponse().toString(2);
+			error.setDetails(additionalDetails + "\n\nResponse from Glymage\n\n```" + formattedJson + "\n```");
+			//error.setDetails(e.getMessage() + "\n" + additionalDetails);
+			error.setDateReported(new Date());
+			error.setTicketLabel("Glymage");
+			errorReportingService.reportError(error);
         } catch (Exception e) {
         	logger.error ("Glycan image cannot be generated for glycan " + glycan.getGlycanId() + ". Reason: " + e.getMessage());
         			
         }
     }
     
-    private static void retrieveImages(String glymageUrl, Map<String, GlymageRequest> taskMap, GlycanCartoon cartoon) throws JsonProcessingException, IOException, InterruptedException {
+    private static void retrieveImages(String glymageUrl, Map<String, GlymageRequest> taskMap, GlycanCartoon cartoon) 
+    		throws InterruptedException, GlymageFailedException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
         String jsonPayload = mapper.writeValueAsString(taskMap.keySet());
         
@@ -4343,12 +4362,17 @@ public class DataController {
 		
 		for (int i = 0; i < jsonArray.length(); i++) {
         	JSONObject resp = jsonArray.getJSONObject(i);
+        	String status = resp.getString("status");
+        	if (status != null && status.equalsIgnoreCase("error")) {
+        		logger.error ("Received an error message from glymage " + resp.toString());
+        		throw new GlymageFailedException("Received an error message from glymage ", resp);
+        	}
 			String imagePath = resp.getString("result");
 			String taskId = resp.getString("id");
 			GlymageRequest req = taskMap.get(taskId);
-			if (req != null) {
-				URL url2 = new URL(glymageUrl + "/" + imagePath);
-				HttpURLConnection conn = (HttpURLConnection) url2.openConnection();
+			if (req != null && imagePath != null && !imagePath.isEmpty()) {
+				URI uri = URI.create(glymageUrl).resolve(imagePath);
+				HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
 		        conn.setRequestMethod("GET");
 		        try (InputStream in = conn.getInputStream()) {
 		        	byte[] bytes = in.readAllBytes();
@@ -4365,6 +4389,8 @@ public class DataController {
 							cartoon.setCompactNoRedEnd(bytes);
 						}
 					}
+		        } finally {
+		        	conn.disconnect();
 		        }
 			}
 		}

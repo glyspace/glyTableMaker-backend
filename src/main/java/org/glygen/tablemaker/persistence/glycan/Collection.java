@@ -40,6 +40,7 @@ public class Collection {
     java.util.Collection<GlycoproteinInCollection> glycoproteins;
     java.util.Collection<CollectionTag> tags;
     
+    @Deprecated
     java.util.Collection<Metadata> metadata;    // old, deprecate!
     // new metadata 
     MetadataType sampleType = MetadataType.BIOLOGICAL_SAMPLE;
@@ -167,10 +168,13 @@ public class Collection {
 		this.parents = parents;
 	}
     
+    @Deprecated
     @OneToMany(mappedBy = "collection", cascade=CascadeType.ALL, orphanRemoval = true)
 	public java.util.Collection<Metadata> getMetadata() {
 		return metadata;
 	}
+    
+    @Deprecated
 	public void setMetadata(List<Metadata> metadata) {
 		this.metadata = metadata;
 	}
