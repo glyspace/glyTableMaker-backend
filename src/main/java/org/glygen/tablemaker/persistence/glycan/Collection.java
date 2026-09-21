@@ -5,6 +5,10 @@ import java.util.List;
 
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -29,12 +33,38 @@ public class Collection {
     String description;
     UserEntity user;
     CollectionType type;
-    java.util.Collection<Metadata> metadata;
+    
     java.util.Collection<Collection> parents;
     java.util.Collection<Collection> collections;  
     java.util.Collection<GlycanInCollection> glycans;
     java.util.Collection<GlycoproteinInCollection> glycoproteins;
     java.util.Collection<CollectionTag> tags;
+    
+    @Deprecated
+    java.util.Collection<Metadata> metadata;    // old, deprecate!
+    // new metadata 
+    MetadataType sampleType = MetadataType.BIOLOGICAL_SAMPLE;
+    JsonNode metadataValues;
+    
+    
+    @Enumerated(EnumType.STRING)
+    public MetadataType getSampleType() {
+		return sampleType;
+	}
+    
+    public void setSampleType(MetadataType sampleType) {
+		this.sampleType = sampleType;
+	}
+    
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    public JsonNode getMetadataValues() {
+		return metadataValues;
+	}
+    
+    public void setMetadataValues(JsonNode metadataValues) {
+		this.metadataValues = metadataValues;
+	}
     
     /**
      * @return the id
@@ -138,10 +168,13 @@ public class Collection {
 		this.parents = parents;
 	}
     
+    @Deprecated
     @OneToMany(mappedBy = "collection", cascade=CascadeType.ALL, orphanRemoval = true)
 	public java.util.Collection<Metadata> getMetadata() {
 		return metadata;
 	}
+    
+    @Deprecated
 	public void setMetadata(List<Metadata> metadata) {
 		this.metadata = metadata;
 	}

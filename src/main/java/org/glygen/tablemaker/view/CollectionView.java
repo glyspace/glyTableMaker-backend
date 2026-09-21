@@ -6,14 +6,19 @@ import org.glygen.tablemaker.persistence.glycan.CollectionTag;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.Metadata;
+import org.glygen.tablemaker.persistence.glycan.MetadataType;
 import org.glygen.tablemaker.persistence.protein.Glycoprotein;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class CollectionView {
 	Long collectionId;
 	String name;
 	String description;
 	CollectionType type;
+	MetadataType sampleType = MetadataType.BIOLOGICAL_SAMPLE;
 	List<Metadata> metadata;
+	JsonNode metadataValues;
 	List<Glycan> glycans;
 	List<Glycoprotein> glycoproteins; 
 	List<CollectionView> children;
@@ -40,6 +45,15 @@ public class CollectionView {
 	public void setMetadata(List<Metadata> metadata) {
 		this.metadata = metadata;
 	}
+	
+	public JsonNode getMetadataValues() {
+		return metadataValues;
+	}
+	
+	public void setMetadataValues(JsonNode metadataValues) {
+		this.metadataValues = metadataValues;
+	}
+	
 	public List<Glycan> getGlycans() {
 		return glycans;
 	}
@@ -87,5 +101,11 @@ public class CollectionView {
 	}
 	public void setGlycoproteins(List<Glycoprotein> glycoproteins) {
 		this.glycoproteins = glycoproteins;
+	}
+	public MetadataType getSampleType() {
+		return sampleType;
+	}
+	public void setSampleType(MetadataType sampleType) {
+		this.sampleType = sampleType;
 	}
 }

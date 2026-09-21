@@ -54,6 +54,9 @@ public class DatasetManagerImpl implements DatasetManager {
 			if (version.getGlycoproteinData() != null && !version.getGlycoproteinData().isEmpty()) {
 				protein = true;
 			}
+			if (version.getGlycoproteinRecords() != null && !version.getGlycoproteinRecords().isEmpty()) {
+				protein = true;
+			}
 		}
 		
 		if (d.getDatasetIdentifier() == null) {

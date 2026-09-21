@@ -159,6 +159,9 @@ public class ErrorReportingService {
 		if (existingReports != null && existingReports.size() > 0) {
 			// already reported this error on this date, ignoring
 			logger.info ("Already Reported the error, ignoring for now: " + error.getMessage() + " Date: " + error.getDateReported());
+			if (error.getDetails().contains("Response from Glymage")) {
+				logger.info ("Additional details: " + error.getDetails().substring(0, error.getDetails().indexOf("Response from Glymage")));
+			}
 		} else {
 			// create ticket in Github
 			try {

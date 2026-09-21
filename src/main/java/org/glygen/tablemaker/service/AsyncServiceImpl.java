@@ -126,7 +126,7 @@ public class AsyncServiceImpl implements AsyncService {
                     Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
                     allGlycans.add(added);
                     if (added != null) {
-                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added);
+                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added, errorReportingService);
                     }
                 	countSuccess++;
                 } catch (DuplicateException e) {
@@ -223,7 +223,7 @@ public class AsyncServiceImpl implements AsyncService {
 	                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
 	                    allGlycans.add(added);
 	                    if (added != null) {
-	                        DataController.createImageForGlycan(imageLocation, scheme+glymage, added);
+	                        DataController.createImageForGlycan(imageLocation, scheme+glymage, added, errorReportingService);
 	                    }
 	                	countSuccess++;
 	                } catch (DuplicateException e) {
@@ -318,7 +318,7 @@ public class AsyncServiceImpl implements AsyncService {
 		                    glycanSequenceMap.put (comp.trim(), glycan);
 		                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
 		                    if (added != null) {
-		                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added);
+		                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added, errorReportingService);
 		                    }
                 		
 		                } catch (DuplicateException e) {
@@ -521,7 +521,7 @@ public class AsyncServiceImpl implements AsyncService {
         	                    glycanSequenceMap.put (comp.trim(), glycan);
         	                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
         	                    if (added != null) {
-        	                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added);
+        	                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added, errorReportingService);
         	                    }
         	                } catch (DuplicateException e) {
         	                	//errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));
@@ -1036,7 +1036,7 @@ public class AsyncServiceImpl implements AsyncService {
                     allGlycans.add(glycan);
                     Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
                     if (added != null) {
-                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added);
+                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added, errorReportingService);
                     }
                 } catch (DuplicateException e) {
                 	//errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));

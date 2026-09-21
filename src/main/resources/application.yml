@@ -35,6 +35,8 @@ spring:
 glytoucan:
   api-key: ENC(xxC0coU6Fo/mu1WTYjVA9IWdPerjRD0XPBEgmXgW8mdI6n7Jk5/bA3nFD48QKPxWpEVU9ICMXxlugIwk+DZSe65whHuRX8NhH0MwyeO2Xsc=)
   user-id: ff2dda587eb4597ab1dfb995b520e99b7ef68d7786af0f3ea626555e2c609c3d
+glycosmos:
+  api-key: ENC(lc50tHbR1bocf9CzshjZ4o/LsGiaQ3i+l4ORTJ7k5SVOoQiOps9sMW56YC4j2smVoXLGUkwaearrhTazzuvrfeHDOT6g7fFXuGQptoVrMx+QkpVRSTDKh4s1bdKfYoQbp8IYvMbPFZ6KGKK/7IwZDm7z53EBOmr1dyRM/msI6gBLOQGCmQBDBDcvnudlivjb0oVvBRSPgDFIwd6HJ9QjY5vWfTk5kJTdygCYiqgG5IfLT0xYLVGRXNvdPN1lmDJVf55qpKROQaU=)
   
 github:
   token: ENC(bC9mh4qqs0iB/wKj0SPk3vWPw+QAPH4CTSn4MefPfuVwG0VfLt5hzzq502xC1+hfR+iryG1Va1Bardye7apwrc6mlcz8OPPRVh1IUYv2rP08wz1WM4jOyDcJnExVV6QI7LuTyIC4FyE=)

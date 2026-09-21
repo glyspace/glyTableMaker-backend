@@ -21,6 +21,7 @@ import org.glycoinfo.GlycanFormatconverter.util.exchange.WURCSGraphToGlyContaine
 import org.glycoinfo.WURCSFramework.io.GlycoCT.WURCSExporterGlycoCT;
 import org.glycoinfo.WURCSFramework.util.WURCSException;
 import org.glycoinfo.WURCSFramework.util.WURCSFactory;
+import org.glycoinfo.WURCSFramework.util.validation.WURCSValidator;
 import org.glycoinfo.WURCSFramework.wurcs.graph.WURCSGraph;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
@@ -215,20 +216,20 @@ public class GlytoucanUtil {
 	        		// something has changed with the end-point
 		        	// log error
 		        	logger.error("GlyTouCan registration API has been changed. Cannot find submission number in the response: " + json);
-		        	throw new GlytoucanAPIFailedException ("GlyTouCan registration API has been modified!");
+		        	throw new GlytoucanAPIFailedException ("GlyTouCan registration API has been modified!", new IOException ("Cannot find submission number in the response: " + json));
 	        	}
 	        } else {
 	        	// something has changed with the end-point
 	        	// log error
 	        	logger.error("GlyTouCan registration API has been changed. Cannot find contents in the resppnse: " + json);
-	        	throw new GlytoucanAPIFailedException ("GlyTouCan registration API has been modified!");
+	        	throw new GlytoucanAPIFailedException ("GlyTouCan registration API has been modified!", new IOException ("Cannot find contents in the resppnse: " + json));
 	        }
         } catch (JsonParseException e) {
         	logger.info("Exception retrieving glycan " + e.getMessage());
-        	throw new GlytoucanAPIFailedException("Glytoucan retrieval API is not working. Reason: " + e.getMessage());
+        	throw new GlytoucanAPIFailedException("Glytoucan retrieval API is not working", e);
         } catch (ParseException e) {
         	logger.info("Exception retrieving glycan " + e.getMessage());
-        	throw new GlytoucanAPIFailedException("Glytoucan retrieval API is not working. Reason: " + e.getMessage());
+        	throw new GlytoucanAPIFailedException("Glytoucan retrieval API is not working", e);
 		} catch (IOException e) {
 			logger.info("Exception retrieving glycan " + e.getMessage());
 		} catch (InterruptedException e) {
@@ -324,7 +325,7 @@ public class GlytoucanUtil {
 		}
 		
 		try {
-			GlytoucanUtil.getInstance().checkBatchStatus("6407df5cefbbd62860b9f762158657f1663d51423e25d85e1293a903c0681031");
+			GlytoucanUtil.getInstance().checkBatchStatus("d11c7ed7c2990f89f2746934fd800c026106061d8a8d0f9da30f190f6bc66f0a");
 		} catch (GlytoucanFailedException e) {
 			System.out.println ("Received error: " + e.getErrorJson());
 		}
@@ -406,7 +407,26 @@ public class GlytoucanUtil {
         
         /*wurcs = "WURCS=2.0/5,10,9/[a2122h-1b_1-5_2*NCC/3=O][a1122h-1b_1-5][a1122h-1a_1-5][][a1221m-1a_1-5]/1-1-2-3-4-4-3-4-4-5/a4-b1_a6-j1_b4-c1_c3-d1_c6-g1_d2-e0_d4-f0_g2-h0_g6-i0";
         String errors = GlytoucanUtil.getInstance().validateGlycan(wurcs);
-        System.out.println("Validation result" + errors);*/
+*/
+        
+        wurcs = "WURCS=2.0/6,11,10/[a2122h-1x_1-?_2*NCC/3=O][a2122h-1b_1-5_2*NCC/3=O][a1122h-1b_1-5][a1122h-1a_1-5][a2112h-1b_1-5][Aad21122h-2a_2-6_5*N]/1-2-3-4-2-5-6-4-2-5-6/a4-b1_b4-c1_c3-d1_c6-h1_d2-e1_e4-f1_f6-g2_h2-i1_i4-j1_j6-k2";
+        try {
+			GlytoucanUtil.getSugarFromWURCS(wurcs);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        
+        WURCSValidator validator = new WURCSValidator();
+        validator.start(wurcs);
+        if (validator.getReport().hasError()) {
+            String errorMessage = "";
+            for (String error: validator.getReport().getErrors()) {
+                errorMessage += error + ", ";
+            }
+            errorMessage = errorMessage.substring(0, errorMessage.lastIndexOf(","));
+            System.out.println (errorMessage);
+        } 
     }
 }
 

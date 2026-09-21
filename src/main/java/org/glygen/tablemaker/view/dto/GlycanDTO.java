@@ -14,7 +14,7 @@ public class GlycanDTO {
     Double mass;
     Date dateCreated;
     Date dateAdded;    // date added to the collection
-    List<GlycanTag> tags;
+    List<GlycanTagDTO> tags;
 	public String getGlytoucanID() {
 		return glytoucanID;
 	}
@@ -63,10 +63,10 @@ public class GlycanDTO {
 	public void setDateAdded(Date dateAdded) {
 		this.dateAdded = dateAdded;
 	}
-	public List<GlycanTag> getTags() {
+	public List<GlycanTagDTO> getTags() {
 		return tags;
 	}
-	public void setTags(List<GlycanTag> tags) {
+	public void setTags(List<GlycanTagDTO> tags) {
 		this.tags = tags;
 	}
 }

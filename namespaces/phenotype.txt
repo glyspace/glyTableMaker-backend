@@ -1,0 +1,6 @@
+knockout	knockout
+gain of function	gain of function
+loss of function	loss of function
+hypermorph	hypermorph
+hypomorph	hypomorph
+knockin	knockin

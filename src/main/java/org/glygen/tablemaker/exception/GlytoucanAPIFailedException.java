@@ -13,4 +13,8 @@ public class GlytoucanAPIFailedException extends Exception {
 	public GlytoucanAPIFailedException(Throwable throwable) {
         super(throwable);
     }
+	
+	public GlytoucanAPIFailedException (String message, Throwable throwable) {
+		super(message, throwable);
+	}
 }

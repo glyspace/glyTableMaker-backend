@@ -2,27 +2,36 @@ package org.glygen.tablemaker.controller;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.glygen.tablemaker.persistence.dao.DatasetGlycoproteinMetadataRecordRepository;
+import org.glygen.tablemaker.persistence.dao.DatasetMetadataRecordRepository;
+import org.glygen.tablemaker.persistence.dao.DatasetMetadataSpecificationBuilder;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
+import org.glygen.tablemaker.persistence.dao.GlycoproteinMetadataSpecificationBuilder;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dao.RetractionRepository;
 import org.glygen.tablemaker.persistence.dao.SoftwareRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
+import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadataRecord;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
+import org.glygen.tablemaker.persistence.dataset.DatasetMetadataRecord;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Publication;
+import org.glygen.tablemaker.persistence.glycan.MetadataType;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.persistence.table.TableColumn;
 import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
+import org.glygen.tablemaker.util.ResidueUtil;
 import org.glygen.tablemaker.view.DatasetTableDownloadView;
 import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.Filter;
@@ -30,11 +39,14 @@ import org.glygen.tablemaker.view.GlygenMetadataRow;
 import org.glygen.tablemaker.view.GlygenProteinMetadataRow;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
+import org.glygen.tablemaker.view.dto.DatasetGlycoproteinRowDTO;
+import org.glygen.tablemaker.view.dto.DatasetRowDTO;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.domain.Sort.Order;
@@ -51,6 +63,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -65,11 +78,15 @@ public class PublicDataController {
 	static Logger logger = org.slf4j.LoggerFactory.getLogger(PublicDataController.class);
 	
 	final private DatasetRepository datasetRepository;
+	final private DatasetMetadataRecordRepository datasetDataRepository;
+	final private DatasetGlycoproteinMetadataRecordRepository datasetGlycoproteinDataRepository;
 	final private GlycanImageRepository glycanImageRepository;
 	final private TemplateRepository templateRepository;
 	final private PublicationRepository publicationRepository;
 	final private RetractionRepository retractionRepository;
 	final private SoftwareRepository softwareRepository;
+	final private GlycoproteinMetadataSpecificationBuilder glycoproteinSpecBuilder;
+	final private DatasetMetadataSpecificationBuilder metadataSpecBuilder;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -77,13 +94,17 @@ public class PublicDataController {
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
 	
-	public PublicDataController(DatasetRepository datasetRepository, GlycanImageRepository glycanImageRepository, TemplateRepository templateRepository, PublicationRepository publicationRepository, RetractionRepository retractionRepository, SoftwareRepository softwareRepository) {
+	public PublicDataController(DatasetRepository datasetRepository, GlycanImageRepository glycanImageRepository, TemplateRepository templateRepository, PublicationRepository publicationRepository, RetractionRepository retractionRepository, SoftwareRepository softwareRepository, DatasetGlycoproteinMetadataRecordRepository datasetGlycoproteinDataRepository, DatasetMetadataRecordRepository datasetDataRepository, GlycoproteinMetadataSpecificationBuilder glycoproteinSpecBuilder, DatasetMetadataSpecificationBuilder metadataSpecBuilder) {
 		this.datasetRepository = datasetRepository;
+		this.datasetDataRepository = datasetDataRepository;
+		this.datasetGlycoproteinDataRepository = datasetGlycoproteinDataRepository;
 		this.glycanImageRepository = glycanImageRepository;
 		this.templateRepository = templateRepository;
 		this.publicationRepository = publicationRepository;
 		this.retractionRepository = retractionRepository;
 		this.softwareRepository = softwareRepository;
+		this.glycoproteinSpecBuilder = glycoproteinSpecBuilder;
+		this.metadataSpecBuilder = metadataSpecBuilder;
 	}
 	
 	@Operation(summary = "Get public dataset's publications")
@@ -176,44 +197,47 @@ public class PublicDataController {
             }
         }
         List<Sorting> sortingList = null;
-        List<Order> sortOrders = new ArrayList<>();
         if (sorting != null && !sorting.equals("[]")) {
             try {
                 sortingList = mapper.readValue(sorting, 
                     new TypeReference<ArrayList<Sorting>>() {});
-                for (Sorting s: sortingList) {
-                    sortOrders.add(new Order(s.getDesc() ? Direction.DESC: Direction.ASC, s.getId()));
-                }
             } catch (JsonProcessingException e) {
                 throw new InternalError("sorting parameter is invalid " + sorting, e);
             }
         }
-        
-        if (type.equalsIgnoreCase("glycoprotein")) { 	
-        	Page<String> rows = null;
-        	if (versionId != null) {
-        		rows = datasetRepository.getGlycoproteinDataByVersion(versionId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
-            } else {
-            	rows = datasetRepository.getGlycoproteinData(datasetId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
-            	versionId = datasetRepository.getLatestVersionIdByDatasetIdentifier(datasetId);
+
+        Pageable pageable = PageRequest.of(start, size); // no Sort — handled in the Specification
+
+        if (type.equalsIgnoreCase("glycoprotein")) {
+            Specification<DatasetGlycoproteinMetadataRecord> spec = 
+                glycoproteinSpecBuilder.build(filterList, sortingList, versionId, datasetId);
+            Page<DatasetGlycoproteinMetadataRecord> rows = datasetGlycoproteinDataRepository.findAll(spec, pageable);
+            for (DatasetGlycoproteinMetadataRecord rec: rows) {
+            	// check if the residue is built and saved, if not, save it
+            	if (rec.getResidue() == null || rec.getResidue().isBlank()) {
+            		rec.setResidue(ResidueUtil.buildResidue(rec.getAminoAcid(), rec.getSite(), true));
+            		if (!rec.getResidue().isEmpty()) {
+            			datasetGlycoproteinDataRepository.save(rec);
+            		}
+            	}
             }
-        	List<DatasetGlycoproteinMetadata> data = datasetRepository.findGlycoproteinByRowIdInWithVersion(rows.getContent(), versionId);
-        	
-        	Map<String, List<DatasetGlycoproteinMetadata>> rowMap = new HashMap<>();
-			for (DatasetGlycoproteinMetadata m: data) {
-				if (rowMap.get(m.getRowId()) == null) {
-					rowMap.put(m.getRowId(), new ArrayList<>());
-				}
-				rowMap.get(m.getRowId()).add(m);
-			}
-			
-			List<GlygenProteinMetadataRow> result = new ArrayList<>();
-			for (String key: rowMap.keySet()) {
-				GlygenProteinMetadataRow row = new GlygenProteinMetadataRow();
-				row.setRowId(key);
-				row.setColumns(rowMap.get(key));
-				result.add(row);
-			}
+            List<DatasetGlycoproteinRowDTO> result = new ArrayList<DatasetGlycoproteinRowDTO>();
+        	for (DatasetGlycoproteinMetadataRecord rec: rows) {
+        		DatasetGlycoproteinRowDTO dto = new DatasetGlycoproteinRowDTO();
+        		dto.setId( rec.getId());
+        		dto.setGlytoucanId(rec.getGlytoucanId());
+        		dto.setAminoAcid(rec.getAminoAcid());
+        		dto.setGlycosylationSubType(rec.getGlycosylationSubType());
+        		dto.setGlycosylationType(rec.getGlycosylationType());
+        		dto.setSite(rec.getSite());
+        		dto.setUniProtId(rec.getUniProtId());
+        		if (rec.getMetadataGroup() != null) {
+        			dto.setMetadata(rec.getMetadataGroup().getValue());
+        			dto.setSampleType(rec.getMetadataGroup().getSampleType());
+        		}
+        		dto.setVersion(rec.getDataset().getVersion());
+        		result.add(dto);
+        	}
         	
         	Map<String, Object> response = new HashMap<>();
             response.put("objects", result);
@@ -223,28 +247,21 @@ public class PublicDataController {
             
             return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
         } else {
-        	Page<String> rows = null;
-        	if (versionId != null) {
-        		rows = datasetRepository.getDataByVersion(versionId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
-            } else {
-            	rows = datasetRepository.getData(datasetId, globalFilter, filterList, PageRequest.of(start, size, Sort.by(sortOrders)));
-            	versionId = datasetRepository.getLatestVersionIdByDatasetIdentifier(datasetId);
-            }
-        	List<DatasetMetadata> data = datasetRepository.findByRowIdInWithVersion(rows.getContent(), versionId);
-        	Map<String, List<DatasetMetadata>> rowMap = new HashMap<>();
-			for (DatasetMetadata m: data) {
-				if (rowMap.get(m.getRowId()) == null) {
-					rowMap.put(m.getRowId(), new ArrayList<>());
-				}
-				rowMap.get(m.getRowId()).add(m);
-			}
-			List<GlygenMetadataRow> result = new ArrayList<>();
-			for (String key: rowMap.keySet()) {
-				GlygenMetadataRow row = new GlygenMetadataRow();
-				row.setRowId(key);
-				row.setColumns(rowMap.get(key));
-				result.add(row);
-			}
+            Specification<DatasetMetadataRecord> spec = 
+                metadataSpecBuilder.build(filterList, sortingList, versionId, datasetId);
+            Page<DatasetMetadataRecord> rows = datasetDataRepository.findAll(spec, pageable);
+            List<DatasetRowDTO> result = new ArrayList<DatasetRowDTO>();
+        	for (DatasetMetadataRecord rec: rows) {
+        		DatasetRowDTO dto = new DatasetRowDTO();
+        		dto.setId( rec.getId());
+        		dto.setGlytoucanId(rec.getGlytoucanId());
+        		if (rec.getMetadataGroup() != null) {
+        			dto.setMetadata(rec.getMetadataGroup().getValue());
+        			dto.setSampleType(rec.getMetadataGroup().getSampleType());
+        		}
+        		dto.setVersion(rec.getDataset().getVersion());
+        		result.add(dto);
+        	}
 			
         	Map<String, Object> response = new HashMap<>();
             response.put("objects", result);
@@ -254,6 +271,70 @@ public class PublicDataController {
             
             return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
         }
+        
+        
+      /*  if (type.equalsIgnoreCase("glycoprotein")) { 
+        	Page<DatasetGlycoproteinMetadataRecord> rows = null;
+        	if (versionId != null) {
+        		rows = datasetGlycoproteinDataRepository.findByDatasetVersionId(versionId, PageRequest.of(start, size, Sort.by(sortOrders)));
+        	} else {
+        		rows = datasetGlycoproteinDataRepository.findByDatasetDatasetDatasetIdentifierAndDatasetHeadTrue(datasetId, PageRequest.of(start, size, Sort.by(sortOrders)));
+        	}
+        	
+        	List<DatasetGlycoproteinRowDTO> result = new ArrayList<DatasetGlycoproteinRowDTO>();
+        	for (DatasetGlycoproteinMetadataRecord rec: rows) {
+        		DatasetGlycoproteinRowDTO dto = new DatasetGlycoproteinRowDTO();
+        		dto.setId( rec.getId());
+        		dto.setGlytoucanId(rec.getGlytoucanId());
+        		dto.setAminoAcid(rec.getAminoAcid());
+        		dto.setGlycosylationSubType(rec.getGlycosylationSubType());
+        		dto.setGlycosylationType(rec.getGlycosylationType());
+        		dto.setSite(rec.getSite());
+        		dto.setUniProtId(rec.getUniProtId());
+        		if (rec.getMetadataGroup() != null) {
+        			dto.setMetadata(rec.getMetadataGroup().getValue());
+        			dto.setSampleType(rec.getMetadataGroup().getSampleType());
+        		}
+        		dto.setVersion(rec.getDataset().getVersion());
+        		result.add(dto);
+        	}
+        	
+        	Map<String, Object> response = new HashMap<>();
+            response.put("objects", result);
+            response.put("currentPage", rows.getNumber());
+            response.put("totalItems", rows.getTotalElements());
+            response.put("totalPages", rows.getTotalPages());
+            
+            return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
+        } else {
+        	Page<DatasetMetadataRecord> rows = null;
+        	if (versionId != null) {
+        		rows = datasetDataRepository.findByDatasetVersionId(versionId, PageRequest.of(start, size, Sort.by(sortOrders)));
+        	} else {
+        		rows = datasetDataRepository.findByDatasetDatasetDatasetIdentifierAndDatasetHeadTrue(datasetId, PageRequest.of(start, size, Sort.by(sortOrders)));
+        	}
+        	
+        	List<DatasetRowDTO> result = new ArrayList<DatasetRowDTO>();
+        	for (DatasetMetadataRecord rec: rows) {
+        		DatasetRowDTO dto = new DatasetRowDTO();
+        		dto.setId( rec.getId());
+        		dto.setGlytoucanId(rec.getGlytoucanId());
+        		if (rec.getMetadataGroup() != null) {
+        			dto.setMetadata(rec.getMetadataGroup().getValue());
+        			dto.setSampleType(rec.getMetadataGroup().getSampleType());
+        		}
+        		dto.setVersion(rec.getDataset().getVersion());
+        		result.add(dto);
+        	}
+			
+        	Map<String, Object> response = new HashMap<>();
+            response.put("objects", result);
+            response.put("currentPage", rows.getNumber());
+            response.put("totalItems", rows.getTotalElements());
+            response.put("totalPages", rows.getTotalPages());
+            
+            return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
+        }*/
 	}
 	
 	@Operation(summary = "Get public datasets")
@@ -404,114 +485,129 @@ public class PublicDataController {
 		String filename = table.getFilename() != null ? table.getFilename() : "GlygenDataset";
 		File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ".csv");
 		
-		
+		JsonNode metadataDefinitions = null;
 		try {
-			if (table.getData() != null && !table.getData().isEmpty()) {
-				// get GlygenTemplate
-				TableMakerTemplate glygenTemplate = templateRepository.findById(1L).get();
-				String[] header = new String[glygenTemplate.getColumns().size()+1];
-				for (TableColumn col: glygenTemplate.getColumns()) {
-					header[col.getOrder()-1] = col.getName();
-				}
-				header[header.length-1] = "version";
-				List<String[]> rows = new ArrayList<>();
-				// generate rows from the data
-				rows.add(header);
-				List<GlygenMetadataRow> data = table.getData();
-				if (data != null) {
-					for (GlygenMetadataRow r: data) {
-						String[] row = new String[glygenTemplate.getColumns().size()+1];
-						for (TableColumn col: glygenTemplate.getColumns()) {
-							for (DatasetMetadata c: r.getColumns()) {
-								if (col.getGlycanColumn() != null && col.getGlycanColumn().equals(c.getGlycanColumn())) {
-									row[col.getOrder()-1] = c.getValue();
-									break;
-								} else if (col.getDatatype() != null && c.getDatatype() != null &&
-										col.getDatatype().getName().equals (c.getDatatype().getName())) {
-									switch (col.getType()) {
-									case ID:
-										String value = c.getValueId();
-										if (c.getValueId()!= null && c.getValueId().startsWith("UBERON"))
-											value = value.replace("_", ":");
-										row[col.getOrder()-1] = value;
-										break;
-									case URI:
-										row[col.getOrder()-1] = c.getValueUri();
-										break;
-									case VALUE:
-										row[col.getOrder()-1] = c.getValue();
-										break;
-									default:
-										row[col.getOrder()-1] = c.getValue();
-										break;
-									
-									}
-									break;
-								}
-							}
-						}
-						row[row.length-1] = table.getVersion();
-						rows.add(row);
-					}
-				}
-				TableController.writeToCSV(rows, newFile);
-			} else if (table.getGlycoproteinData() != null && !table.getGlycoproteinData().isEmpty()) {
-				// get GlygenTemplate
-				TableMakerTemplate glygenTemplate = templateRepository.findById(2L).get();   // glycoprotein template
-				String[] header = new String[glygenTemplate.getColumns().size()+1];
-				for (TableColumn col: glygenTemplate.getColumns()) {
-					header[col.getOrder()-1] = col.getName();
-				}
-				header[header.length-1] = "version";
-				List<String[]> rows = new ArrayList<>();
-				// generate rows from the data
-				rows.add(header);
-				List<GlygenProteinMetadataRow> data = table.getGlycoproteinData();
-				if (data != null) {
-					for (GlygenProteinMetadataRow r: data) {
-						String[] row = new String[glygenTemplate.getColumns().size()+1];
-						for (TableColumn col: glygenTemplate.getColumns()) {
-							for (DatasetGlycoproteinMetadata c: r.getColumns()) {
-								if (col.getProteinColumn() != null && col.getProteinColumn().equals(c.getGlycoproteinColumn())) {
-									row[col.getOrder()-1] = c.getValue();
-									break;
-								} else if (col.getDatatype() != null && c.getDatatype() != null &&
-										col.getDatatype().getName().equals (c.getDatatype().getName())) {
-									switch (col.getType()) {
-									case ID:
-										String value = c.getValueId();
-										if (c.getValueId()!= null && c.getValueId().startsWith("UBERON"))
-											value = value.replace("_", ":");
-										row[col.getOrder()-1] = value;
-										break;
-									case URI:
-										row[col.getOrder()-1] = c.getValueUri();
-										break;
-									case VALUE:
-										row[col.getOrder()-1] = c.getValue();
-										break;
-									default:
-										row[col.getOrder()-1] = c.getValue();
-										break;
-									
-									}
-									break;
-								}
-							}
-						}
-						row[row.length-1] = table.getVersion();
-						rows.add(row);
-					}
-				}
-				TableController.writeToCSV(rows, newFile);
-			} else {
-				throw new IllegalArgumentException ("Failed to generate download file. There is no data!");
+			ObjectMapper mapper = new ObjectMapper();
+			try (InputStream is = getClass().getClassLoader().getResourceAsStream("metadata.json")) {
+				metadataDefinitions = mapper.readTree(is);
 			}
+		} catch (Exception e) {
+			logger.error("could not load metadata.json, download cannot be done at this moment", e);
+			throw new IllegalArgumentException ("Failed to generate download file. Reason: " + e.getMessage());
+		}
+
+		try {
+			if (table.getRecords() != null && !table.getRecords().isEmpty()) {
+				List<DatasetRowDTO> records = table.getRecords();
+				List<String[]> rows = new ArrayList<>();
+				
+				JsonNode general = metadataDefinitions.path("general");
+				JsonNode typeFields = metadataDefinitions.path(MetadataType.BIOLOGICAL_SAMPLE_BACKGROUND_ALTERATION.name().toLowerCase()).path("fields");
+				int columnCount = 2; // glytoucanId and sampleType
+				for (JsonNode field: general) {
+					columnCount++;
+				}
+				if (typeFields != null && typeFields.isArray() && !typeFields.isEmpty()) {
+					for (JsonNode field: typeFields) {
+						columnCount++;
+					}
+				}
+				String[] row = new String[columnCount];
+				
+				row[0] = "GlyTouCan ID";
+				row[1] = "Sample Type";
+				int i=2;
+				for (JsonNode field: general) {
+					row[i++] = field.path("label").asText();
+				}
+				for (JsonNode field: typeFields) {
+					row[i++] = field.path("label").asText();
+				}
+				
+				rows.add(row);
+				
+				for (DatasetRowDTO rec: records) {
+					row = new String[columnCount];
+					row[0] = rec.getGlytoucanId();
+					row[1] = rec.getSampleType().name();
+					i = 2;
+					for (JsonNode field: general) {
+						String fieldId = field.path("id").asText();
+						row[i++] = rec.getMetadata().path(fieldId).toPrettyString();
+					}
+					for (JsonNode field: typeFields) {
+						String fieldId = field.path("id").asText();
+						row[i++] = rec.getMetadata().path(fieldId).toPrettyString();
+					}
+					
+					rows.add(row);
+				}
+				
+				TableController.writeToCSV(rows, newFile);
+			} else if (table.getGlycoproteinRecords() != null && !table.getGlycoproteinRecords().isEmpty()) {
+				List<DatasetGlycoproteinRowDTO> records = table.getGlycoproteinRecords();
+				List<String[]> rows = new ArrayList<>();
+				
+				JsonNode general = metadataDefinitions.path("general");
+				JsonNode typeFields = metadataDefinitions.path(MetadataType.PROTEIN_MUTATION_BACKGROUND_ALTERATION.name().toLowerCase()).path("fields");
+				int columnCount = 5; 
+				for (JsonNode field: general) {
+					columnCount++;
+				}
+				if (typeFields != null && typeFields.isArray() && !typeFields.isEmpty()) {
+					for (JsonNode field: typeFields) {
+						columnCount++;
+					}
+				}
+				columnCount++; // expression system
+				
+				String[] row = new String[columnCount];
+				row[0] = "Uniprot ID";
+				row[1] = "GlyTouCan ID";
+				row[2] = "Residue";
+				row[3] = "GlycosylationType";
+				row[4] = "Sample Type";
+				int i=5;
+				for (JsonNode field: general) {
+					row[i++] = field.path("label").asText();
+				}
+				for (JsonNode field: typeFields) {
+					row[i++] = field.path("label").asText();
+				}
+				row[i++] = "Expression System";
+				
+				rows.add(row);
+				
+				for (DatasetGlycoproteinRowDTO rec: records) {
+					row = new String[columnCount];
+					row[0] = rec.getUniProtId();
+					row[1] = rec.getGlytoucanId();
+					row[2] = ResidueUtil.buildResidue(rec.getAminoAcid(), rec.getSite(), false);
+					String subType = (rec.getGlycosylationSubType() != null && !rec.getGlycosylationSubType().isBlank() 
+							? ", " + rec.getGlycosylationSubType() : "");
+					row[3] = rec.getGlycosylationType() + subType;
+					row[4] = rec.getSampleType().name();
+					i = 5;
+					for (JsonNode field: general) {
+						String fieldId = field.path("id").asText();
+						row[i++] = rec.getMetadata().path(fieldId).toPrettyString();
+					}
+					for (JsonNode field: typeFields) {
+						String fieldId = field.path("id").asText();
+						row[i++] = rec.getMetadata().path(fieldId).toPrettyString();
+					}
+					row[i++] = rec.getMetadata().path("expressionSystem").toPrettyString();
+					
+					rows.add(row);
+				}
+				
+				TableController.writeToCSV(rows, newFile);
+			}
+			
 			return FileController.download(newFile, filename+".csv", null);
 		} catch (IOException e) {
 			throw new IllegalArgumentException ("Failed to generate download file. Reason: " + e.getMessage());
-		}
-		
+		}	
 	}
 	
 	@Operation(summary = "Generate table for the given dataset and download")
@@ -549,9 +645,9 @@ public class PublicDataController {
 		DatasetTableDownloadView downloadView = new DatasetTableDownloadView();
 		downloadView.setFilename(fileName);
 		if (type.equalsIgnoreCase("glycoprotein")) {
-			downloadView.setGlycoproteinData((List<GlygenProteinMetadataRow>) data.getBody().getData().get("objects"));
+			downloadView.setGlycoproteinRecords((List<DatasetGlycoproteinRowDTO>) data.getBody().getData().get("objects"));
 		} else {
-			downloadView.setData((List<GlygenMetadataRow>) data.getBody().getData().get("objects"));
+			downloadView.setRecords((List<DatasetRowDTO>) data.getBody().getData().get("objects"));
 		}
 		downloadView.setVersion(dv.getVersion());
 		
