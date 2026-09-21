@@ -157,6 +157,7 @@ import org.glygen.tablemaker.view.UserStatisticsView;
 import org.glygen.tablemaker.view.dto.CollectionDTO;
 import org.glygen.tablemaker.view.dto.GlycanDTO;
 import org.glygen.tablemaker.view.dto.GlycanInSiteDTO;
+import org.glygen.tablemaker.view.dto.GlycanTagDTO;
 import org.glygen.tablemaker.view.dto.GlycoproteinDTO;
 import org.glygen.tablemaker.view.dto.SiteDTO;
 import org.json.JSONArray;
@@ -3567,19 +3568,20 @@ public class DataController {
 	public Glycan fromGlycanDTO (GlycanDTO dto, UserEntity user) {
 		Glycan glycan = new Glycan();
 		glycan.setDateCreated(dto.getDateCreated());
-		glycan.setDateCreated(dto.getDateCreated());
 		glycan.setGlycoCT(dto.getGlycoCT());
 		glycan.setGlytoucanHash(dto.getGlytoucanHash());
 		glycan.setGlytoucanID(dto.getGlytoucanID());
 		glycan.setGws(dto.getGws());
 		glycan.setWurcs(dto.getWurcs());
 		glycan.setMass(dto.getMass());
-		glycan.setTags(dto.getTags());
+		glycan.setTags(new ArrayList<GlycanTag>());
 		glycan.setUser(user);
-		if (glycan.getTags() != null) {
-	    	for (GlycanTag t: glycan.getTags()) {
-	    		t.setTagId(null);
-	    		t.setUser(user);
+		if (dto.getTags() != null) {
+	    	for (GlycanTagDTO t: dto.getTags()) {
+	    		GlycanTag tag = new GlycanTag();
+	    		tag.setLabel(t.getLabel());
+	    		tag.setUser(user);
+	    		glycan.getTags().add(tag);
 	    	}
     	}
 		return glycan;
@@ -3659,7 +3661,14 @@ public class DataController {
 		dto.setGws(glycan.getGws());
 		dto.setWurcs(glycan.getWurcs());
 		dto.setMass(glycan.getMass());
-		dto.setTags(new ArrayList<>(glycan.getTags()));
+		dto.setTags(new ArrayList<>());
+		if (glycan.getTags() != null) {
+	    	for (GlycanTag t: glycan.getTags()) {
+	    		GlycanTagDTO tag = new GlycanTagDTO();
+	    		tag.setLabel(t.getLabel());
+	    		dto.getTags().add(tag);
+	    	}
+    	}
 		return dto;
 	}
 
