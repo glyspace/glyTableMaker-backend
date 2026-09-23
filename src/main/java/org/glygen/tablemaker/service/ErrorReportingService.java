@@ -153,15 +153,18 @@ public class ErrorReportingService {
 			logger.error("could not create the issue in Github. Reason " + e.getMessage(), e);
 		}
 	}	
-
-	public void reportError (ErrorReportEntity error) {
-		List<ErrorReportEntity> existingReports = errorReportRepository.findByMessageAndDateReported(error.getMessage(), error.getDateReported());
+	
+	public void reportError (ErrorReportEntity error, boolean titleOnly) { 
+		List<ErrorReportEntity> existingReports = null;
+		if (titleOnly) {
+			existingReports = errorReportRepository.findByMessage(error.getMessage());
+		} else {
+			existingReports = errorReportRepository.findByMessageAndDateReported(error.getMessage(), error.getDateReported());
+		}
+		
 		if (existingReports != null && existingReports.size() > 0) {
 			// already reported this error on this date, ignoring
 			logger.info ("Already Reported the error, ignoring for now: " + error.getMessage() + " Date: " + error.getDateReported());
-			if (error.getDetails().contains("Response from Glymage")) {
-				logger.info ("Additional details: " + error.getDetails().substring(0, error.getDetails().indexOf("Response from Glymage")));
-			}
 		} else {
 			// create ticket in Github
 			try {
@@ -178,5 +181,9 @@ public class ErrorReportingService {
 			}
 			errorReportRepository.save(error);
 		}
+	}
+
+	public void reportError (ErrorReportEntity error) {
+		reportError(error, false);
 	}
 }

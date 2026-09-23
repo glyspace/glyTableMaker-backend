@@ -189,6 +189,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -4321,15 +4322,21 @@ public class DataController {
         } catch (GlymageFailedException e) { 
     		// received error message from glymage
     		ErrorReportEntity error = new ErrorReportEntity();
-			error.setMessage("Error occurred while getting glycan images from Glymage");
+			error.setMessage("Error occurred while getting glycan images from Glymage (" + glycan.getWurcs().trim().hashCode() + ")");
 			String additionalDetails = "";
 			if (glycan.getGlytoucanID() != null) additionalDetails = "GlyTouCanId: " + glycan.getGlytoucanID();
-			String formattedJson = e.getResponse().toString(2);
+			String formattedJson;
+			try {
+				ObjectMapper mapper = new ObjectMapper();
+				Object parsed = mapper.readValue(e.getResponse().toString(), Object.class);
+				formattedJson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(parsed);
+			} catch (Exception e1) {
+				formattedJson = e.getResponse().toString(2);
+			} 
 			error.setDetails(additionalDetails + "\n\nResponse from Glymage\n\n```" + formattedJson + "\n```");
-			//error.setDetails(e.getMessage() + "\n" + additionalDetails);
 			error.setDateReported(new Date());
 			error.setTicketLabel("Glymage");
-			errorReportingService.reportError(error);
+			errorReportingService.reportError(error, true);
         } catch (Exception e) {
         	logger.error ("Glycan image cannot be generated for glycan " + glycan.getGlycanId() + ". Reason: " + e.getMessage());
         			

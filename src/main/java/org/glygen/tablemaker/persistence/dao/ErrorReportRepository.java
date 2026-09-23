@@ -13,5 +13,5 @@ public interface ErrorReportRepository extends JpaRepository<ErrorReportEntity, 
 	@Query("SELECT e FROM ErrorReportEntity e WHERE e.message = :message AND FUNCTION('DATE', e.dateReported) = FUNCTION('DATE', :reportedDate)")
 	List<ErrorReportEntity> findByMessageAndDateReported(@Param("message") String message, @Param("reportedDate") Date reportedDate);
 
-	//List<ErrorReportEntity> findByMessageAndDateReported (String message, Date reportedDate);
+	List<ErrorReportEntity> findByMessage(String message);
 }
