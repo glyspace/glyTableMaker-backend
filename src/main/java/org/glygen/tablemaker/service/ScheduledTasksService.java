@@ -701,9 +701,13 @@ public class ScheduledTasksService {
 	public void generateGlycanImages () {
 		logger.info("Checking glycan images on " + new Date());
 		List<Long> glycans = glycanRepository.findAllGlycanId();
+		int numberMissing = 0;
+		int numberCopied = 0;
+		int numberCreated = 0;
 		for (Long id: glycans) {
 			File imageFolder = new File(imageLocation + File.separator + id);
 			if (!imageFolder.exists() || isEmpty(imageFolder)) {
+				numberMissing++;
 				boolean copied = false;
 				Optional<Glycan> g = glycanRepository.findById(id);
 				if (g.isPresent()) {
@@ -729,6 +733,7 @@ public class ScheduledTasksService {
 						        				Files.copy(Paths.get(iFolder +  File.separator + "extendedRedEnd.png"), 
 						        						Paths.get(imageFolder + File.separator + "extendedRedEnd.png"));
 						        				copied = true;
+						        				numberCopied++;
 											} catch (IOException e) {
 												logger.error("error copying cartoon images from " + iFolder + " to " + imageFolder, e);
 											}
@@ -741,11 +746,12 @@ public class ScheduledTasksService {
 					}
 					if (!copied) {
 						DataController.createImageForGlycan(imageLocation, scheme+glymage, g.get(), errorReportingService);
+						numberCreated++;
 					}
 				}
 			}
 		}
-		logger.info("DONE generating glycan images: " + new Date());
+		logger.info("DONE generating glycan images: " + new Date() + " number of glycans with no cartoons: " + numberMissing + " copied from other:  " + numberCopied + " created: " + numberCreated);
 	}
 	
     @Scheduled(fixedDelay = 86400000, initialDelay=1000)

@@ -1498,19 +1498,23 @@ public class DatasetController {
         return userView;
     }
     public static Map<String, String> validateMetadata(
+    		MetadataType sampleType,
             JsonNode schema,
-            JsonNode values) {
+            JsonNode values, 
+            JsonNode xorGroups) {
 
         Map<String, String> errors = new LinkedHashMap<>();
 
-        validateFields(schema.get("fields"), values, "", errors);
+        validateFields(sampleType, schema.get("fields"), values, xorGroups, "", errors);
 
         return errors;
     }
     
     private static void validateFields(
+    		MetadataType sampleType,
             JsonNode fieldDefinitions,
             JsonNode values,
+            JsonNode xorGroups,
             String prefix,
             Map<String, String> errors) {
 
@@ -1522,7 +1526,7 @@ public class DatasetController {
             String fieldId = field.path("id").asText();
             JsonNode value = values != null ? values.get(fieldId) : null;
 
-            validateRequired(field, value, values, prefix, errors);
+            validateRequired(sampleType, field, value, values, prefix, errors);
 
             if ("complex".equals(field.path("type").asText())
                     && field.has("fields")
@@ -1530,22 +1534,52 @@ public class DatasetController {
                     && !value.isNull()) {
 
                 if (field.path("multiple").asBoolean(false)) {
-
                     if (value.isArray()) {
-
                         for (int i = 0; i < value.size(); i++) {
-                            validateFields(field.get("fields"), value.get(i), prefix + fieldId + "[" + i + "].", errors);
+                            validateFields(sampleType, field.get("fields"), value.get(i), xorGroups, prefix + fieldId + "[" + i + "].", errors);
                         }
                     }
                 } else {
-
-                    validateFields(field.get("fields"), value, prefix + fieldId + ".", errors);
+                    validateFields(sampleType, field.get("fields"), value, xorGroups, prefix + fieldId + ".", errors);
                 }
             }
         }
+        
+        validateXorGroups (xorGroups, values, prefix, errors);
     }
     
-    private static void validateRequired(
+    private static void validateXorGroups(JsonNode xorGroups, JsonNode values, String prefix,
+			Map<String, String> errors) {
+    	if (xorGroups == null || !xorGroups.isArray() || values == null) {
+            return;
+        }
+
+        for (JsonNode group : xorGroups) {
+            JsonNode fieldIds = group.path("fields");
+            if (!fieldIds.isArray()) continue;
+
+            List<String> filledFields = new ArrayList<>();
+            for (JsonNode fieldIdNode : fieldIds) {
+                String fieldId = fieldIdNode.asText();
+                JsonNode value = values.get(fieldId);
+                if (!isEmpty(value)) {
+                    filledFields.add(fieldId);
+                }
+            }
+
+            if (filledFields.size() > 1) {
+                String message = group.has("message")
+                        ? group.path("message").asText()
+                        : "Only one of these fields can have a value: " + fieldIds.toString();
+                for (String fieldId : filledFields) {
+                    errors.put(prefix + fieldId, message);
+                }
+            }
+        }
+	}
+
+	private static void validateRequired(
+    		MetadataType sampleType,
             JsonNode fieldDef,
             JsonNode value,
             JsonNode parentValues,
@@ -1557,27 +1591,21 @@ public class DatasetController {
         boolean required = fieldDef.path("required").asBoolean(false);
 
         if (fieldDef.has("requiredWhen")) {
-
             JsonNode condition = fieldDef.get("requiredWhen");
-
-            String dependentField =
-                    condition.path("field").asText();
-
-            String expectedValue =
-                    condition.path("value").asText();
-
-            JsonNode dependentNode =
-                    parentValues.get(dependentField);
-
-            String actualValue = extractValue(dependentNode);
-
-            required = expectedValue.equalsIgnoreCase(actualValue);
+            if (condition.has("field")) {
+	            String dependentField = condition.path("field").asText();
+	            String expectedValue = condition.path("value").asText();
+	            JsonNode dependentNode = parentValues.get(dependentField);
+	            String actualValue = extractValue(dependentNode);
+	            required = expectedValue.equalsIgnoreCase(actualValue);
+            } else if (condition.has("sampleType")) {
+            	String dependentField = condition.path("sampleType").asText();
+            	required = dependentField.contains (sampleType.name().toLowerCase());
+            }
         }
 
         if (required && isEmpty(value)) {
-            errors.put(
-                    prefix + fieldId,
-                    fieldDef.path("label").asText() + " is required");
+            errors.put(prefix + fieldId, fieldDef.path("label").asText() + " is required");  
         }
     }
     
@@ -1742,13 +1770,15 @@ public class DatasetController {
 
 		JsonNode sampleSchema = metadataDefinition.get(cv.getSampleType().name().toLowerCase());
 		JsonNode generalSchema = metadataDefinition.get("general");
+		JsonNode xorGroups = metadataDefinition.get("xorGroups");
 
-		errors.putAll(
-		        validateMetadata(sampleSchema, cv.getMetadataValues()));
+		errors.putAll(validateMetadata(cv.getSampleType(), sampleSchema, cv.getMetadataValues(), xorGroups));
 
 		validateFields(
+				cv.getSampleType(),
 		        generalSchema,
 		        cv.getMetadataValues(),
+		        xorGroups,
 		        "",
 		        errors);
 		

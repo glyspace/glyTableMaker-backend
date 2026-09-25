@@ -39,6 +39,9 @@ public class ErrorReportingService {
 	
 	final private ErrorReportRepository errorReportRepository;
 	final private EmailManager emailManager;
+	
+	@Value ("${glygen.host}")
+	String host;
 
 	@Value ("${github.token}")
 	String githubToken;
@@ -82,6 +85,11 @@ public class ErrorReportingService {
 	}
 
 	public String createIssue(String title, String body, String label) throws Exception {
+		// do not create issues when running on localhost (development)
+		if (host != null && host.contains("localhost")) {
+			logger.info("issue " + title + " with content " + body + " is reported but not created while on localhost");
+			return null;
+		}
 		String issueUrl = null;
 		try (CloseableHttpClient client = HttpClients.createDefault()) {
 			HttpPost httpPost = new HttpPost(githubIssuesUrl);
@@ -110,7 +118,7 @@ public class ErrorReportingService {
 						issueUrl = githubRepoUrl + issueUrl.substring(issueUrl.lastIndexOf("/"));
 				}
 				if (response.getStatusLine().getStatusCode() < 400) {
-					logger.info("Issue created successfully: " + responseBody);
+					logger.info("Issue created successfully");
 				} else {
 					logger.error("Failed to create issue: " + response.getStatusLine().getStatusCode());
 				}		
