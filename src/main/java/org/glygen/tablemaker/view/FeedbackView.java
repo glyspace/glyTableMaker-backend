@@ -100,4 +100,10 @@ public class FeedbackView {
     public void setWebsite(String website) {
 		this.website = website;
 	}
+    
+    @Override
+    public String toString() {
+    	return "First Name: " + firstName + "\nLast Name: " + lastName + "\nEmail: " + email + "\nPage: " + page 
+    			+ "\nSubject: " + subject + "\nMessage: " + message + "\nWebsite: " + website;
+    }
 }

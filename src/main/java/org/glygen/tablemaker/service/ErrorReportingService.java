@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
@@ -28,6 +29,8 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import jakarta.transaction.Transactional;
 
@@ -77,14 +80,14 @@ public class ErrorReportingService {
         } catch (Exception e) {
             logger.error("Cannot locate admin emails", e);
             try {
-            	createIssue ("Cannot locate admin emails", "adminemails.txt is not found in the classpath. Exception: " + e.getMessage(), "SettingsError");
+            	createIssue ("Cannot locate admin emails", "adminemails.txt is not found in the classpath. Exception: " + e.getMessage(), "Bug", "SettingsError", false);
             } catch (Exception e1) {
             	logger.error("could not create the issue in Github. Reason " + e1.getMessage(), e1);
             }
         }
 	}
 
-	public String createIssue(String title, String body, String label) throws Exception {
+	public String createIssue(String title, String body, String type, String label, boolean isJunk) throws Exception {
 		// do not create issues when running on localhost (development)
 		if (host != null && host.contains("localhost")) {
 			logger.info("issue " + title + " with content " + body + " is reported but not created while on localhost");
@@ -96,26 +99,35 @@ public class ErrorReportingService {
 			httpPost.setHeader("Authorization", "Bearer " + githubToken);
 			httpPost.setHeader("Accept", "application/vnd.github.v3+json");
 			
-			String[] assignees = githubAssignee.split(",");
-			String assigneeString = "";
-			for (String assignee: assignees) {
-				assigneeString += "\"" + assignee.trim() + "\",";
-			}
-			assigneeString = assigneeString.substring(0, assigneeString.length()-1);
-			
-			String cleanedBody = escapeJsonString(body);
+			ObjectMapper objectMapper = new ObjectMapper();
+			ObjectNode payload = objectMapper.createObjectNode();
+			payload.put("title", title);
+			payload.put("body", body);
+			payload.put("type", type);
 
-			String json = String.format("{\"title\": \"%s\", \"body\": \"%s\", \"assignees\": [%s], \"type\": \"bug\", \"labels\": [\"%s\"]}", title, cleanedBody, assigneeString, label);
+			ArrayNode assigneesNode = payload.putArray("assignees");
+			for (String assignee : githubAssignee.split(",")) {
+			    assigneesNode.add(assignee.trim());
+			}
+
+			ArrayNode labelsNode = payload.putArray("labels");
+			for (String singleLabel : label.split(",")) {
+			    if (!singleLabel.trim().isEmpty()) {
+			        labelsNode.add(singleLabel.trim());
+			    }
+			}
+
+			String json = objectMapper.writeValueAsString(payload);
 			StringEntity entity = new StringEntity(json, ContentType.APPLICATION_JSON);
 			httpPost.setEntity(entity);
-			ObjectMapper objectMapper = new ObjectMapper();
+			String issueApiUrl = null;
 			try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
 				String responseBody = EntityUtils.toString(response.getEntity());
 				JsonNode jsonNode = objectMapper.readTree(responseBody);
 				if (jsonNode.has("url")) {
-					issueUrl = jsonNode.get("url").asText();
-					if (issueUrl.contains("/"))
-						issueUrl = githubRepoUrl + issueUrl.substring(issueUrl.lastIndexOf("/"));
+					issueApiUrl = jsonNode.get("url").asText();
+					if (issueApiUrl.contains("/"))
+						issueUrl = githubRepoUrl + issueApiUrl.substring(issueApiUrl.lastIndexOf("/"));
 				}
 				if (response.getStatusLine().getStatusCode() < 400) {
 					logger.info("Issue created successfully");
@@ -123,17 +135,29 @@ public class ErrorReportingService {
 					logger.error("Failed to create issue: " + response.getStatusLine().getStatusCode());
 				}		
 			}
+			
+			if (isJunk && issueApiUrl != null) {
+	            closeIssue(client, issueApiUrl);
+	        }
 		}
 		return issueUrl;
 	}
 	
+	public void closeIssue(CloseableHttpClient client, String issueApiUrl) throws Exception {
+        HttpPatch httpPatch = new HttpPatch(issueApiUrl);
+        httpPatch.setHeader("Authorization", "Bearer " + githubToken);
+        httpPatch.setHeader("Accept", "application/vnd.github.v3+json");
 
-	private String escapeJsonString(String str) {
-		return str.replace("\\", "\\\\")
-				.replace("\"", "\\\"")
-				.replace("\n", "\\n")
-				.replace("\t", " ")
-				.replace("\r", "\\r");
+        String json = "{\"state\": \"closed\", \"state_reason\": \"not_planned\"}";
+        httpPatch.setEntity(new StringEntity(json, ContentType.APPLICATION_JSON));
+
+        try (CloseableHttpResponse response = client.execute(httpPatch)) {
+            if (response.getStatusLine().getStatusCode() < 400) {
+                logger.info("Issue closed automatically as junk: " + issueApiUrl);
+            } else {
+                logger.error("Failed to close junk issue: " + response.getStatusLine().getStatusCode());
+            }
+        }
 	}
 	
 	public void reportUserError (UserError error) {
@@ -156,7 +180,7 @@ public class ErrorReportingService {
 		}
 		// create ticket in Github
 		try {
-			createIssue (subject, message, "User Reported");
+			createIssue (subject, message, "Bug", "User Reported", false);
 		} catch (Exception e) {
 			logger.error("could not create the issue in Github. Reason " + e.getMessage(), e);
 		}
@@ -176,7 +200,7 @@ public class ErrorReportingService {
 		} else {
 			// create ticket in Github
 			try {
-				String issueUrl = createIssue (error.getMessage(), error.getDetails(), error.getTicketLabel());
+				String issueUrl = createIssue (error.getMessage(), error.getDetails(), "Bug", error.getTicketLabel(), false);
 				if (issueUrl != null) {
 					error.setTicketUrl(issueUrl);
 				}
