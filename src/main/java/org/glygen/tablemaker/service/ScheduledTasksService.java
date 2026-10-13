@@ -21,6 +21,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.glygen.tablemaker.controller.DataController;
+import org.glygen.tablemaker.controller.PublicDataController;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
@@ -32,6 +33,7 @@ import org.glygen.tablemaker.persistence.NotificationEntity;
 import org.glygen.tablemaker.persistence.dao.ApplicationSettingsRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadJobRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
+import org.glygen.tablemaker.persistence.dao.DatabaseResourceRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetMetadataGroupRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
@@ -55,6 +57,12 @@ import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.SequenceUtils;
+import org.glygen.tablemaker.view.dto.DatasetDTO;
+import org.glygen.tablemaker.view.dto.DatasetRecord;
+import org.glygen.tablemaker.view.dto.DatasetVersionDTO;
+import org.glygen.tablemaker.view.dto.GlycanDatasetRecord;
+import org.glygen.tablemaker.view.dto.GlycoproteinDatasetRecord;
+import org.glygen.tablemaker.view.dto.UserDTO;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -91,6 +99,7 @@ public class ScheduledTasksService {
 	final private EmailManager emailManager;
 	final private UserManager userManager;
 	final private DatasetMetadataGroupRepository datasetMetadataGroupRepository;
+	final private DatabaseResourceRepository databaseResourceRepository;
 	
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
@@ -111,7 +120,13 @@ public class ScheduledTasksService {
 	String glymage;
 			
 	
-	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, ErrorReportingService errorReportingService, UserRepository userRepository, GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, ApplicationSettingsRepository settingRepository, DatasetManager datasetManager, EmailManager emailManager, UserManager userManager, DatasetMetadataGroupRepository datasetMetadataGroupRepository) {
+	public ScheduledTasksService(AsyncService batchUploadService, BatchUploadJobRepository batchUploadJobRepository, 
+			GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, 
+			ErrorReportingService errorReportingService, UserRepository userRepository, 
+			GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
+			ApplicationSettingsRepository settingRepository, DatasetManager datasetManager, EmailManager emailManager, 
+			UserManager userManager, DatasetMetadataGroupRepository datasetMetadataGroupRepository, 
+			DatabaseResourceRepository databaseResourceRepository) {
 		this.batchUploadJobRepository = batchUploadJobRepository;
 		this.batchUploadService = batchUploadService;
 		this.uploadRepository = uploadRepository;
@@ -125,6 +140,7 @@ public class ScheduledTasksService {
 		this.emailManager = emailManager;
 		this.userManager = userManager;
 		this.datasetMetadataGroupRepository = datasetMetadataGroupRepository;
+		this.databaseResourceRepository = databaseResourceRepository;
 	}
 	
 	@Scheduled(fixedDelay = 604800000, initialDelay=2000)
@@ -338,20 +354,6 @@ public class ScheduledTasksService {
 			}
 		}
 		logger.info("Done migrating " + count + " datasets on " + new Date());
-		
-		try {
-			ObjectMapper mapper = new ObjectMapper();
-			for (Dataset d: datasets) {
-				for (DatasetVersion v: d.getVersions()) {
-					v.getData().clear();
-					v.getGlycoproteinData().clear();
-				}
-			}
-			mapper.writerWithDefaultPrettyPrinter().writeValue(new File("datasets.json"), datasets);
-		} catch (Exception e) {
-			logger.info("Could not generate dataset Json", e);
-		}
-		logger.info("Done generating dataset json");
 	}
 	
 	private void addDatatype (Datatype datatype, ObjectNode metadataNode, String fieldName, 
@@ -644,8 +646,15 @@ public class ScheduledTasksService {
 	        	throw new IOException ("Error getting dataset json from GlyGen: " + response.getStatusLine().getReasonPhrase());
 	        }
 	        String json = EntityUtils.toString(response.getEntity());
-	        DatabaseResource resource = new DatabaseResource();
-	        resource.setName("GlyGen");
+	        
+	        List<DatabaseResource> resourceList = databaseResourceRepository.findByName("GlyGen");
+	        DatabaseResource resource = null;
+	        if (resourceList == null || resourceList.isEmpty()) {
+	        	resource = new DatabaseResource();
+		        resource.setName("GlyGen");
+	        } else {
+	        	resource = resourceList.get(0);
+	        }
 	        DatabaseResourceDataset dd = new DatabaseResourceDataset();
 			dd.setDataset(dataset);
 			dd.setResource(resource);

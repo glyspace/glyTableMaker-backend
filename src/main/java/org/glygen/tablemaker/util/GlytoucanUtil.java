@@ -39,6 +39,7 @@ public class GlytoucanUtil {
 	String apiKey;
 	String userId;
 	
+	public static String glytoucanLinkURL = "https://glytoucan.org/Structures/Glycans/";
 	static String glycanURL = "https://glytoucan.org/api/entry/";
 	static String registerURL = "https://glytoucan.org/api/submission";
 	static String searchURL = "https://glytoucan.org/api/entry/search";

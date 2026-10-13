@@ -4199,8 +4199,8 @@ public class DataController {
 		        	URL url = URI.create(compactUrl).toURL();
 		        	HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 			        conn.setRequestMethod("GET");
-					conn.setConnectTimeout(3000); 
-					conn.setReadTimeout(3000);   
+					conn.setConnectTimeout(1000);   // 1 second
+					conn.setReadTimeout(1000);  
 			        int responseCode = conn.getResponseCode();
 			        if (responseCode == HttpURLConnection.HTTP_OK) {
 				        try (InputStream in = conn.getInputStream()) {
@@ -4212,8 +4212,8 @@ public class DataController {
 			        url = URI.create(extendedUrl).toURL();
 		        	conn = (HttpURLConnection) url.openConnection();
 			        conn.setRequestMethod("GET");
-			        conn.setConnectTimeout(3000); 
-					conn.setReadTimeout(3000);  
+			        conn.setConnectTimeout(1000); 
+					conn.setReadTimeout(1000);  
 			        responseCode = conn.getResponseCode();
 				    if (responseCode == HttpURLConnection.HTTP_OK) {
 				        try (InputStream in = conn.getInputStream()) {
@@ -4322,18 +4322,14 @@ public class DataController {
         } catch (GlymageFailedException e) { 
     		// received error message from glymage
     		ErrorReportEntity error = new ErrorReportEntity();
-			error.setMessage("Error occurred while getting glycan images from Glymage (" + glycan.getWurcs().trim().hashCode() + ")");
-			String additionalDetails = "";
-			if (glycan.getGlytoucanID() != null) additionalDetails = "GlyTouCanId: " + glycan.getGlytoucanID();
-			String formattedJson;
-			try {
-				ObjectMapper mapper = new ObjectMapper();
-				Object parsed = mapper.readValue(e.getResponse().toString(), Object.class);
-				formattedJson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(parsed);
-			} catch (Exception e1) {
-				formattedJson = e.getResponse().toString(2);
-			} 
-			error.setDetails(additionalDetails + "\n\nResponse from Glymage\n\n```" + formattedJson + "\n```");
+    		String message = null;
+    		if (glycan.getGlytoucanID() == null || glycan.getGlytoucanID().isEmpty()) {
+    			message = "Error occurred while getting glycan images from Glymage (" + SequenceUtils.sha256Hex(wurcs) + ")";
+    		} else {
+    			message = "Error occurred while getting glycan images from Glymage (" + glycan.getGlytoucanID() + ")";
+    		}
+			error.setMessage(message);
+			error.setDetails(createImageErrorReport(glycan.getGlytoucanID(), e.getResponse().toString()));
 			error.setDateReported(new Date());
 			error.setTicketLabel("Glymage");
 			errorReportingService.reportError(error, true);
@@ -4341,6 +4337,23 @@ public class DataController {
         	logger.error ("Glycan image cannot be generated for glycan " + glycan.getGlycanId() + ". Reason: " + e.getMessage());
         			
         }
+    }
+    
+    
+    private static String createImageErrorReport (String glytoucanId, String json) {
+    	// create error body with wiki formatting
+    	String additionalDetails = "";
+		if (glytoucanId != null) additionalDetails = "GlyTouCanId: [" + glytoucanId + "](" + GlytoucanUtil.glytoucanLinkURL + glytoucanId + ")";
+		String formattedJson;
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			Object parsed = mapper.readValue(json, Object.class);
+			formattedJson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(parsed);
+		} catch (Exception e1) {
+			formattedJson = json;
+		} 
+		
+		return additionalDetails + "\n\nResponse from Glymage\n\n```JSON\n" + formattedJson + "\n```";
     }
     
     private static void retrieveImages(String glymageUrl, Map<String, GlymageRequest> taskMap, GlycanCartoon cartoon) 
@@ -4368,7 +4381,7 @@ public class DataController {
 			}
 			if (!allFinished) {
 				try {
-			        Thread.sleep(50); // wait 50ms between requests
+			        Thread.sleep(200); // wait 200ms between requests
 			    } catch (InterruptedException e) {
 			        Thread.currentThread().interrupt(); // restore interrupted status
 			   

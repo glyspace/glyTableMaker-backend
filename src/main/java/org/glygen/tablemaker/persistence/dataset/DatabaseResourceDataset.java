@@ -2,7 +2,7 @@ package org.glygen.tablemaker.persistence.dataset;
 
 import java.util.Date;
 
-
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
@@ -29,6 +29,7 @@ public class DatabaseResourceDataset {
 	
 	@Column(name="datepublished")
     @Temporal(TemporalType.DATE)
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
 	Date date;
 	
 	@Column

@@ -7,10 +7,12 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.glygen.tablemaker.persistence.ColumnVisibillitySetting;
+import org.glygen.tablemaker.persistence.ContributorSetting;
 import org.glygen.tablemaker.persistence.SettingEntity;
 import org.glygen.tablemaker.persistence.TableMakerTable;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.ColumnSettingsRepository;
+import org.glygen.tablemaker.persistence.dao.ContributorSettingRepository;
 import org.glygen.tablemaker.persistence.dao.SettingRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.view.SuccessResponse;
@@ -41,11 +43,13 @@ public class SettingController {
 	final private ColumnSettingsRepository columnRepository;
 	final private SettingRepository settingRepository;
 	final private UserRepository userRepository;
+	final private ContributorSettingRepository contributorSettingRepository;
 	
-	public SettingController(SettingRepository settingRepository, ColumnSettingsRepository columnRepository, UserRepository userRepository) {
+	public SettingController(SettingRepository settingRepository, ColumnSettingsRepository columnRepository, UserRepository userRepository, ContributorSettingRepository contributorSettingRepository) {
 		this.columnRepository = columnRepository;
 		this.settingRepository = settingRepository;
 		this.userRepository = userRepository;
+		this.contributorSettingRepository = contributorSettingRepository;
 	}
 	
 	@Operation(summary = "Get settings for the user", security = { @SecurityRequirement(name = "bearer-key") })
@@ -108,6 +112,51 @@ public class SettingController {
         
         return new ResponseEntity<>(
     			new SuccessResponse<Map<String, List<ColumnVisibillitySetting>>> (columnSettings, "column settings retrieved"), HttpStatus.OK);
+	}
+
+	@Operation(summary = "Get default contributor setting for the user", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getdefaultcontributorsetting")
+    public ResponseEntity<SuccessResponse<ContributorSetting>> getDefaultContributorSetting() {
+		// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        
+        List<ContributorSetting> settings = contributorSettingRepository.findAllByUserAndDefaultSetting(user, true);
+        if (settings.size() > 0) {
+        	ContributorSetting defaultSetting = settings.get(0);
+        	defaultSetting.setUser(null);
+        	return new ResponseEntity<>(
+        			new SuccessResponse<ContributorSetting> (defaultSetting, "default contributor setting retrieved"), HttpStatus.OK);
+        } else {
+    		throw new EntityNotFoundException("Default contribuor setting for user " + user.getUsername() + " does not exist!");
+    	}
+	}
+	
+	@Operation(summary = "Get all contributor settings for the user", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getallcontributorsettings")
+    public ResponseEntity<SuccessResponse<List<ContributorSetting>>> getAllContributorSettings() {
+		// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        
+        List<ContributorSetting> settings = contributorSettingRepository.findAllByUser(user);
+        if (settings.size() > 0) {
+        	for (ContributorSetting setting: settings) {
+        		setting.setUser(null);
+        	}
+        	return new ResponseEntity<>(
+        			new SuccessResponse<List<ContributorSetting>> (settings, "all contributor settings retrieved"), HttpStatus.OK);
+        } else {
+    		throw new EntityNotFoundException("Default contribuor setting for user " + user.getUsername() + " does not exist!");
+    	}
 	}
 	
 	@Operation(summary = "update setting", security = { @SecurityRequirement(name = "bearer-key") })

@@ -39,8 +39,14 @@ import org.glygen.tablemaker.view.GlygenMetadataRow;
 import org.glygen.tablemaker.view.GlygenProteinMetadataRow;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
+import org.glygen.tablemaker.view.dto.DatasetDTO;
 import org.glygen.tablemaker.view.dto.DatasetGlycoproteinRowDTO;
+import org.glygen.tablemaker.view.dto.DatasetRecord;
 import org.glygen.tablemaker.view.dto.DatasetRowDTO;
+import org.glygen.tablemaker.view.dto.DatasetVersionDTO;
+import org.glygen.tablemaker.view.dto.GlycanDatasetRecord;
+import org.glygen.tablemaker.view.dto.GlycoproteinDatasetRecord;
+import org.glygen.tablemaker.view.dto.UserDTO;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -479,6 +485,78 @@ public class PublicDataController {
         return dv;
 	}
 	
+	/**
+	 * 
+	 * return an exportable output of the dataset
+	 * 
+	 * @param d dataset to export
+	 * @param ver version to export, if null, get the head version
+	 * @return DTO for the dataset
+	 */
+	public static DatasetDTO exportDatasetIntoDTO (Dataset d, String ver) {
+		DatasetDTO dto = new DatasetDTO();
+		dto.setDatasetIdentifier(d.getDatasetIdentifier());
+		dto.setDatasetId(d.getDatasetId());
+		dto.setDateCreated(d.getDateCreated());
+		dto.setAssociatedDatasources(d.getAssociatedDatasources());
+		dto.setAssociatedPapers(d.getAssociatedPapers());
+		dto.setDescription(d.getDescription());
+		dto.setGrants(d.getGrants());
+		dto.setName(d.getName());
+		if (d.getNotes() != null && !d.getNotes().isEmpty()) dto.setNotes(d.getNotes());
+		dto.setIntegratedIn(d.getIntegratedIn());
+		dto.setRetracted(d.getRetracted());
+		UserDTO user = new UserDTO();
+		user.setUserName(d.getUser().getUsername());
+		user.setFirstName(d.getUser().getFirstName());
+		user.setLastName(d.getUser().getLastName());
+		user.setUserType(d.getUser().getType());
+		user.setAffiliation(d.getUser().getAffiliation());
+		user.setAffiliationWebsite(d.getUser().getAffiliationWebsite());
+		user.setDepartment(d.getUser().getDepartment());
+		user.setGroupName(d.getUser().getGroupName());
+		user.setResearchCenter(d.getUser().getResearchCenter());
+		dto.setUser(user);
+		for (DatasetVersion v: d.getVersions()) {
+			if ((ver != null && v.getVersion().equals(ver)) || (ver == null && v.getHead())) {
+				DatasetVersionDTO version = new DatasetVersionDTO();
+				version.setPublications(new ArrayList<>(v.getPublications()));
+				version.setVersion(v.getVersion());
+				version.setComment(v.getComment());
+				version.setLicense(v.getLicense());
+				version.setType(v.getType());
+				version.setVersionDate(v.getVersionDate());
+				dto.setVersion(version);
+				List<DatasetRecord> records = new ArrayList<DatasetRecord>();
+				version.setRecords(records);
+				if (v.getRecords() != null && !v.getRecords().isEmpty()) {
+					for (DatasetMetadataRecord r : v.getRecords()) {
+						GlycanDatasetRecord rec = new GlycanDatasetRecord();
+						rec.setGlytoucanId(r.getGlytoucanId());
+						rec.setSampleType(r.getMetadataGroup().getSampleType());
+						rec.setValue(r.getMetadataGroup().getValue());
+						records.add(rec);
+					}
+				} else if (v.getGlycoproteinRecords() != null && !v.getGlycoproteinRecords().isEmpty()) {
+					for (DatasetGlycoproteinMetadataRecord r : v.getGlycoproteinRecords()) {
+						GlycoproteinDatasetRecord rec = new GlycoproteinDatasetRecord();
+						rec.setGlytoucanId(r.getGlytoucanId());
+						rec.setAminoAcid(r.getAminoAcid());
+						if (r.getGlycosylationSubType() != null && !r.getGlycosylationSubType().isBlank()) rec.setGlycosylationSubType(r.getGlycosylationSubType());
+						rec.setGlycosylationType(r.getGlycosylationType());
+						rec.setResidue(r.getResidue());
+						rec.setSite(r.getSite());
+						rec.setUniProtId(r.getUniProtId());
+						rec.setSampleType(r.getMetadataGroup().getSampleType());
+						rec.setValue(r.getMetadataGroup().getValue());
+						records.add(rec);
+					}
+				} 
+			}
+		}
+		return dto;
+	}
+	
 	@Operation(summary = "Generate table and download")
     @PostMapping("/downloadtable")
 	public ResponseEntity<Resource> downloadTable (@Valid @RequestBody DatasetTableDownloadView table) {
@@ -610,7 +688,7 @@ public class PublicDataController {
 		}	
 	}
 	
-	@Operation(summary = "Generate table for the given dataset and download")
+	@Operation(summary = "Generate json file for the given dataset and download")
     @GetMapping("/downloadtablefordataset/{datasetIdentifier}")
 	@ApiResponses (value ={@ApiResponse(responseCode="200", description="File downloaded successfully"), 
             @ApiResponse(responseCode="415", description="Media type is not supported"),
@@ -624,7 +702,40 @@ public class PublicDataController {
             @RequestParam(required=false, value="version")
             String version) {
 		
-		DatasetView dv = getDatasetFromRepository(datasetIdentifier, version);
+		String identifier = datasetIdentifier;
+        String selectedVersion = version != null && !version.equalsIgnoreCase("latest") ? version : null;
+        // check if the identifier contains a version
+        String[] split = datasetIdentifier.split("-");
+        if (split.length > 1) {
+        	identifier = split[0];
+        	selectedVersion = split[1];
+        }
+        Dataset existing = null;
+        if (selectedVersion == null) {
+        	existing = datasetRepository.findByDatasetIdentifierAndVersions_head(identifier, true);
+        	selectedVersion = datasetRepository.getLatestVersionByDatasetId(existing.getDatasetId());
+        } else {
+        	existing = datasetRepository.findByDatasetIdentifierAndVersions_version(identifier, selectedVersion);
+        }
+        if (existing == null) {
+            throw new IllegalArgumentException ("Could not find the given dataset " + datasetIdentifier);
+        }
+        
+        try {
+	        DatasetDTO dto = exportDatasetIntoDTO(existing, selectedVersion);
+	        
+	        String filename = fileName != null ? fileName : "GlyGenDataset";
+			File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ".json");
+			
+			ObjectMapper mapper = new ObjectMapper();
+			mapper.writerWithDefaultPrettyPrinter().writeValue(newFile, dto);
+	        
+	        return FileController.download(newFile, filename+".json", null);
+        } catch (IOException e) {
+        	throw new IllegalArgumentException ("Failed to generate download file. Reason: " + e.getMessage());
+        }
+		
+		/*DatasetView dv = getDatasetFromRepository(datasetIdentifier, version);
 		String type = "glycan";
 		if (dv.getNoProteins() != null && dv.getNoProteins() > 0)  {
 			type = "glycoprotein";
@@ -651,6 +762,6 @@ public class PublicDataController {
 		}
 		downloadView.setVersion(dv.getVersion());
 		
-		return downloadTable(downloadView);
+		return downloadTable(downloadView);*/
 	}
 }
