@@ -189,7 +189,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -3347,7 +3346,10 @@ public class DataController {
 	public ResponseEntity<SuccessResponse<Boolean>> importCollection(
 			@Parameter(required=true, name="file", description="details of the uploded file") 
 			@RequestBody
-			FileWrapper fileWrapper) {
+			FileWrapper fileWrapper,
+			@RequestParam(required=false, value="tag") String newtag,
+			@RequestParam(required=false, value="prefix") String prefix,
+			@RequestParam(required=false, value="postfix") String postfix) {
     	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
@@ -3378,17 +3380,32 @@ public class DataController {
             	for (GlycanInCollection gic: c.getGlycans()) {
             		// check if the glycan already exists
             		Glycan glycan = gic.getGlycan();
+            		List<GlycanTag> existingTags = new ArrayList<GlycanTag>();
             		if (glycan != null && glycan.getGlytoucanID() != null) {
             			List<Glycan> eg = glycanRepository.findByGlytoucanIDIgnoreCaseAndUser(glycan.getGlytoucanID(), user);
             			if (eg != null && !eg.isEmpty()) {
             				// use the same glycan
             				gic.setGlycan(eg.get(0));
+            				existingTags.addAll(eg.get(0).getTags());
             				continue;
             			}
             		}
             		if (glycan.getTags() != null) {
 	            		List<GlycanTag> newTagList = new ArrayList<>();
+	            		if (newtag != null) {
+	            			for (GlycanTag tag: glycan.getTags()) {
+	            				tag.setLabel(newtag);
+	            			}
+	            		}
 	            		for (GlycanTag tag: glycan.getTags()) {
+	            			// check to see if the same tag exists for this glycan
+	            			for (GlycanTag t: existingTags) {
+	            				if (t.getLabel().equalsIgnoreCase(tag.getLabel())) {	
+            						// this is an error
+            						throw new IllegalArgumentException ("Could not import collection from the given file "
+            								+ "since an existing glycan already has tag " + t.getLabel() + " choose a new tag and try to import again");
+	            				}
+	            			}
 		            		GlycanTag et = glycanTagRepository.findByUserAndLabel(user, tag.getLabel());
 		        			if (et == null) {
 		        				et = glycanTagRepository.save(tag);	
@@ -3406,17 +3423,32 @@ public class DataController {
             		for (Site s: gic.getGlycoprotein().getSites()) {
             			for (GlycanInSite gis: s.getGlycans()) {
             				Glycan glycan = gis.getGlycan();
+            				List<GlycanTag> existingTags = new ArrayList<GlycanTag>();
                     		if (glycan != null && glycan.getGlytoucanID() != null) {
                     			List<Glycan> eg = glycanRepository.findByGlytoucanIDIgnoreCaseAndUser(glycan.getGlytoucanID(), user);
                     			if (eg != null && !eg.isEmpty()) {
                     				// use the same glycan
                     				gis.setGlycan(eg.get(0));
+                    				existingTags.addAll(eg.get(0).getTags());
                     				continue;
                     			}
                     		}
                     		if (glycan.getTags() != null) {
         	            		List<GlycanTag> newTagList = new ArrayList<>();
+        	            		if (newtag != null) {
+        	            			for (GlycanTag tag: glycan.getTags()) {
+        	            				tag.setLabel(newtag);
+        	            			}
+        	            		}
         	            		for (GlycanTag tag: glycan.getTags()) {
+        	            			// check to see if the same tag exists for this glycan
+        	            			for (GlycanTag t: existingTags) {
+        	            				if (t.getLabel().equalsIgnoreCase(tag.getLabel())) {	
+                    						// this is an error
+                    						throw new IllegalArgumentException ("Could not import collection from the given file "
+                    								+ "since an existing glycan already has tag " + t.getLabel() + " choose a new tag and try to import again");
+        	            				}
+        	            			}
         		            		GlycanTag et = glycanTagRepository.findByUserAndLabel(user, tag.getLabel());
         		        			if (et == null) {
         		        				et = glycanTagRepository.save(tag);	
@@ -3429,17 +3461,43 @@ public class DataController {
                     		gis.setGlycan(saved);
             			}
             		}
+            		
+            		List<GlycanTag> existingTags = new ArrayList<GlycanTag>();
             		// if the glycoprotein has a name, check if it is a duplicate
             		if (gic.getGlycoprotein().getName() != null) {
             			List<Glycoprotein> egp = glycoproteinRepository.findAllByNameAndUser(gic.getGlycoprotein().getName(), user);
-            			if (egp.size() > 0) {
-            				// duplicate
-            				gic.getGlycoprotein().setName (gic.getGlycoprotein().getName() + "-" + fileWrapper.getOriginalName() + "-" +  new Date());
+            			if (egp.size() > 0) {	
+            				// duplicate, check to see if there is a prefix and/or postfix to modify the name
+            				if ((prefix != null && prefix.trim().length() > 0) 
+            						|| (postfix != null && postfix.trim().length() > 0)) {
+            					if (prefix == null) prefix= "";
+            					if (postfix == null) postfix = "";
+            					gic.getGlycoprotein().setName (prefix + gic.getGlycoprotein().getName() + postfix);
+            				}
+            				else {
+            					throw new IllegalArgumentException ("Could not import collection from the given file " +
+            							" since there is an existing glycoprotein with the same name and no prefix/postfix is specified");
+                    					
+            				}
+            				existingTags.addAll(egp.get(0).getTags());
             			}
             		}
             		if (gic.getGlycoprotein().getTags() != null) {
 	            		List<GlycanTag> newTagList = new ArrayList<>();
+	            		if (newtag != null) {
+	            			for (GlycanTag tag: gic.getGlycoprotein().getTags()) {
+	            				tag.setLabel(newtag);
+	            			}
+	            		}
 	            		for (GlycanTag tag: gic.getGlycoprotein().getTags()) {
+	            			// check to see if the same tag exists for this glycan
+	            			for (GlycanTag t: existingTags) {
+	            				if (t.getLabel().equalsIgnoreCase(tag.getLabel())) {	
+            						// this is an error
+            						throw new IllegalArgumentException ("Could not import collection from the given file "
+            								+ "since an existing glycan already has tag " + t.getLabel() + " choose a new tag and try to import again");
+	            				}
+	            			}
 		            		GlycanTag et = glycanTagRepository.findByUserAndLabel(user, tag.getLabel());
 		        			if (et == null) {
 		        				et = glycanTagRepository.save(tag);	
@@ -3452,7 +3510,8 @@ public class DataController {
             		gic.setGlycoprotein(saved);
             	}
             }
-            List<CollectionTag> newTagList = new ArrayList<>();
+            //TODO add this back if we start assigning tags to collections
+         /*   List<CollectionTag> newTagList = new ArrayList<>();
             if (collection.getTags() != null) {
 	    		for (CollectionTag tag: collection.getTags()) {
 	        		CollectionTag et = collectionTagRepository.findByUserAndLabel(user, tag.getLabel());
@@ -3462,7 +3521,7 @@ public class DataController {
 	    			newTagList.add(et);
 	    		}
 	    		collection.setTags(newTagList);
-            }
+            }*/
             // then add the collection
             collectionRepository.save(c);
             return new ResponseEntity<>(new SuccessResponse<Boolean>(true, "collection is imported from the given file"), HttpStatus.OK); 
