@@ -3389,7 +3389,14 @@ public class DataController {
             				existingTags.addAll(eg.get(0).getTags());
             				continue;
             			}
+        				// check if the glytoucanid is valid
+        				String wurcs = GlytoucanUtil.getInstance().retrieveGlycan(glycan.getGlytoucanID());
+        				if (wurcs == null) {
+        					throw new IllegalArgumentException ("Could not import collection from the given file "
+        							+ "since there is an invalid (or archived) glytoucanid " + glycan.getGlytoucanID());
+        				}
             		}
+            		
             		if (glycan.getTags() != null) {
 	            		List<GlycanTag> newTagList = new ArrayList<>();
 	            		if (newtag != null) {

@@ -1540,7 +1540,11 @@ public class DatasetController {
                         }
                     }
                 } else {
-                    validateFields(sampleType, field.get("fields"), value, xorGroups, prefix + fieldId + ".", errors);
+                	JsonNode single = value.isArray() ? (value.isEmpty() ? null : value.get(0)) : value;
+                    if (single != null && single.isObject()) {
+                        validateFields(sampleType, field.get("fields"), single, xorGroups, prefix + fieldId + ".", errors);
+                    }
+                    //validateFields(sampleType, field.get("fields"), value, xorGroups, prefix + fieldId + ".", errors);
                 }
             }
         }
@@ -1649,18 +1653,17 @@ public class DatasetController {
         }
 
         if (node.isObject()) {
-            if (node.has("id")) {
-                return node.path("id").asText().isBlank();
+            if (node.has("id") || node.has("name")) {
+                return isBlankValue(node.get("id")) && isBlankValue(node.get("name"));
             }
-
-            if (node.has("name")) {
-                return node.path("name").asText().isBlank();
-            }
-
             return node.isEmpty();
         }
 
         return false;
+    }
+    
+    private static boolean isBlankValue(JsonNode n) {
+        return n == null || n.isNull() || n.asText().isBlank();
     }
     
     public void validateMetadataForCollection (CollectionView cv) {

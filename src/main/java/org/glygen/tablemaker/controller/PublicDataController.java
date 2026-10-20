@@ -724,13 +724,16 @@ public class PublicDataController {
         try {
 	        DatasetDTO dto = exportDatasetIntoDTO(existing, selectedVersion);
 	        
-	        String filename = fileName != null ? fileName : "GlyGenDataset";
-			File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ".json");
+	        String safeName = (fileName != null)
+	        	    ? fileName.replaceAll("[^A-Za-z0-9._-]", "_")
+	        	    : "GlyGenDataset";
+	       
+			File newFile = new File (uploadDir + File.separator + safeName + System.currentTimeMillis() + ".json");
 			
 			ObjectMapper mapper = new ObjectMapper();
 			mapper.writerWithDefaultPrettyPrinter().writeValue(newFile, dto);
 	        
-	        return FileController.download(newFile, filename+".json", null);
+	        return FileController.download(newFile, safeName +".json", null);
         } catch (IOException e) {
         	throw new IllegalArgumentException ("Failed to generate download file. Reason: " + e.getMessage());
         }
