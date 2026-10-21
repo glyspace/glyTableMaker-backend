@@ -2,11 +2,13 @@ package org.glygen.tablemaker.view.dto;
 
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResourceDataset;
 import org.glygen.tablemaker.persistence.dataset.Grant;
 import org.glygen.tablemaker.persistence.dataset.Publication;
+import org.glygen.tablemaker.persistence.dataset.Retraction;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
@@ -18,6 +20,10 @@ public class DatasetDTO {
 	String description;
 	String notes;
 	Boolean retracted;
+	Boolean removed;
+	
+	Retraction retraction;
+	List<VersionInfo> versionList;
 	
 	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
 	Date dateCreated;
@@ -115,5 +121,23 @@ public class DatasetDTO {
 	}
 	public void setFileVersion(String fileVersion) {
 		this.fileVersion = fileVersion;
+	}
+	public Boolean getRemoved() {
+		return removed;
+	}
+	public void setRemoved(Boolean removed) {
+		this.removed = removed;
+	}
+	public Retraction getRetraction() {
+		return retraction;
+	}
+	public void setRetraction(Retraction retraction) {
+		this.retraction = retraction;
+	}
+	public List<VersionInfo> getVersionList() {
+		return versionList;
+	}
+	public void setVersionList(List<VersionInfo> versionList) {
+		this.versionList = versionList;
 	}
 }

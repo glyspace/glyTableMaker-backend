@@ -1701,8 +1701,6 @@ public class DatasetController {
 				}
 			}
 		}
-		
-		
     }
     
     private static void validateMetadataForCollection(JsonNode metadataDefinition, CollectionView cv, Collection collection) {

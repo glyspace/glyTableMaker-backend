@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.glygen.tablemaker.persistence.dao.DatasetGlycoproteinMetadataRecordRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetMetadataRecordRepository;
@@ -19,6 +20,7 @@ import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dao.RetractionRepository;
 import org.glygen.tablemaker.persistence.dao.SoftwareRepository;
 import org.glygen.tablemaker.persistence.dao.TemplateRepository;
+import org.glygen.tablemaker.persistence.dataset.DatabaseResourceDataset;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadataRecord;
@@ -26,6 +28,7 @@ import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadataRecord;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Publication;
+import org.glygen.tablemaker.persistence.dataset.Retraction;
 import org.glygen.tablemaker.persistence.glycan.MetadataType;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
@@ -47,6 +50,7 @@ import org.glygen.tablemaker.view.dto.DatasetVersionDTO;
 import org.glygen.tablemaker.view.dto.GlycanDatasetRecord;
 import org.glygen.tablemaker.view.dto.GlycoproteinDatasetRecord;
 import org.glygen.tablemaker.view.dto.UserDTO;
+import org.glygen.tablemaker.view.dto.VersionInfo;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -493,10 +497,27 @@ public class PublicDataController {
 	 * @param ver version to export, if null, get the head version
 	 * @return DTO for the dataset
 	 */
-	public static DatasetDTO exportDatasetIntoDTO (Dataset d, String ver) {
+	public static DatasetDTO exportDatasetIntoDTO (Dataset d, String ver, RetractionRepository retractionRepository) {
 		DatasetDTO dto = new DatasetDTO();
 		dto.setDatasetIdentifier(d.getDatasetIdentifier());
 		dto.setDatasetId(d.getDatasetId());
+		
+		dto.setRetracted(d.getRetracted());
+		if (d.getRetracted()) {
+			// extract retraction information
+			Optional<Retraction> retracted = retractionRepository.findByDataset(d);
+			if (retracted.isPresent()) {
+	    		dto.setRetraction(retracted.get());
+	    		if (dto.getRetraction().getRemoved()) {
+	    			dto.setRemoved(true);
+	    			// if removed, do not show any other information
+	    			return dto;
+	    		} else {
+	    			dto.setRetracted(true);
+	    		}
+	    	}
+		}
+		
 		dto.setDateCreated(d.getDateCreated());
 		dto.setAssociatedDatasources(d.getAssociatedDatasources());
 		dto.setAssociatedPapers(d.getAssociatedPapers());
@@ -505,7 +526,10 @@ public class PublicDataController {
 		dto.setName(d.getName());
 		if (d.getNotes() != null && !d.getNotes().isEmpty()) dto.setNotes(d.getNotes());
 		dto.setIntegratedIn(d.getIntegratedIn());
-		dto.setRetracted(d.getRetracted());
+		for (DatabaseResourceDataset dd: dto.getIntegratedIn()) {
+			dd.setErrorJson(null);
+		}
+		
 		UserDTO user = new UserDTO();
 		user.setUserName(d.getUser().getUsername());
 		user.setFirstName(d.getUser().getFirstName());
@@ -517,7 +541,14 @@ public class PublicDataController {
 		user.setGroupName(d.getUser().getGroupName());
 		user.setResearchCenter(d.getUser().getResearchCenter());
 		dto.setUser(user);
+		
+		dto.setVersionList(new ArrayList<>());
 		for (DatasetVersion v: d.getVersions()) {
+			VersionInfo info = new VersionInfo();
+			info.setVersion(v.getVersion());
+			info.setComment(v.getComment());
+			info.setVersionDate(v.getVersionDate());
+			dto.getVersionList().add(info);
 			if ((ver != null && v.getVersion().equals(ver)) || (ver == null && v.getHead())) {
 				DatasetVersionDTO version = new DatasetVersionDTO();
 				version.setPublications(new ArrayList<>(v.getPublications()));
@@ -722,7 +753,7 @@ public class PublicDataController {
         }
         
         try {
-	        DatasetDTO dto = exportDatasetIntoDTO(existing, selectedVersion);
+	        DatasetDTO dto = exportDatasetIntoDTO(existing, selectedVersion, retractionRepository);
 	        
 	        String safeName = (fileName != null)
 	        	    ? fileName.replaceAll("[^A-Za-z0-9._-]", "_")

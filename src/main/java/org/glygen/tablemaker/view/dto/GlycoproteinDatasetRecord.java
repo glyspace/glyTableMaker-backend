@@ -1,12 +1,16 @@
 package org.glygen.tablemaker.view.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 public class GlycoproteinDatasetRecord extends DatasetRecord {
 	String uniProtId;
 	String glytoucanId;
 	String aminoAcid;
 	String site;
 	String residue;
+	@JsonInclude(JsonInclude.Include.NON_EMPTY)
 	String glycosylationType;
+	@JsonInclude(JsonInclude.Include.NON_EMPTY)
 	String glycosylationSubType;
 	
 	public String getUniProtId() {

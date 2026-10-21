@@ -2,6 +2,7 @@ package org.glygen.tablemaker.persistence.dataset;
 
 import java.util.Date;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
@@ -18,6 +19,7 @@ public class Retraction {
 	Long retractionId;
 	
 	@Column
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
 	Date retractionDate;
 	
 	@Column
