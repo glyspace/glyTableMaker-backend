@@ -744,7 +744,8 @@ public class PublicDataController {
         Dataset existing = null;
         if (selectedVersion == null) {
         	existing = datasetRepository.findByDatasetIdentifierAndVersions_head(identifier, true);
-        	selectedVersion = datasetRepository.getLatestVersionByDatasetId(existing.getDatasetId());
+        	if (existing != null)
+        		selectedVersion = datasetRepository.getLatestVersionByDatasetId(existing.getDatasetId());
         } else {
         	existing = datasetRepository.findByDatasetIdentifierAndVersions_version(identifier, selectedVersion);
         }

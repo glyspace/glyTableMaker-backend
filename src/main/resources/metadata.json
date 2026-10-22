@@ -47,6 +47,7 @@
                 "namespace": "Disease",
                 "allowOther": true,
                 "type": "autocomplete",
+                "unknown": true,
                 "datatype": 7
             },
             {
@@ -199,6 +200,7 @@
                 "namespace": "Disease",
                 "allowOther": true,
                 "type": "autocomplete",
+                "unknown": true,
                 "datatype": 7
             },
             {
@@ -383,18 +385,15 @@
                         "required": true,
                         "multiple": true,
                         "type": "text",
-                        "datatype": 29
+                        "datatype": 29,
+                        "unknown": true
                     },
                     {
                         "id": "mutantSpecies",
                         "label": "Species",
                         "description": "For knock-in experiments involving a gene from another organism, specify the source species of the inserted gene. Select the organism using an NCBI Taxonomy term.",
                         "example": "Home sapiens",
-                        "required": true,
-                        "requiredWhen": {
-                            "field": "geneticVariation",
-                            "value": "Insertion"
-                        },
+                        "required": false,
                         "multiple": false,
                         "namespace": "NCBI Taxonomy",
                         "allowOther": false,
@@ -572,6 +571,7 @@
                 "namespace": "Disease",
                 "allowOther": true,
                 "type": "autocomplete",
+                "unknown": true,
                 "datatype": 7
             },
             {
@@ -905,6 +905,7 @@
                 "namespace": "Disease",
                 "allowOther": true,
                 "type": "autocomplete",
+                "unknown": true,
                 "datatype": 7
             },
             {
@@ -1258,6 +1259,7 @@
                         "required": true,
                         "multiple": true,
                         "type": "text",
+                        "unknown": true,
                         "datatype": 29
                     },
                     {
@@ -1265,11 +1267,7 @@
                         "label": "Species",
                         "description": "For knock-in experiments involving a gene from another organism, specify the source species of the inserted gene. Select the organism using an NCBI Taxonomy term.",
                         "example": "Home sapiens",
-                        "required": true,
-                        "requiredWhen": {
-                            "field": "geneticVariation",
-                            "value": "Insertion"
-                        },
+                        "required": false,
                         "multiple": false,
                         "namespace": "NCBI Taxonomy",
                         "allowOther": false,
@@ -2117,18 +2115,15 @@
                         "required": true,
                         "multiple": true,
                         "type": "text",
-                        "datatype": 29
+                        "datatype": 29,
+                        "unknown": true
                     },
                     {
                         "id": "mutantSpecies",
                         "label": "Species",
                         "description": "For knock-in experiments involving a gene from another organism, specify the source species of the inserted gene. Select the organism using an NCBI Taxonomy term.",
                         "example": "Home sapiens",
-                        "required": true,
-                        "requiredWhen": {
-                            "field": "geneticVariation",
-                            "value": "Insertion"
-                        },
+                        "required": false,
                         "multiple": false,
                         "namespace": "NCBI Taxonomy",
                         "allowOther": false,
@@ -2293,11 +2288,6 @@
             "required": true,
             "multiple": true,
             "options": [
-                {
-                    "label": "MALDI-TOF-TOF",
-                    "description": "A mass detection method where the sample (usually a large organic molecule or biomolecule) is vaporised and ionised using a high-energy pulsed laser. The sample is held in a matrix (such as crystallised dihydrobenzoic acid) to protect it from direct laser illumination and to separate the sample molecules. The ions are then characterised by two time-of-flight mass-to-charge analysers (where the ions are accelerated to the same (known) kinetic energy and the time taken for each ion to reach a detector at a known distance is measured) in sequence. The first isolates precursor ions of choice using a velocity filter, and the second detects the fragment ions.",
-                    "uri" : "http://purl.obolibrary.org/obo/CHMO_0002339"
-                },
                 {
                     "label": "MS",
                     "description": "A spectroscopy in which the sample is converted into 'gaseous ions [...] which are then characterized by their mass-to-charge ratios and relative abundances'.",
