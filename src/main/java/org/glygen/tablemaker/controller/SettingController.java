@@ -2,9 +2,12 @@ package org.glygen.tablemaker.controller;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.glygen.tablemaker.persistence.ColumnVisibillitySetting;
 import org.glygen.tablemaker.persistence.ContributorSetting;
@@ -28,10 +31,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 
 @RestController
@@ -136,6 +142,15 @@ public class SettingController {
     	}
 	}
 	
+	private static ContributorSetting toView(ContributorSetting s) {
+		ContributorSetting v = new ContributorSetting();
+		v.setId(s.getId());
+		v.setName(s.getName());
+		v.setContributor(s.getContributor());
+		v.setDefaultSetting(s.getDefaultSetting());
+		return v;
+	}
+	
 	@Operation(summary = "Get all contributor settings for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getallcontributorsettings")
     public ResponseEntity<SuccessResponse<List<ContributorSetting>>> getAllContributorSettings() {
@@ -147,16 +162,71 @@ public class SettingController {
         }
         
         
-        List<ContributorSetting> settings = contributorSettingRepository.findAllByUser(user);
-        if (settings.size() > 0) {
-        	for (ContributorSetting setting: settings) {
-        		setting.setUser(null);
-        	}
+        List<ContributorSetting> settings = contributorSettingRepository.findAllByUser(user)
+        		.stream().map(SettingController::toView).collect(Collectors.toList());
         	return new ResponseEntity<>(
         			new SuccessResponse<List<ContributorSetting>> (settings, "all contributor settings retrieved"), HttpStatus.OK);
-        } else {
-    		throw new EntityNotFoundException("Default contribuor setting for user " + user.getUsername() + " does not exist!");
-    	}
+	}
+	
+	@Operation(summary = "Replace the contributor settings of the user with the given list", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/updatecontributorsettings")
+    @Transactional
+    public ResponseEntity<SuccessResponse<List<ContributorSetting>>> updateContributorSettings(
+    		@RequestBody List<ContributorSetting> settings) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        
+        ObjectMapper mapper = new ObjectMapper();
+        Set<String> names = new LinkedHashSet<>();
+        for (ContributorSetting s: settings) {
+        	if (s.getName() == null || s.getName().isBlank()) {
+        		throw new IllegalArgumentException("Contributor setting name is required");
+        	}
+        	if (!names.add(s.getName().trim().toLowerCase())) {
+        		throw new IllegalArgumentException("Contributor setting name '" + s.getName() + "' is not unique");
+        	}
+        	try {
+        		mapper.readTree(s.getContributor());
+        	} catch (Exception e) {
+        		throw new IllegalArgumentException("Contributor information for '" + s.getName() + "' is not valid JSON");
+        	}
+        }
+        
+        boolean defaultSeen = false;
+        for (ContributorSetting s: settings) {
+        	boolean isDefault = Boolean.TRUE.equals(s.getDefaultSetting()) && !defaultSeen;
+        	s.setDefaultSetting(isDefault);
+        	defaultSeen = defaultSeen || isDefault;
+        }
+        if (!settings.isEmpty() && !defaultSeen) {
+        	settings.get(0).setDefaultSetting(true);
+        }
+        
+        Map<Long, ContributorSetting> existing = new HashMap<>();
+        for (ContributorSetting e: contributorSettingRepository.findAllByUser(user)) {
+        	existing.put(e.getId(), e);
+        }
+        
+        List<ContributorSetting> result = new ArrayList<>();
+        for (ContributorSetting s: settings) {
+        	ContributorSetting target = s.getId() != null ? existing.remove(s.getId()) : null;
+        	if (target == null) {
+        		target = new ContributorSetting();  
+        		target.setUser(user);
+        	}
+        	target.setName(s.getName().trim());
+        	target.setContributor(s.getContributor());
+        	target.setDefaultSetting(s.getDefaultSetting());
+        	result.add(contributorSettingRepository.save(target));
+        }
+        contributorSettingRepository.deleteAll(existing.values());
+        
+        return new ResponseEntity<>(
+        		new SuccessResponse<List<ContributorSetting>>(result.stream().map(SettingController::toView).collect(Collectors.toList()), 
+        				"contributor settings updated"), HttpStatus.OK);
 	}
 	
 	@Operation(summary = "update setting", security = { @SecurityRequirement(name = "bearer-key") })
