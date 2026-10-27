@@ -22,6 +22,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1110,8 +1111,51 @@ public class DataController {
     	return cv;
     }
     
+    private static Map<String, JsonNode> loadExperimentalTechnique() {
+    	Map<String, JsonNode> optionsByLabel = new HashMap<>(); 
+        try (InputStream is = DataController.class.getClassLoader().getResourceAsStream("metadata.json")) {
+            JsonNode root = new ObjectMapper().readTree(is);
+            for (Iterator<JsonNode> sections = root.elements(); sections.hasNext(); ) {
+                JsonNode section = sections.next();
+                JsonNode fields = section.isArray() ? section : section.path("fields");
+                for (JsonNode field : fields) {
+                    if (!"experimentalTechnique".equals(field.path("id").asText())) continue;
+                    for (JsonNode option : field.path("options")) {
+                        optionsByLabel.putIfAbsent(option.path("label").asText().trim().toLowerCase(), option);
+                    }
+                    return optionsByLabel;
+                }
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("could not load metadata.json", e);
+        }
+        throw new IllegalStateException("experimentTechnique not found in metadata.json");
+    }
+    
+    public static ObjectNode toOntologyObject(ObjectMapper mapper, String value) {
+    	Map<String, JsonNode> optionsByLabel = loadExperimentalTechnique();
+        if (value.isEmpty()) return null;                       // nothing to store
+
+        ObjectNode term = mapper.createObjectNode();
+        String name = value;
+        String uri = null;
+        String id = null;
+
+        JsonNode option = optionsByLabel.get(value.toLowerCase());
+        if (option != null) {
+            name = option.path("label").asText(value);          // canonical spelling
+            if (uri == null && option.hasNonNull("uri")) uri = option.get("uri").asText();
+        }
+        if (id == null && uri != null) id = uri.substring(uri.lastIndexOf('/') + 1);   // e.g. CHMO_0000470
+
+        term.put("name", name);
+        if (uri != null) term.put("uri", uri);
+        if (id != null) term.put("id", id);
+        return term;
+    }
+    
     private static JsonNode generateMetadataValues(java.util.Collection<Metadata> metadata) {
-        ObjectMapper mapper = new ObjectMapper();
+		ObjectMapper mapper = new ObjectMapper();
         ObjectNode json = mapper.createObjectNode();
 
         for (Metadata m : metadata) {
@@ -1126,12 +1170,19 @@ public class DataController {
             if (fieldName == null && datatype.getName() != null) {
                 fieldName = datatype.getName().toLowerCase();
             }
+            
+            if (fieldName == null) continue; 
 
             boolean multiple = Boolean.TRUE.equals(datatype.getMultiple());
 
             JsonNode valueNode;
             if (fieldName.equals("contributor")) {
             	valueNode = convertContributor(mapper, m.getValue());
+            }
+            else if (fieldName.equals("experimentalTechnique")) {
+            	String value = m.getValue() == null ? "" : m.getValue().trim();
+            	valueNode = toOntologyObject(mapper, value);
+                if (valueNode == null) continue;
             }
             else if (datatype.getNamespace() != null && Boolean.TRUE.equals(datatype.getNamespace().getHasId())) {
                 ObjectNode term = mapper.createObjectNode();

@@ -377,6 +377,9 @@ public class ScheduledTasksService {
 	        } else if (datatype.getDatatypeId() == 16L) { // Contributor
 	            JsonNode contrib = DataController.convertContributor(mapper, value);
 	            metadataNode.set(fieldName, contrib);
+	        } else if (datatype.getDatatypeId() == 12L) { // experimentalTechnique
+	        	JsonNode valueNode = DataController.toOntologyObject(mapper, value);
+                metadataNode.set(fieldName, valueNode);
 	        } else {
 	            if (Boolean.TRUE.equals(datatype.getMultiple())) {
 	            	if (value.contains("|")) {
