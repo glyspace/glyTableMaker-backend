@@ -175,9 +175,11 @@ public class TableController {
 	@Operation(summary = "Generate table and download", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/downloadtable")
 	public ResponseEntity<Resource> downloadTable (@Valid @RequestBody TableView table) {
-		String filename = table.getFilename() != null ? table.getFilename() : "tablemakerexport";
+		String safeName = (table.getFilename() != null)
+        	    ? table.getFilename().replaceAll("[^A-Za-z0-9._-]", "_")
+        	    : "tablemakerexport";
 		String ext = (table.getFileFormat() == FileFormat.EXCEL ? ".xlsx" : ".csv");
-		File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ext);
+		File newFile = new File (uploadDir + File.separator + safeName + System.currentTimeMillis() + ext);
 		
 		List<Collection> collectionList = new ArrayList<>();
 		for (Collection c: table.getCollections()) {
@@ -408,7 +410,7 @@ public class TableController {
 					String reportJson = new ObjectMapper().writeValueAsString(report);
 					tableReport.setReportJSON(reportJson);
 					TableReport saved = reportRepository.save(tableReport);
-					return FileController.download(newFile, filename+ext, saved.getReportId()+"");
+					return FileController.download(newFile, safeName+ext, saved.getReportId()+"");
 				} catch (JsonProcessingException e) {
 					throw new RuntimeException ("Failed to generate the report", e);
 				}	

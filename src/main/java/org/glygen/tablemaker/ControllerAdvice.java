@@ -10,6 +10,7 @@ import org.glygen.tablemaker.service.ErrorReportingService;
 import org.glygen.tablemaker.view.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -92,11 +93,13 @@ public class ControllerAdvice {
 
     }
     
-    @ExceptionHandler({BadRequestException.class, DuplicateException.class, IllegalArgumentException.class})
+    @ExceptionHandler({BadRequestException.class, DuplicateException.class, IllegalArgumentException.class,
+    	PropertyReferenceException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleBadRequestException(Exception ex) {
         return new ErrorResponse(String.valueOf(HttpStatus.BAD_REQUEST.value()), ex.getMessage(), TIMESTAMP);
     }
+    
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)

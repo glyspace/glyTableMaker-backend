@@ -128,9 +128,9 @@ public class PublicDataController {
             Integer start, 
             @RequestParam("size")
             Integer size,
-            @RequestParam("filters")
+            @RequestParam(name="filters", required=false)
             String filters,
-            @RequestParam("globalFilter")
+            @RequestParam(name="globalFilter", required=false)
             String globalFilter,
             @RequestParam("sorting")
             String sorting) {
@@ -281,70 +281,6 @@ public class PublicDataController {
             
             return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
         }
-        
-        
-      /*  if (type.equalsIgnoreCase("glycoprotein")) { 
-        	Page<DatasetGlycoproteinMetadataRecord> rows = null;
-        	if (versionId != null) {
-        		rows = datasetGlycoproteinDataRepository.findByDatasetVersionId(versionId, PageRequest.of(start, size, Sort.by(sortOrders)));
-        	} else {
-        		rows = datasetGlycoproteinDataRepository.findByDatasetDatasetDatasetIdentifierAndDatasetHeadTrue(datasetId, PageRequest.of(start, size, Sort.by(sortOrders)));
-        	}
-        	
-        	List<DatasetGlycoproteinRowDTO> result = new ArrayList<DatasetGlycoproteinRowDTO>();
-        	for (DatasetGlycoproteinMetadataRecord rec: rows) {
-        		DatasetGlycoproteinRowDTO dto = new DatasetGlycoproteinRowDTO();
-        		dto.setId( rec.getId());
-        		dto.setGlytoucanId(rec.getGlytoucanId());
-        		dto.setAminoAcid(rec.getAminoAcid());
-        		dto.setGlycosylationSubType(rec.getGlycosylationSubType());
-        		dto.setGlycosylationType(rec.getGlycosylationType());
-        		dto.setSite(rec.getSite());
-        		dto.setUniProtId(rec.getUniProtId());
-        		if (rec.getMetadataGroup() != null) {
-        			dto.setMetadata(rec.getMetadataGroup().getValue());
-        			dto.setSampleType(rec.getMetadataGroup().getSampleType());
-        		}
-        		dto.setVersion(rec.getDataset().getVersion());
-        		result.add(dto);
-        	}
-        	
-        	Map<String, Object> response = new HashMap<>();
-            response.put("objects", result);
-            response.put("currentPage", rows.getNumber());
-            response.put("totalItems", rows.getTotalElements());
-            response.put("totalPages", rows.getTotalPages());
-            
-            return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
-        } else {
-        	Page<DatasetMetadataRecord> rows = null;
-        	if (versionId != null) {
-        		rows = datasetDataRepository.findByDatasetVersionId(versionId, PageRequest.of(start, size, Sort.by(sortOrders)));
-        	} else {
-        		rows = datasetDataRepository.findByDatasetDatasetDatasetIdentifierAndDatasetHeadTrue(datasetId, PageRequest.of(start, size, Sort.by(sortOrders)));
-        	}
-        	
-        	List<DatasetRowDTO> result = new ArrayList<DatasetRowDTO>();
-        	for (DatasetMetadataRecord rec: rows) {
-        		DatasetRowDTO dto = new DatasetRowDTO();
-        		dto.setId( rec.getId());
-        		dto.setGlytoucanId(rec.getGlytoucanId());
-        		if (rec.getMetadataGroup() != null) {
-        			dto.setMetadata(rec.getMetadataGroup().getValue());
-        			dto.setSampleType(rec.getMetadataGroup().getSampleType());
-        		}
-        		dto.setVersion(rec.getDataset().getVersion());
-        		result.add(dto);
-        	}
-			
-        	Map<String, Object> response = new HashMap<>();
-            response.put("objects", result);
-            response.put("currentPage", rows.getNumber());
-            response.put("totalItems", rows.getTotalElements());
-            response.put("totalPages", rows.getTotalPages());
-            
-            return new ResponseEntity<>(new SuccessResponse<Map<String, Object>>(response, "metadata retrieved"), HttpStatus.OK);
-        }*/
 	}
 	
 	@Operation(summary = "Get public datasets")
@@ -591,8 +527,11 @@ public class PublicDataController {
 	@Operation(summary = "Generate table and download")
     @PostMapping("/downloadtable")
 	public ResponseEntity<Resource> downloadTable (@Valid @RequestBody DatasetTableDownloadView table) {
-		String filename = table.getFilename() != null ? table.getFilename() : "GlygenDataset";
-		File newFile = new File (uploadDir + File.separator + filename + System.currentTimeMillis() + ".csv");
+		String safeName = (table.getFilename() != null)
+        	    ? table.getFilename() .replaceAll("[^A-Za-z0-9._-]", "_")
+        	    : "GlyGenDataset";
+		
+		File newFile = new File (uploadDir + File.separator + safeName + System.currentTimeMillis() + ".csv");
 		
 		JsonNode metadataDefinitions = null;
 		try {
@@ -713,7 +652,7 @@ public class PublicDataController {
 				TableController.writeToCSV(rows, newFile);
 			}
 			
-			return FileController.download(newFile, filename+".csv", null);
+			return FileController.download(newFile, safeName+".csv", null);
 		} catch (IOException e) {
 			throw new IllegalArgumentException ("Failed to generate download file. Reason: " + e.getMessage());
 		}	
@@ -769,34 +708,5 @@ public class PublicDataController {
         } catch (IOException e) {
         	throw new IllegalArgumentException ("Failed to generate download file. Reason: " + e.getMessage());
         }
-		
-		/*DatasetView dv = getDatasetFromRepository(datasetIdentifier, version);
-		String type = "glycan";
-		if (dv.getNoProteins() != null && dv.getNoProteins() > 0)  {
-			type = "glycoprotein";
-		}
-		
-		ResponseEntity<SuccessResponse<Map<String, Object>>> data = null;
-		if (version != null && !version.equalsIgnoreCase("latest")) {
-			// find version id
-			for (DatasetVersion v: dv.getVersions()) {
-				if (v.getVersion().equalsIgnoreCase(version)) {
-					data = getDatasetData(v.getVersionId(), null, type, 0, Integer.MAX_VALUE, null, null, null);
-				}
-			}
-		} else {
-			data = getDatasetData(null, datasetIdentifier, type, 0, Integer.MAX_VALUE, null, null, null);
-		}
-		
-		DatasetTableDownloadView downloadView = new DatasetTableDownloadView();
-		downloadView.setFilename(fileName);
-		if (type.equalsIgnoreCase("glycoprotein")) {
-			downloadView.setGlycoproteinRecords((List<DatasetGlycoproteinRowDTO>) data.getBody().getData().get("objects"));
-		} else {
-			downloadView.setRecords((List<DatasetRowDTO>) data.getBody().getData().get("objects"));
-		}
-		downloadView.setVersion(dv.getVersion());
-		
-		return downloadTable(downloadView);*/
 	}
 }

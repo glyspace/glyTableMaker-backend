@@ -3,10 +3,12 @@ package org.glygen.tablemaker.persistence.dao;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.protein.Glycoprotein;
+import org.glygen.tablemaker.util.QueryFilterUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +22,9 @@ public class GlycoproteinRepositoryCustomImpl implements GlycoproteinRepositoryC
 	
 	@PersistenceContext
     private EntityManager entityManager;
+	
+	private static final Set<String> SORTABLE = Set.of("tags", "siteNo", "name", "proteinName", "sequence", "geneSymbol", "sequenceVersion");
+
 
 	@Override
 	public Page<Glycoprotein> searchGlycoproteins(String tagKeyword, String uniprotId, String name, String proteinName,
@@ -47,33 +52,27 @@ public class GlycoproteinRepositoryCustomImpl implements GlycoproteinRepositoryC
         }
         
         StringBuilder whereClause = new StringBuilder("");
-        
-        
         String where = "";
         
         if (tagKeyword != null) {
-        	appendCondition(whereClause, "LOWER(t.label) LIKE LOWER(:tagKeyword)", orFilter);
-        	params.put("tagKeyword", "%" + tagKeyword + "%");
+            appendCondition(whereClause, "LOWER(t.label) LIKE LOWER(:tagKeyword) ESCAPE '\\'", orFilter);
+            params.put("tagKeyword", QueryFilterUtil.contains(tagKeyword));
         }
-        
         if (uniprotId != null) {
-        	appendCondition(whereClause, "LOWER(g.uniprotId) like LOWER(:uniprotId)", orFilter);
-            params.put("uniprotId", "%" + uniprotId + "%");
+            appendCondition(whereClause, "LOWER(g.uniprotId) like LOWER(:uniprotId) ESCAPE '\\'", orFilter);
+            params.put("uniprotId", QueryFilterUtil.contains(uniprotId));
         }
-        
         if (seqVersion != null) {
-        	appendCondition(whereClause, "LOWER(g.sequenceVersion) like LOWER(:sequenceVersion)", orFilter);
-            params.put("sequenceVersion", "%" + seqVersion + "%");
+            appendCondition(whereClause, "LOWER(g.sequenceVersion) like LOWER(:sequenceVersion) ESCAPE '\\'", orFilter);
+            params.put("sequenceVersion", QueryFilterUtil.contains(seqVersion));
         }
-        
         if (name != null) {
-        	appendCondition(whereClause, "LOWER(g.name) like LOWER(:name)", orFilter);
-            params.put("name", "%" + name + "%");
+            appendCondition(whereClause, "LOWER(g.name) like LOWER(:name) ESCAPE '\\'", orFilter);
+            params.put("name", QueryFilterUtil.contains(name));
         }
-        
         if (proteinName != null) {
-        	appendCondition(whereClause, "LOWER(g.proteinName) like LOWER(:proteinName)", orFilter);
-            params.put("proteinName", "%" + proteinName + "%");
+            appendCondition(whereClause, "LOWER(g.proteinName) like LOWER(:proteinName) ESCAPE '\\'", orFilter);
+            params.put("proteinName", QueryFilterUtil.contains(proteinName));
         }
         
         if (!whereClause.isEmpty()) {
@@ -97,13 +96,15 @@ public class GlycoproteinRepositoryCustomImpl implements GlycoproteinRepositoryC
         // Apply sorting
         if (pageable.getSort().isSorted()) {
             for (Sort.Order order : pageable.getSort()) {
-                if (order.getProperty().contains("tags")) {
-                	orderBy = " ORDER BY t.label " + (order.isAscending() ? "ASC" : "DESC");
-                } else if (order.getProperty().contains("siteNo")) {
-                	orderBy = " ORDER BY COUNT(s) " + (order.isAscending() ? "ASC" : "DESC");
-                } else {
-                	orderBy = " ORDER BY " + order.getProperty() + " " + (order.isAscending() ? "ASC" : "DESC"); 
-                }
+            	if (SORTABLE.contains(order.getProperty())) {
+	                if (order.getProperty().contains("tags")) {
+	                	orderBy = " ORDER BY t.label " + (order.isAscending() ? "ASC" : "DESC");
+	                } else if (order.getProperty().contains("siteNo")) {
+	                	orderBy = " ORDER BY COUNT(s) " + (order.isAscending() ? "ASC" : "DESC");
+	                } else {
+	                	orderBy = " ORDER BY " + order.getProperty() + " " + (order.isAscending() ? "ASC" : "DESC"); 
+	                }
+            	}
             }
         }
 
