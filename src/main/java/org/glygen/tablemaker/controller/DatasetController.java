@@ -1,6 +1,5 @@
 package org.glygen.tablemaker.controller;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -9,7 +8,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 
 import org.glygen.tablemaker.exception.DuplicateException;
@@ -21,21 +19,16 @@ import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
-import org.glygen.tablemaker.persistence.dao.DatatypeCategoryRepository;
-import org.glygen.tablemaker.persistence.dao.DatatypeRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
 import org.glygen.tablemaker.persistence.dao.NotificationRepository;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dao.RetractionRepository;
 import org.glygen.tablemaker.persistence.dao.SoftwareRepository;
-import org.glygen.tablemaker.persistence.dao.TemplateRepository;
 import org.glygen.tablemaker.persistence.dao.TransferRequestRepository;
 import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.Dataset;
-import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadataRecord;
-import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadataGroup;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadataRecord;
 import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
@@ -45,11 +38,7 @@ import org.glygen.tablemaker.persistence.dataset.Publication;
 import org.glygen.tablemaker.persistence.dataset.Retraction;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
-import org.glygen.tablemaker.persistence.glycan.Datatype;
-import org.glygen.tablemaker.persistence.glycan.DatatypeCategory;
-import org.glygen.tablemaker.persistence.glycan.DatatypeInCategory;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
-import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.MetadataType;
 import org.glygen.tablemaker.persistence.protein.GlycanInSite;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
@@ -57,11 +46,7 @@ import org.glygen.tablemaker.persistence.protein.GlycoproteinSiteType;
 import org.glygen.tablemaker.persistence.protein.Position;
 import org.glygen.tablemaker.persistence.protein.Site;
 import org.glygen.tablemaker.persistence.protein.SitePosition;
-import org.glygen.tablemaker.persistence.table.GlycanColumns;
-import org.glygen.tablemaker.persistence.table.TableColumn;
-import org.glygen.tablemaker.persistence.table.TableMakerTemplate;
 import org.glygen.tablemaker.service.DatasetManager;
-import org.glygen.tablemaker.service.EmailManager;
 import org.glygen.tablemaker.service.UserManager;
 import org.glygen.tablemaker.util.pubmed.PubmedUtil;
 import org.glygen.tablemaker.view.CollectionView;
@@ -78,7 +63,6 @@ import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -92,7 +76,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -121,16 +104,12 @@ public class DatasetController {
 	
 	final private DatasetRepository datasetRepository;
 	final private UserRepository userRepository;
-	final private TemplateRepository templateRepository;
 	final private CollectionRepository collectionRepository;
-	private final DatatypeCategoryRepository datatypeCategoryRepository;
-	private final DatatypeRepository datatypeRepository;
 	private final DatasetManager datasetManager;
 	private final PublicationRepository publicationRepository;
 	private final GlycanImageRepository glycanImageRepository;
 	private final RetractionRepository retractionRepository;
 	private final SoftwareRepository softwareRepository;
-	final private EmailManager emailManager;
 	final private UserManager userManager;
 	final private TransferRequestRepository transferRequestRepository;
 	final private NotificationRepository notificationRepository;
@@ -151,24 +130,23 @@ public class DatasetController {
     private ObjectMapper mapper;
 	
 	public DatasetController(DatasetRepository datasetRepository, UserRepository userRepository, 
-			TemplateRepository templateRepository, CollectionRepository collectionRepository, 
-			DatatypeCategoryRepository datatypeCategoryRepository, DatasetManager datasetManager, 
+			 CollectionRepository collectionRepository, 
+			 DatasetManager datasetManager, 
 			PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository, 
 			RetractionRepository retractionRepository, SoftwareRepository softwareRepository, 
-			UserManager userManager, EmailManager emailManager, TransferRequestRepository transferRequestRepository, 
-			NotificationRepository notificationRepository, DatatypeRepository datatypeRepository) {
+			UserManager userManager, TransferRequestRepository transferRequestRepository, 
+			NotificationRepository notificationRepository) {
 		this.datasetRepository = datasetRepository;
 		this.userRepository = userRepository;
-		this.templateRepository = templateRepository;
+		
 		this.collectionRepository = collectionRepository;
-		this.datatypeCategoryRepository = datatypeCategoryRepository;
-		this.datatypeRepository = datatypeRepository;
+		
 		this.datasetManager = datasetManager;
 		this.publicationRepository = publicationRepository;
 		this.glycanImageRepository = glycanImageRepository;
 		this.retractionRepository = retractionRepository;
 		this.softwareRepository = softwareRepository;
-		this.emailManager = emailManager;
+		
 		this.userManager = userManager;
 		this.transferRequestRepository = transferRequestRepository;
 		this.notificationRepository = notificationRepository;

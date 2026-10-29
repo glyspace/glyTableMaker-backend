@@ -1,8 +1,6 @@
 package org.glygen.tablemaker.persistence.dao;
 
 import org.glygen.tablemaker.persistence.UserEntity;
-import org.glygen.tablemaker.persistence.glycan.Collection;
-import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 import org.glygen.tablemaker.view.Filter;

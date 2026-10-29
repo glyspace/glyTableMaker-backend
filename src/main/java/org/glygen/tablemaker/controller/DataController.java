@@ -559,14 +559,12 @@ public class DataController {
     	try {
     		boolean orFilter = false;
 			String uniprotId = null;
-			String siteNo = null;
 			String tagValue = null;
 			String proteinName = null;
 			String name = null;
 			String seqVersion = null;
 			if (globalFilter != null && !globalFilter.isBlank() && !globalFilter.equalsIgnoreCase("undefined")) {
 				uniprotId = globalFilter;
-				siteNo = globalFilter;
 				tagValue = globalFilter;
 				proteinName = globalFilter;
 				name = globalFilter;
@@ -574,9 +572,6 @@ public class DataController {
 				orFilter = true;
 			} else if (filterList != null) {
 				for (Filter f: filterList) {
-					if (f.getId().equalsIgnoreCase("siteNo")) {
-						siteNo = f.getValue();
-					}
 					if (f.getId().equalsIgnoreCase("uniprotId")) {
 						uniprotId = f.getValue();
 					}

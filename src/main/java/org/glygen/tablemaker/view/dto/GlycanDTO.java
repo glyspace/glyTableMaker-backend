@@ -3,8 +3,6 @@ package org.glygen.tablemaker.view.dto;
 import java.util.Date;
 import java.util.List;
 
-import org.glygen.tablemaker.persistence.glycan.GlycanTag;
-
 public class GlycanDTO {
 	String glytoucanID;
     String wurcs;

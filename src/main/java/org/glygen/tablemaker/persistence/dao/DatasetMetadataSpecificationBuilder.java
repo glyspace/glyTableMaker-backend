@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadataRecord;
 import org.glygen.tablemaker.persistence.dataset.DatasetMetadataRecord;
 import org.springframework.stereotype.Component;
 

@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.glygen.tablemaker.persistence.glycan.CollectionTag;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
-import org.glygen.tablemaker.persistence.glycan.Metadata;
 import org.glygen.tablemaker.persistence.glycan.MetadataType;
 
 import com.fasterxml.jackson.databind.JsonNode;

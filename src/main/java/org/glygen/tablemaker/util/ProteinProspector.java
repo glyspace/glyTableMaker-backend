@@ -47,7 +47,6 @@ import org.glycoinfo.GlycanCompositionConverter.utils.DictionaryException;
 import org.glycoinfo.WURCSFramework.util.WURCSException;
 import org.glycoinfo.application.glycanbuilder.converterWURCS2.WURCS2Parser;
 import org.glygen.tablemaker.controller.DataController;
-import org.glygen.tablemaker.controller.TableController;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 
 public class ProteinProspector {

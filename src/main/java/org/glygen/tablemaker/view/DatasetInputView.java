@@ -9,7 +9,6 @@ import org.glygen.tablemaker.persistence.dataset.License;
 import org.glygen.tablemaker.persistence.dataset.Publication;
 
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 
 public class DatasetInputView {
 

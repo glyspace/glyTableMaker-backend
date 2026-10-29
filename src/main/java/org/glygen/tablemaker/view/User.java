@@ -8,7 +8,6 @@ import org.glygen.tablemaker.view.validation.EmailWithTld;
 import org.glygen.tablemaker.view.validation.Password;
 import org.glygen.tablemaker.view.validation.Username;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;

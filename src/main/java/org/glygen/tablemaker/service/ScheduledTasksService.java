@@ -21,7 +21,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.glygen.tablemaker.controller.DataController;
-import org.glygen.tablemaker.controller.PublicDataController;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
@@ -53,16 +52,9 @@ import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.MetadataType;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.glygen.tablemaker.persistence.glycan.UploadStatus;
-import org.glygen.tablemaker.persistence.protein.GlycoproteinColumns;
 import org.glygen.tablemaker.persistence.table.GlycanColumns;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.SequenceUtils;
-import org.glygen.tablemaker.view.dto.DatasetDTO;
-import org.glygen.tablemaker.view.dto.DatasetRecord;
-import org.glygen.tablemaker.view.dto.DatasetVersionDTO;
-import org.glygen.tablemaker.view.dto.GlycanDatasetRecord;
-import org.glygen.tablemaker.view.dto.GlycoproteinDatasetRecord;
-import org.glygen.tablemaker.view.dto.UserDTO;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -146,16 +138,6 @@ public class ScheduledTasksService {
 	@Scheduled(fixedDelay = 604800000, initialDelay=2000)
 	public void migrateDatasets () {
 		logger.info("Migrating Datasets on " + new Date());
-		JsonNode metadataDefinitions = null;
-		try {
-			ObjectMapper mapper = new ObjectMapper();
-			try (InputStream is = getClass().getClassLoader().getResourceAsStream("metadata.json")) {
-				metadataDefinitions = mapper.readTree(is);
-			}
-		} catch (Exception e) {
-			logger.error("could not load metadata.json, migration cannot be done at this moment", e);
-			return;
-		}
 		
 		List<Dataset> datasets = datasetRepository.findAll();
 		int count = 0;

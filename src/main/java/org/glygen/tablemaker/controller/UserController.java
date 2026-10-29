@@ -534,7 +534,7 @@ public class UserController {
     public ResponseEntity<SuccessResponse<Boolean>> confirmRegistration(@RequestParam("token") final String token) throws UnsupportedEncodingException {
         final String result = userManager.validateVerificationToken(token.trim());
         if (result.equals(UserManagerImpl.TOKEN_VALID)) {
-            final UserEntity user = userManager.getUserByToken(token.trim());
+            userManager.getUserByToken(token.trim());
             // we don't need the token after confirmation
             userManager.deleteVerificationToken(token.trim());
             return ResponseEntity.ok(new SuccessResponse<Boolean>(true, "Verified Successfully"));

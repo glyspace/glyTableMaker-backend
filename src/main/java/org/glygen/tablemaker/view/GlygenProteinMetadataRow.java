@@ -3,8 +3,8 @@ package org.glygen.tablemaker.view;
 import java.util.List;
 
 import org.glygen.tablemaker.persistence.dataset.DatasetGlycoproteinMetadata;
-import org.glygen.tablemaker.persistence.glycan.GlycanCartoon;
 
+@Deprecated
 public class GlygenProteinMetadataRow {
 	String rowId;
 	List<DatasetGlycoproteinMetadata> columns;

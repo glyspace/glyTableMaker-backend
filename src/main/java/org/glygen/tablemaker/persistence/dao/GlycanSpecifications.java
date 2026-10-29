@@ -12,7 +12,6 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
 
 @SuppressWarnings("serial")
 public class GlycanSpecifications implements Specification<Glycan> {

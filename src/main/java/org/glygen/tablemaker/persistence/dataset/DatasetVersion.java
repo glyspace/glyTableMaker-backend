@@ -37,7 +37,9 @@ public class DatasetVersion {
 	CollectionType type;
 	String glygenExportVersion = "2";
 	
+	@Deprecated
 	Collection<DatasetMetadata> data;
+	@Deprecated
 	Collection<DatasetGlycoproteinMetadata> glycoproteinData;
 	Collection<Publication> publications;
 	

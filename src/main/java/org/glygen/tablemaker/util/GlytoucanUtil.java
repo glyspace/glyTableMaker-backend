@@ -272,9 +272,11 @@ public class GlytoucanUtil {
 	        	}
 	        }
 			
+		} catch (HttpClientErrorException e) {
+			logger.warn("Exception retrieving glycan " + ((HttpClientErrorException) e).getResponseBodyAsString());
 		} catch (Exception e) {
-			logger.info("Exception retrieving glycan " + ((HttpClientErrorException) e).getResponseBodyAsString());
-		} 
+			logger.warn("unknown exception retrieving glycan from glytoucan", e);
+		}
 		
 		return sequence;
 	}

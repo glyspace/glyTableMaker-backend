@@ -3,10 +3,8 @@ package org.glygen.tablemaker.view;
 import java.util.Date;
 import java.util.List;
 
-import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResource;
 import org.glygen.tablemaker.persistence.dataset.DatabaseResourceDataset;
-import org.glygen.tablemaker.persistence.dataset.DatasetMetadata;
 import org.glygen.tablemaker.persistence.dataset.DatasetVersion;
 import org.glygen.tablemaker.persistence.dataset.Grant;
 import org.glygen.tablemaker.persistence.dataset.License;
@@ -48,7 +46,9 @@ public class DatasetView {
 	List<DatabaseResourceDataset> integratedIn;
 	List<DatabaseResource> associatedDatasources;
 	List<Publication> associatedPapers;
+	@Deprecated
 	List<GlygenMetadataRow> data;
+	@Deprecated
 	List<GlygenProteinMetadataRow> glycoproteinData;
 	List<DatasetVersion> versions;
 	

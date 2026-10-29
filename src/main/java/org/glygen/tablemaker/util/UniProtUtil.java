@@ -11,9 +11,6 @@ import org.glygen.tablemaker.view.GlycoproteinView;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
 
 public class UniProtUtil {
 

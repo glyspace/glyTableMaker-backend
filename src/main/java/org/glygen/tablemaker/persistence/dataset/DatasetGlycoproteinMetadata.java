@@ -18,6 +18,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.xml.bind.annotation.XmlTransient;
 
 @Entity
+@Deprecated
 public class DatasetGlycoproteinMetadata {
 	
 	Long id;

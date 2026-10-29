@@ -15,14 +15,12 @@ import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycanTagRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinInFileRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
-import org.glygen.tablemaker.persistence.dao.SiteRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.GlycanInFile;
 import org.glygen.tablemaker.persistence.glycan.GlycanTag;
 import org.glygen.tablemaker.persistence.protein.Glycoprotein;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInFile;
-import org.glygen.tablemaker.persistence.protein.Site;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -42,11 +40,10 @@ public class GlycanManagerImpl implements GlycanManager {
 	final private GlycoproteinInFileRepository glycoproteinInFileRepository;
 	final private UploadErrorRepository uploadErrorRepository;
 	final private GlycoproteinRepository glycoproteinRepository;
-	final private SiteRepository siteRepository;
 	
     public GlycanManagerImpl(GlycanTagRepository glycanTagRepository, GlycanRepository glycanRepository, BatchUploadRepository uploadRepository, 
     		GlycanInFileRepository glycanInFileRepository, UploadErrorRepository uploadErrorRepository, 
-    		GlycoproteinInFileRepository glycoproteinInFileRepository, GlycoproteinRepository glycoproteinRepository, SiteRepository siteRepository) {
+    		GlycoproteinInFileRepository glycoproteinInFileRepository, GlycoproteinRepository glycoproteinRepository) {
 		this.glycanRepository = glycanRepository;
 		this.glycanTagRepository = glycanTagRepository;
 		this.uploadRepository = uploadRepository;
@@ -54,7 +51,6 @@ public class GlycanManagerImpl implements GlycanManager {
 		this.glycoproteinInFileRepository = glycoproteinInFileRepository;
 		this.uploadErrorRepository = uploadErrorRepository;
 		this.glycoproteinRepository = glycoproteinRepository;
-		this.siteRepository = siteRepository;
 	}
     
 	@Override
