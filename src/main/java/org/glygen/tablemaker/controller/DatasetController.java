@@ -9,7 +9,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Map.Entry;
 
+import org.apache.commons.collections4.trie.PatriciaTrie;
+import org.glygen.tablemaker.config.NamespaceHandler;
 import org.glygen.tablemaker.exception.DuplicateException;
 import org.glygen.tablemaker.persistence.NotificationEntity;
 import org.glygen.tablemaker.persistence.RoleEntity;
@@ -20,6 +23,7 @@ import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
+import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
 import org.glygen.tablemaker.persistence.dao.NotificationRepository;
 import org.glygen.tablemaker.persistence.dao.PublicationRepository;
 import org.glygen.tablemaker.persistence.dao.RetractionRepository;
@@ -40,6 +44,7 @@ import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
 import org.glygen.tablemaker.persistence.glycan.GlycanInCollection;
 import org.glygen.tablemaker.persistence.glycan.MetadataType;
+import org.glygen.tablemaker.persistence.glycan.Namespace;
 import org.glygen.tablemaker.persistence.protein.GlycanInSite;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinInCollection;
 import org.glygen.tablemaker.persistence.protein.GlycoproteinSiteType;
@@ -54,6 +59,7 @@ import org.glygen.tablemaker.view.DatasetError;
 import org.glygen.tablemaker.view.DatasetInputView;
 import org.glygen.tablemaker.view.DatasetView;
 import org.glygen.tablemaker.view.Filter;
+import org.glygen.tablemaker.view.NamespaceEntry;
 import org.glygen.tablemaker.view.Software;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
@@ -113,6 +119,7 @@ public class DatasetController {
 	final private UserManager userManager;
 	final private TransferRequestRepository transferRequestRepository;
 	final private NotificationRepository notificationRepository;
+	final private NamespaceRepository namespaceRepository;
 	
 	@Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -135,7 +142,7 @@ public class DatasetController {
 			PublicationRepository publicationRepository, GlycanImageRepository glycanImageRepository, 
 			RetractionRepository retractionRepository, SoftwareRepository softwareRepository, 
 			UserManager userManager, TransferRequestRepository transferRequestRepository, 
-			NotificationRepository notificationRepository) {
+			NotificationRepository notificationRepository, NamespaceRepository namespaceRepository) {
 		this.datasetRepository = datasetRepository;
 		this.userRepository = userRepository;
 		
@@ -150,6 +157,7 @@ public class DatasetController {
 		this.userManager = userManager;
 		this.transferRequestRepository = transferRequestRepository;
 		this.notificationRepository = notificationRepository;
+		this.namespaceRepository = namespaceRepository;
 	}
 	
 	@Operation(summary = "Get user's public datasets", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1479,11 +1487,11 @@ public class DatasetController {
     		MetadataType sampleType,
             JsonNode schema,
             JsonNode values, 
-            JsonNode xorGroups) {
+            JsonNode xorGroups, NamespaceRepository namespaceRepository) {
 
         Map<String, String> errors = new LinkedHashMap<>();
 
-        validateFields(sampleType, schema.get("fields"), values, xorGroups, "", errors);
+        validateFields(sampleType, schema.get("fields"), values, xorGroups, "", errors, namespaceRepository);
 
         return errors;
     }
@@ -1494,7 +1502,7 @@ public class DatasetController {
             JsonNode values,
             JsonNode xorGroups,
             String prefix,
-            Map<String, String> errors) {
+            Map<String, String> errors, NamespaceRepository namespaceRepository) {
 
         if (fieldDefinitions == null || !fieldDefinitions.isArray()) {
             return;
@@ -1505,6 +1513,7 @@ public class DatasetController {
             JsonNode value = values != null ? values.get(fieldId) : null;
 
             validateRequired(sampleType, field, value, values, prefix, errors);
+            validateOptions(field, value, prefix, errors, namespaceRepository);
 
             if ("complex".equals(field.path("type").asText())
                     && field.has("fields")
@@ -1514,15 +1523,14 @@ public class DatasetController {
                 if (field.path("multiple").asBoolean(false)) {
                     if (value.isArray()) {
                         for (int i = 0; i < value.size(); i++) {
-                            validateFields(sampleType, field.get("fields"), value.get(i), xorGroups, prefix + fieldId + "[" + i + "].", errors);
+                            validateFields(sampleType, field.get("fields"), value.get(i), xorGroups, prefix + fieldId + "[" + i + "].", errors, namespaceRepository);
                         }
                     }
                 } else {
                 	JsonNode single = value.isArray() ? (value.isEmpty() ? null : value.get(0)) : value;
                     if (single != null && single.isObject()) {
-                        validateFields(sampleType, field.get("fields"), single, xorGroups, prefix + fieldId + ".", errors);
+                        validateFields(sampleType, field.get("fields"), single, xorGroups, prefix + fieldId + ".", errors, namespaceRepository);
                     }
-                    //validateFields(sampleType, field.get("fields"), value, xorGroups, prefix + fieldId + ".", errors);
                 }
             }
         }
@@ -1530,7 +1538,54 @@ public class DatasetController {
         validateXorGroups (xorGroups, values, prefix, errors);
     }
     
-    private static void validateXorGroups(JsonNode xorGroups, JsonNode values, String prefix,
+    private static void validateOptions(JsonNode fieldDef, JsonNode value, String prefix, Map<String, String> errors, 
+    		NamespaceRepository namespaceRepository) {
+    	String label = null;
+    	if (value != null && value.isObject()) {
+            if (value.has("name")) {
+                label = value.path("name").asText();
+            }
+        }
+    	if (label == null) return;
+    	
+    	String fieldId = fieldDef.path("id").asText();
+    	Boolean matched = false;
+		Boolean allowOther = fieldDef.path("allowOther").asBoolean(false);
+		if (allowOther) return;
+		
+		JsonNode options = fieldDef.path("options");
+		String namespace = fieldDef.path("namespace").asText();
+		//need to check if the value is one of the allowed ones
+		if (!namespace.isBlank()) {
+			// find the file identifier
+			Namespace n = namespaceRepository.findByNameIgnoreCase(namespace.trim());
+			if (n != null) {
+				PatriciaTrie<List<NamespaceEntry>> trie = NamespaceHandler.getTrieForNamespace(n.getFileIdentifier());
+				if (trie != null) {
+					Entry<String, List<NamespaceEntry>> entry = trie.select(label.toLowerCase());
+					if (!entry.getKey().toLowerCase().equals(label.toLowerCase())) {
+						errors.put(prefix + fieldId, label + " is not one of the allowed values for " + fieldDef.path("label").asText());  
+					}
+				}
+			} else {
+				errors.put(prefix + fieldId, "Namespace " + namespace + " is not valid for the given field");
+			}
+			
+		} else if (!options.isEmpty()) {
+			if (!options.isArray()) return;
+			for (JsonNode option: options) {
+				String optionValue = option.path("label").asText();
+				if (optionValue != null && optionValue.equalsIgnoreCase(label)) {
+					matched = true;
+				}
+			}
+			if (!matched) {
+				errors.put(prefix + fieldId, label + " is not one of the allowed values for " + fieldDef.path("label").asText());  
+			}
+		}
+	}
+
+	private static void validateXorGroups(JsonNode xorGroups, JsonNode values, String prefix,
 			Map<String, String> errors) {
     	if (xorGroups == null || !xorGroups.isArray() || values == null) {
             return;
@@ -1592,51 +1647,40 @@ public class DatasetController {
     }
     
     private static String extractValue(JsonNode node) {
-
         if (node == null || node.isNull()) {
             return null;
         }
-
         if (node.isTextual()) {
             return node.asText();
         }
-
         if (node.has("value")) {
             return node.get("value").asText();
         }
-
         if (node.has("id")) {
             return node.get("id").asText();
         }
-
         if (node.has("name")) {
             return node.get("name").asText();
         }
-
         return node.asText();
     }
     
     private static boolean isEmpty(JsonNode node) {
-
         if (node == null || node.isNull()) {
             return true;
         }
-
         if (node.isTextual()) {
             return node.asText().trim().isEmpty();
         }
-
         if (node.isArray()) {
             return node.isEmpty();
         }
-
         if (node.isObject()) {
             if (node.has("id") || node.has("name")) {
                 return isBlankValue(node.get("id")) && isBlankValue(node.get("name"));
             }
             return node.isEmpty();
         }
-
         return false;
     }
     
@@ -1645,10 +1689,10 @@ public class DatasetController {
     }
     
     public void validateMetadataForCollection (CollectionView cv) {
-    	validateMetadataForCollection(getClass(), cv, collectionRepository);
+    	validateMetadataForCollection(getClass(), cv, collectionRepository, namespaceRepository);
     }
     
-    public static void validateMetadataForCollection (Class cls, CollectionView cv, CollectionRepository collectionRepository) {
+    public static void validateMetadataForCollection (Class cls, CollectionView cv, CollectionRepository collectionRepository, NamespaceRepository namespaceRepository) {
     	JsonNode metadataDefinition = null;
 		try {
 			ObjectMapper mapper = new ObjectMapper();
@@ -1668,12 +1712,12 @@ public class DatasetController {
 		Collection collection = collectionHandle.get();
 		
 		if (cv.getChildren() == null || cv.getChildren().isEmpty()) {
-			validateMetadataForCollection(metadataDefinition, cv, collection);
+			validateMetadataForCollection(metadataDefinition, cv, collection, namespaceRepository);
 		} else {  //CoC
 			for (CollectionView colV: cv.getChildren()) {
 				for (Collection col: collection.getCollections()) {
 					if (colV.getCollectionId().equals(col.getCollectionId())) {
-						validateMetadataForCollection(metadataDefinition, colV, col);
+						validateMetadataForCollection(metadataDefinition, colV, col, namespaceRepository);
 						break;
 					}
 				}
@@ -1681,7 +1725,7 @@ public class DatasetController {
 		}
     }
     
-    private static void validateMetadataForCollection(JsonNode metadataDefinition, CollectionView cv, Collection collection) {
+    private static void validateMetadataForCollection(JsonNode metadataDefinition, CollectionView cv, Collection collection, NamespaceRepository namespaceRepository) {
     	Map<String, String> errors = new LinkedHashMap<>();
 		
 		// check for errors in molecule related columns first
@@ -1751,7 +1795,7 @@ public class DatasetController {
 		JsonNode generalSchema = metadataDefinition.get("general");
 		JsonNode xorGroups = metadataDefinition.get("xorGroups");
 
-		errors.putAll(validateMetadata(cv.getSampleType(), sampleSchema, cv.getMetadataValues(), xorGroups));
+		errors.putAll(validateMetadata(cv.getSampleType(), sampleSchema, cv.getMetadataValues(), xorGroups, namespaceRepository));
 
 		validateFields(
 				cv.getSampleType(),
@@ -1759,7 +1803,7 @@ public class DatasetController {
 		        cv.getMetadataValues(),
 		        xorGroups,
 		        "",
-		        errors);
+		        errors, namespaceRepository);
 		
 		List<DatasetError> errorList = new ArrayList<>();
 		for (String key: errors.keySet()) {

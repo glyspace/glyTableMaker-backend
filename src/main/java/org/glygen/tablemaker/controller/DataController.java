@@ -104,6 +104,7 @@ import org.glygen.tablemaker.persistence.dao.GlycanSpecifications;
 import org.glygen.tablemaker.persistence.dao.GlycanTagRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinSpecification;
+import org.glygen.tablemaker.persistence.dao.NamespaceRepository;
 import org.glygen.tablemaker.persistence.dao.SettingRepository;
 import org.glygen.tablemaker.persistence.dao.TableReportRepository;
 import org.glygen.tablemaker.persistence.dao.UploadErrorRepository;
@@ -256,6 +257,7 @@ public class DataController {
     final private BatchUploadJobRepository batchUploadJobRepository;
     final private ErrorReportingService errorReportingService;
 	final private SettingRepository settingRepository;
+	final private NamespaceRepository namespaceRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -278,7 +280,7 @@ public class DataController {
     		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
     		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository, 
     		ErrorReportingService errorReportingService, GlycanTagRepository glycanTagRepository, 
-    		CollectionTagRepository collectionTagRepository, SettingRepository settingRepository) {
+    		CollectionTagRepository collectionTagRepository, SettingRepository settingRepository, NamespaceRepository namespaceRepository) {
         this.glycanRepository = glycanRepository;
 		this.glycanTagRepository = glycanTagRepository;
 		this.collectionRepository = collectionRepository;
@@ -295,6 +297,7 @@ public class DataController {
 		this.batchUploadJobRepository = batchUploadJobRepository;
 		this.errorReportingService = errorReportingService;
 		this.settingRepository = settingRepository;
+		this.namespaceRepository = namespaceRepository;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -679,7 +682,7 @@ public class DataController {
         //populate errors/warnings
         for (CollectionView col: collections) {
         	//DatasetController.getErrorsForCollection(col, templateRepository, datatypeCategoryRepository, collectionRepository);
-        	DatasetController.validateMetadataForCollection(getClass(), col, collectionRepository);
+        	DatasetController.validateMetadataForCollection(getClass(), col, collectionRepository, namespaceRepository);
         }
         return new ResponseEntity<>(new SuccessResponse(response, "collections retrieved"), HttpStatus.OK);
     }
@@ -846,7 +849,7 @@ public class DataController {
         //populate errors/warnings
         for (CollectionView col: collections) {
         	//DatasetController.getErrorsForCollection(col, templateRepository, datatypeCategoryRepository, collectionRepository);
-        	DatasetController.validateMetadataForCollection(getClass(), col, collectionRepository);
+        	DatasetController.validateMetadataForCollection(getClass(), col, collectionRepository, namespaceRepository);
         }
         return new ResponseEntity<>(new SuccessResponse(response, "collections of collections retrieved"), HttpStatus.OK);
     }

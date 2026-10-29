@@ -17,6 +17,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -44,7 +45,7 @@ import java.util.Map;
 @RestControllerAdvice
 public class ControllerAdvice {
     
-    public static final Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
+    //public static Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
     final static Logger log = LoggerFactory.getLogger(ControllerAdvice.class);
     
     private final ErrorReportingService errorReportingService;
@@ -56,6 +57,7 @@ public class ControllerAdvice {
     @ExceptionHandler({NoHandlerFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse noHandlerFoundException(NoHandlerFoundException ex) {
+    	Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
         log.debug(ex.getMessage(), ex.getCause());
         return new ErrorResponse(String.valueOf(HttpStatus.NOT_FOUND.value()), "No resource found for your request. Please verify you request", TIMESTAMP);
 
@@ -64,6 +66,7 @@ public class ControllerAdvice {
     @ExceptionHandler({BadCredentialsException.class})
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorResponse badCredentialsException (BadCredentialsException ex) {
+    	Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
         log.debug(ex.getMessage(), ex.getCause());
         return new ErrorResponse(String.valueOf(HttpStatus.UNAUTHORIZED.value()), ex.getMessage(), TIMESTAMP);
 
@@ -72,6 +75,7 @@ public class ControllerAdvice {
     @ExceptionHandler({AccessDeniedException.class, OAuth2AuthenticationException.class})
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ErrorResponse accessDeniedException (AccessDeniedException ex) {
+    	Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
         log.debug(ex.getMessage(), ex.getCause());
         return new ErrorResponse(String.valueOf(HttpStatus.FORBIDDEN.value()), ex.getMessage(), TIMESTAMP);
 
@@ -80,6 +84,7 @@ public class ControllerAdvice {
     @ExceptionHandler({DataNotFoundException.class, EntityNotFoundException.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse noHandlerFoundException(Exception ex) {
+    	Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
         log.debug(ex.getMessage(), ex.getCause());
         return new ErrorResponse(String.valueOf(HttpStatus.NOT_FOUND.value()), ex.getMessage(), TIMESTAMP);
 
@@ -88,15 +93,17 @@ public class ControllerAdvice {
     @ExceptionHandler({UploadNotFinishedException.class})
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ErrorResponse uploadNotFinishedException(Exception ex) {
+    	Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
         log.debug(ex.getMessage(), ex.getCause());
         return new ErrorResponse(String.valueOf(HttpStatus.NO_CONTENT.value()), ex.getMessage(), TIMESTAMP);
 
     }
     
     @ExceptionHandler({BadRequestException.class, DuplicateException.class, IllegalArgumentException.class,
-    	PropertyReferenceException.class})
+    	PropertyReferenceException.class, MissingServletRequestParameterException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleBadRequestException(Exception ex) {
+    	Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
         return new ErrorResponse(String.valueOf(HttpStatus.BAD_REQUEST.value()), ex.getMessage(), TIMESTAMP);
     }
     
@@ -104,6 +111,7 @@ public class ControllerAdvice {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public ErrorResponse notSupportedException(HttpRequestMethodNotSupportedException ex) {
+    	Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
         log.debug(ex.getMessage(), ex.getCause());
         return new ErrorResponse(String.valueOf(HttpStatus.METHOD_NOT_ALLOWED.value()),"Method Not Allowed. Please verify you request", TIMESTAMP);
     }
@@ -111,6 +119,7 @@ public class ControllerAdvice {
     @ExceptionHandler(NoResourceFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse notSupportedResourceException(NoResourceFoundException ex) {
+    	Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
         log.debug("Resource not found: " + ex.getHttpMethod() + " " + ex.getResourcePath(), ex.getCause());
         return new ErrorResponse(String.valueOf(HttpStatus.NOT_FOUND.value()),"Resource not found: " + ex.getHttpMethod() + " " + ex.getResourcePath(), TIMESTAMP);
     }
@@ -118,7 +127,7 @@ public class ControllerAdvice {
     @ExceptionHandler({Exception.class})
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleAllExceptions(Exception ex) {
-    	
+    	Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
     	if (isClientAbort(ex)) {
             // client disconnected before the response could be sent — not a bug, don't report
             log.warn("Client aborted connection before response completed: {}", ex.getMessage());
@@ -167,6 +176,7 @@ public class ControllerAdvice {
 	@ExceptionHandler({MethodArgumentTypeMismatchException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleTypeMismatchExceptions(MethodArgumentTypeMismatchException ex) {
+		Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
         Map<String, String> errors = new HashMap<>();
         errors.put(ex.getPropertyName(), ex.getMessage());
         
@@ -176,7 +186,7 @@ public class ControllerAdvice {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ErrorResponse handleValidationExceptionHandler(MethodArgumentNotValidException ex) {
-
+    	Instant TIMESTAMP = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
         Map<String, String> errors = new HashMap<>();
 
         ex.getBindingResult().getFieldErrors().forEach(error ->
@@ -185,5 +195,3 @@ public class ControllerAdvice {
         return new ErrorResponse(String.valueOf(HttpStatus.BAD_REQUEST.value()), errors.toString(), TIMESTAMP);
     }
 }
-
-
