@@ -431,7 +431,7 @@ public class PublicDataController {
 		dto.setDatasetId(d.getDatasetId());
 		
 		dto.setRetracted(d.getRetracted());
-		if (d.getRetracted()) {
+		if (d.getRetracted() != null && d.getRetracted()) {
 			// extract retraction information
 			Optional<Retraction> retracted = retractionRepository.findByDataset(d);
 			if (retracted.isPresent()) {
