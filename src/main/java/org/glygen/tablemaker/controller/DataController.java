@@ -155,6 +155,7 @@ import org.glygen.tablemaker.view.SequenceFormat;
 import org.glygen.tablemaker.view.SiteView;
 import org.glygen.tablemaker.view.Sorting;
 import org.glygen.tablemaker.view.SuccessResponse;
+import org.glygen.tablemaker.view.TagView;
 import org.glygen.tablemaker.view.UserStatisticsView;
 import org.glygen.tablemaker.view.dto.CollectionDTO;
 import org.glygen.tablemaker.view.dto.GlycanDTO;
@@ -180,6 +181,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -205,6 +207,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 
 @RestController
@@ -300,16 +303,21 @@ public class DataController {
 		this.namespaceRepository = namespaceRepository;
     }
     
-    @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
-    @GetMapping("/statistics")
-    public ResponseEntity<SuccessResponse<UserStatisticsView>> getStatistics() {
-        UserStatisticsView stats = new UserStatisticsView();
-     // get user info
+    private UserEntity currentUser () {
+    	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
         if (auth != null) { 
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
+        return user;
+    }
+    
+    @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/statistics")
+    public ResponseEntity<SuccessResponse<UserStatisticsView>> getStatistics() {
+        UserStatisticsView stats = new UserStatisticsView();
+        UserEntity user = currentUser();
         stats.setGlycanCount(glycanRepository.count(GlycanSpecifications.hasUserWithId(user.getUserId())));
         stats.setDatasetCount(datasetRepository.count(DatasetSpecification.hasUserWithId(user.getUserId())));
         Specification<Collection> spec = CollectionSpecification.hasUserWithId(user.getUserId());
@@ -335,12 +343,7 @@ public class DataController {
             String globalFilter,
             @RequestParam(required=false, value="sorting")
             String sorting) {
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
       
         if (size == null) {   // get all
         	size = Integer.MAX_VALUE;
@@ -511,12 +514,7 @@ public class DataController {
             String globalFilter,
             @RequestParam(required=false, value="sorting")
             String sorting) {
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         if (size == null) {   // get all
         	size = Integer.MAX_VALUE;
@@ -665,12 +663,7 @@ public class DataController {
             String globalFilter,
             @RequestParam(required=false, value="sorting")
             String sorting) {
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         if (size == null) {   // get all
         	size = Integer.MAX_VALUE;
@@ -831,12 +824,7 @@ public class DataController {
             String globalFilter,
             @RequestParam(required=false, value="sorting")
             String sorting) {
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         if (size == null) {   // get all
         	size = Integer.MAX_VALUE;
@@ -976,12 +964,7 @@ public class DataController {
     public ResponseEntity<SuccessResponse<CollectionView>> getCollectionById(
     		@Parameter(required=true, description="id of the collection to be retrieved") 
     		@PathVariable("collectionId") Long collectionId) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         Collection existing = collectionRepository.findByCollectionIdAndUser(collectionId, user);
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
@@ -1310,12 +1293,7 @@ public class DataController {
     public ResponseEntity<SuccessResponse<CollectionView>> getCoCById(
     		@Parameter(required=true, description="id of the collection to be retrieved") 
     		@PathVariable("collectionId") Long collectionId) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         Collection existing = collectionRepository.findByCollectionIdAndUser(collectionId, user);
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
@@ -1338,12 +1316,7 @@ public class DataController {
     	    		allowableValues={"GLYCOPROTEIN", "GLYCAN"}))
             @RequestParam("type")
     		String type) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         CollectionType colType = CollectionType.valueOf(type);
         if (user != null) {
         	List<BatchUploadEntity> uploads = uploadRepository.findByUserOrderByStartDateDesc(user);	
@@ -1403,12 +1376,7 @@ public class DataController {
             @Parameter(required=true, description="id of the file upload to delete") 
             @PathVariable("uploadId") Long uploadId) {
         
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         List<BatchUploadEntity> found = uploadRepository.findByUserAndId(user, uploadId);
         if (found.isEmpty()) {
         	throw new IllegalArgumentException("Could not find upload entry with the given id (" + uploadId + ") for this user");
@@ -1471,12 +1439,7 @@ public class DataController {
     		throw new IllegalArgumentException("Tag cannnot be empty");
     	}
     	
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
 
     	Optional<BatchUploadEntity> upload = uploadRepository.findById(batchUploadId);
     	if (upload != null) {
@@ -1512,12 +1475,7 @@ public class DataController {
     		throw new IllegalArgumentException("Tags cannnot be null");
     	}
     	
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
 
     	Optional<Glycan> glycan = glycanRepository.findById(glycanId);
     	if (glycan != null) {
@@ -1547,12 +1505,7 @@ public class DataController {
     		throw new IllegalArgumentException("Tags cannnot be emnpty");
     	}
     	
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
 
     	Optional<Glycoprotein> prot = glycoproteinRepository.findById(glycoproteinId);
     	if (prot != null) {
@@ -1568,15 +1521,59 @@ public class DataController {
     @Operation(summary = "Get current glycan tags for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getglycantags")
     public ResponseEntity<SuccessResponse<List<GlycanTag>>> getGlycanTags() {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
-
+    	UserEntity user = currentUser();
     	List<GlycanTag> tags = glycanManager.getTags(user);
     	return new ResponseEntity<>(new SuccessResponse<List<GlycanTag>>(tags, "user's glycan tags retrieved successfully"), HttpStatus.OK);
+    }
+    
+    
+    @Operation(summary = "Get the user's tags with the number of glycans and glycoproteins using each",
+            security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getalltags")
+    public ResponseEntity<SuccessResponse<List<TagView>>> getTags() {
+        UserEntity user = currentUser();
+        return new ResponseEntity<>(new SuccessResponse<>(glycanTagRepository.findTagViews(user), "tags retrieved"), HttpStatus.OK);
+    }
+
+    @Operation(summary = "Rename a tag", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/renametag/{tagId}")
+    public ResponseEntity<SuccessResponse<Long>> renameTag(@PathVariable("tagId") Long tagId,
+            @RequestBody Map<String, String> body) {
+        UserEntity user = currentUser();
+        String label = body.get("label") == null ? "" : body.get("label").trim();
+        if (label.isEmpty()) throw new BadRequestException("Tag label cannot be empty");
+        if (label.length() > 128) throw new BadRequestException("Tag label is too long (max 128 characters)");
+
+        GlycanTag tag = glycanTagRepository.findByTagIdAndUser(tagId, user);
+        if (tag == null) throw new BadRequestException("Tag cannot be found");
+
+        GlycanTag existing = glycanTagRepository.findByUserAndLabelIgnoreCase(user, label);
+        if (existing != null && !existing.getTagId().equals(tagId)) {
+            throw new BadRequestException("A tag with the label \"" + label + "\" already exists");
+        }
+        tag.setLabel(label);
+        glycanTagRepository.save(tag);
+        return new ResponseEntity<>(new SuccessResponse<>(tagId, "tag renamed"), HttpStatus.OK);
+    }
+
+    @Operation(summary = "Delete a tag and remove it from all glycans and glycoproteins",
+            security = { @SecurityRequirement(name = "bearer-key") })
+    @Transactional  
+    @DeleteMapping("/deletetag/{tagId}")
+    public ResponseEntity<SuccessResponse<Long>> deleteTag(@PathVariable("tagId") Long tagId) {
+        UserEntity user = currentUser();
+        GlycanTag tag = glycanTagRepository.findByTagIdAndUser(tagId, user);
+        if (tag == null) throw new BadRequestException("Tag cannot be found");
+
+        // the tag is referenced from the join tables, so detach it before deleting it
+        for (Glycan g : glycanRepository.findAllByTagId(tagId)) {
+            g.getTags().removeIf(t -> t.getTagId().equals(tagId));
+        }
+        for (Glycoprotein p : glycoproteinRepository.findAllByTagId(tagId)) {
+            p.getTags().removeIf(t -> t.getTagId().equals(tagId));
+        }
+        glycanTagRepository.delete(tag);
+        return new ResponseEntity<>(new SuccessResponse<>(tagId, "tag deleted"), HttpStatus.OK);
     }
     
     @Operation(summary = "Delete given glycan from the user's list", security = { @SecurityRequirement(name = "bearer-key") })
@@ -1590,12 +1587,7 @@ public class DataController {
             @Parameter(required=true, description="internal id of the glycan to delete") 
             @PathVariable("glycanId") Long glycanId) {
         
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         Glycan existing = glycanRepository.findByGlycanIdAndUser(glycanId, user);
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given glycan " + glycanId + " for the user");
@@ -1637,12 +1629,7 @@ public class DataController {
             @Parameter(required=true, description="list of internal ids of the glycans to delete") 
             @RequestBody Integer[] glycanIds) {
         
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         StringBuffer errorMessage = new StringBuffer();
         for (Integer glycanId: glycanIds) {
@@ -1706,12 +1693,7 @@ public class DataController {
             @Parameter(required=true, description="internal id of the glycoprotein to delete") 
             @PathVariable("proteinId") Long glycoproteinId) {
         
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         Glycoprotein existing = glycoproteinRepository.findByIdAndUser(glycoproteinId, user);
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given glycoprotein " + glycoproteinId + " for the user");
@@ -1740,12 +1722,7 @@ public class DataController {
             @Parameter(required=true, description="id of the collection to delete") 
             @PathVariable("collectionId") Long collectionId) {
         
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         Collection existing = collectionRepository.findByCollectionIdAndUser(collectionId, user);
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given collection " + collectionId + " for the user");
@@ -1784,12 +1761,7 @@ public class DataController {
             @Parameter(required=true, description="id of the collection to delete") 
             @PathVariable("collectionId") Long collectionId) {
         
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         Collection existing = collectionRepository.findByCollectionIdAndUser(collectionId, user);
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given collection of collections (" + collectionId + ") for the user");
@@ -1813,12 +1785,7 @@ public class DataController {
 			@RequestParam (required=false)
 			String tag) {
     	
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         StringBuffer errors = new StringBuffer();
         
@@ -1863,12 +1830,7 @@ public class DataController {
         	compositionType = CompositionType.BASE;
         }
         
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+        UserEntity user = currentUser();
         
         Glycan glycan = new Glycan();
         if (g.getGlytoucanID() != null && !g.getGlytoucanID().trim().isEmpty()) {
@@ -2054,12 +2016,7 @@ public class DataController {
     @Operation(summary = "Add collection", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addcollection")
     public ResponseEntity<SuccessResponse<CollectionView>> addCollection(@Valid @RequestBody CollectionView c) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         // check if duplicate
     	List<Collection> existing = collectionRepository.findAllByNameAndUser(c.getName(), user);
@@ -2149,12 +2106,7 @@ public class DataController {
     @Operation(summary = "Add collection of collections", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addcoc")
     public ResponseEntity<SuccessResponse<CollectionView>> addCoC(@Valid @RequestBody CollectionView c) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         if (c.getChildren() == null || c.getChildren().isEmpty()) {
         	throw new IllegalArgumentException("Collections cannot be empty!");
@@ -2194,12 +2146,7 @@ public class DataController {
     @Operation(summary = "Add glycoprotein", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/addglycoprotein")
     public ResponseEntity<SuccessResponse<Glycoprotein>> addGlycoprotein(@RequestBody GlycoproteinView gp) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         Glycoprotein saved = addGlycoprotein(gp, user, glycoproteinRepository);
     	return new ResponseEntity<>(new SuccessResponse<Glycoprotein>(saved, "glycoprotein added"), HttpStatus.OK);
@@ -2267,12 +2214,7 @@ public class DataController {
     public ResponseEntity<SuccessResponse<GlycoproteinView>> getGlycoproteinById(
     		@Parameter(required=true, description="id of the collection to be retrieved") 
     		@PathVariable("glycoproteinId") Long glycoproteinId) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         Glycoprotein existing = glycoproteinRepository.findByIdAndUser(glycoproteinId, user);
         if (existing == null) {
             throw new IllegalArgumentException ("Could not find the given glycoprotein " + glycoproteinId + " for the user");
@@ -2307,12 +2249,7 @@ public class DataController {
     @PostMapping("/getglycan")
     public ResponseEntity<SuccessResponse<Glycan>> getGlycanBySequence(
     		@Valid @RequestBody GlycanView g) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         List<Glycan> existing = new ArrayList<>();
         if (g.getGlytoucanID() != null) {
@@ -2400,12 +2337,7 @@ public class DataController {
     public ResponseEntity<SuccessResponse<CollectionView>> getCollectionByName(
     		@RequestParam(required=true, value="name")
     		String name) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         List<Collection> existing = collectionRepository.findAllByNameAndUser (name, user);
         if (existing.isEmpty()) {
@@ -2421,12 +2353,7 @@ public class DataController {
     	if (c.getCollectionId() == null) {
     		throw new IllegalArgumentException("collection id should be provided for update");
     	}
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
     	Collection existing = collectionRepository.findByCollectionIdAndUser(c.getCollectionId(), user);
     	if (existing == null) {
     		throw new IllegalArgumentException("Collection (" + c.getCollectionId() + ") to be updated cannot be found");
@@ -2621,12 +2548,7 @@ public class DataController {
     	if (c.getCollectionId() == null) {
     		throw new IllegalArgumentException("collection id should be provided for update");
     	}
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
     	Collection existing = collectionRepository.findByCollectionIdAndUser(c.getCollectionId(), user);
     	if (existing == null) {
     		throw new IllegalArgumentException("Collection of collections (" + c.getCollectionId() + ") to be updated cannot be found");
@@ -2693,12 +2615,7 @@ public class DataController {
     	if (gv.getId() == null) {
     		throw new IllegalArgumentException("collection id should be provided for update");
     	}
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
     	Glycoprotein existing = glycoproteinRepository.findByIdAndUser(gv.getId(), user);
     	if (existing == null) {
     		throw new IllegalArgumentException("Glycoprotein (" + gv.getId() + ") to be updated cannot be found");
@@ -2829,12 +2746,7 @@ public class DataController {
     	
     	SequenceFormat format = SequenceFormat.valueOf(fileType);
     	
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         // check if there is an ongoing upload
     	List<BatchUploadEntity> batchList = uploadRepository.findByUser(user);
@@ -3079,12 +2991,7 @@ public class DataController {
     		CompositionType compType) {
     	
     	
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         // check if there is an ongoing upload
     	List<BatchUploadEntity> batchList = uploadRepository.findByUser(user);
@@ -3365,12 +3272,7 @@ public class DataController {
 	public ResponseEntity<Resource> exportCollection(
 			@Parameter(required=true, description="id of the collection to be retrieved") 
 			@PathVariable("collectionId") Long collectionId) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         Collection collection = collectionRepository.findByCollectionIdAndUser(collectionId, user);
         if (collection == null) {
@@ -3399,12 +3301,7 @@ public class DataController {
 			@RequestParam(required=false, value="tag") String newtag,
 			@RequestParam(required=false, value="prefix") String prefix,
 			@RequestParam(required=false, value="postfix") String postfix) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         String fileFolder = uploadDir;
         if (fileWrapper.getFileFolder() != null && !fileWrapper.getFileFolder().isEmpty())
@@ -3462,7 +3359,7 @@ public class DataController {
             								+ "since an existing glycan already has tag " + t.getLabel() + " choose a new tag and try to import again");
 	            				}
 	            			}
-		            		GlycanTag et = glycanTagRepository.findByUserAndLabel(user, tag.getLabel());
+		            		GlycanTag et = glycanTagRepository.findByUserAndLabelIgnoreCase(user, tag.getLabel());
 		        			if (et == null) {
 		        				et = glycanTagRepository.save(tag);	
 		        			}
@@ -3505,7 +3402,7 @@ public class DataController {
                     								+ "since an existing glycan already has tag " + t.getLabel() + " choose a new tag and try to import again");
         	            				}
         	            			}
-        		            		GlycanTag et = glycanTagRepository.findByUserAndLabel(user, tag.getLabel());
+        		            		GlycanTag et = glycanTagRepository.findByUserAndLabelIgnoreCase(user, tag.getLabel());
         		        			if (et == null) {
         		        				et = glycanTagRepository.save(tag);	
         		        			}
@@ -3554,7 +3451,7 @@ public class DataController {
             								+ "since an existing glycan already has tag " + t.getLabel() + " choose a new tag and try to import again");
 	            				}
 	            			}
-		            		GlycanTag et = glycanTagRepository.findByUserAndLabel(user, tag.getLabel());
+		            		GlycanTag et = glycanTagRepository.findByUserAndLabelIgnoreCase(user, tag.getLabel());
 		        			if (et == null) {
 		        				et = glycanTagRepository.save(tag);	
 		        			}
@@ -3634,12 +3531,15 @@ public class DataController {
     	glycoprotein.setSequence(dto.getSequence());
     	glycoprotein.setSequenceVersion(dto.getSequenceVersion());
     	glycoprotein.setUniprotId(dto.getUniprotId());
-    	glycoprotein.setTags(dto.getTags());
+    	glycoprotein.setTags(new ArrayList<GlycanTag>());
     	glycoprotein.setUser(collection.getUser());
-    	if (glycoprotein.getTags() != null) {
-	    	for (GlycanTag t: glycoprotein.getTags()) {
-	    		t.setTagId(null);
-	    		t.setUser(collection.getUser());
+    	
+    	if (dto.getTags() != null) {
+	    	for (GlycanTagDTO t: dto.getTags()) {
+	    		GlycanTag tag = new GlycanTag();
+	    		tag.setLabel(t.getLabel());
+	    		tag.setUser(collection.getUser());
+	    		glycoprotein.getTags().add(tag);
 	    	}
     	}
 		glycoprotein.setSites(dto.getSites().stream()
@@ -3735,7 +3635,14 @@ public class DataController {
 		dto.setSequence(glycoprotein.getSequence());
 		dto.setSequenceVersion(glycoprotein.getSequenceVersion());
 		dto.setUniprotId(glycoprotein.getUniprotId());
-		dto.setTags(glycoprotein.getTags());
+		dto.setTags(new ArrayList<>());
+		if (glycoprotein.getTags() != null) {
+	    	for (GlycanTag t: glycoprotein.getTags()) {
+	    		GlycanTagDTO tag = new GlycanTagDTO();
+	    		tag.setLabel(t.getLabel());
+	    		dto.getTags().add(tag);
+	    	}
+    	}
 		
 		dto.setSites(glycoprotein.getSites().stream()
 		        .map(gs -> toSiteDTO(gs))
@@ -3801,12 +3708,7 @@ public class DataController {
 			@Parameter(required=false, name="tag", description="tag filter")
 			@RequestParam(required=false, value="tag")
 			Optional<String> tag) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         Page<Glycan> allGlycans = glycanRepository.findAllByUser(user, Pageable.unpaged());
         
@@ -3844,12 +3746,7 @@ public class DataController {
 			@RequestParam(required=true, value="collectionid")
 			Long collectionId
 			) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
         
         Collection collection = collectionRepository.findByCollectionIdAndUser(collectionId, user);
         List<Glycan> glycans = new ArrayList<>();

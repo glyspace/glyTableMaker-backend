@@ -59,7 +59,7 @@ public class GlycanManagerImpl implements GlycanManager {
 			GlycanTag gTag = new GlycanTag();
     		gTag.setLabel(tag);
     		gTag.setUser(user);
-    		GlycanTag existing = glycanTagRepository.findByUserAndLabel(user, tag);
+    		GlycanTag existing = glycanTagRepository.findByUserAndLabelIgnoreCase(user, tag);
     		if (existing == null) {
     			existing = glycanTagRepository.save(gTag);
     		}
@@ -78,7 +78,7 @@ public class GlycanManagerImpl implements GlycanManager {
 			GlycanTag gTag = new GlycanTag();
     		gTag.setLabel(tag);
     		gTag.setUser(user);
-    		GlycanTag existing = glycanTagRepository.findByUserAndLabel(user, tag);
+    		GlycanTag existing = glycanTagRepository.findByUserAndLabelIgnoreCase(user, tag);
     		if (existing == null) {
     			existing = glycanTagRepository.save(gTag);
     		}
@@ -158,7 +158,7 @@ public class GlycanManagerImpl implements GlycanManager {
 			GlycanTag gTag = new GlycanTag();
 			gTag.setLabel(tag);
 			gTag.setUser(user);
-			GlycanTag existing = glycanTagRepository.findByUserAndLabel(user, tag);
+			GlycanTag existing = glycanTagRepository.findByUserAndLabelIgnoreCase(user, tag);
 			if (existing == null) {
 				existing = glycanTagRepository.save(gTag);
 			}
@@ -177,7 +177,7 @@ public class GlycanManagerImpl implements GlycanManager {
 			GlycanTag gTag = new GlycanTag();
 			gTag.setLabel(tag);
 			gTag.setUser(user);
-			GlycanTag existing = glycanTagRepository.findByUserAndLabel(user, tag);
+			GlycanTag existing = glycanTagRepository.findByUserAndLabelIgnoreCase(user, tag);
 			if (existing == null) {
 				existing = glycanTagRepository.save(gTag);
 			}

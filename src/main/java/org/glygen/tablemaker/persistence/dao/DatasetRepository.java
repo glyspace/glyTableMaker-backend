@@ -7,6 +7,7 @@ import org.glygen.tablemaker.persistence.dataset.Dataset;
 import org.glygen.tablemaker.persistence.dataset.DatasetProjection;
 import org.glygen.tablemaker.persistence.dataset.License;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -94,6 +95,16 @@ public interface DatasetRepository extends JpaRepository<Dataset, Long>, JpaSpec
 	@Query("Select DISTINCT d.datasetId FROM Dataset d JOIN d.integratedIn g WHERE LOWER(g.resource.name) = :resource")
 	List<Dataset> getDatasetsIntegratedIn (@Param("resource")String resourceName);
 	
-	@Query("Select DISTINCT g.errorJson FROM DatabaseResourceDataset g WHERE LOWER(g.resource.name) = 'glygen' and g.dataset.datasetId = :datasetId and g.errorJson is not null")
-	String getGlygenErrors (@Param("datasetId") Long datasetId);
+	@Query("""
+	    SELECT g.errorJson
+	    FROM DatabaseResourceDataset g
+	    WHERE LOWER(g.resource.name) = 'glygen'
+	      AND g.dataset.datasetId = :datasetId
+	      AND g.errorJson IS NOT NULL
+	    ORDER BY g.id DESC
+	    """)
+	List<String> findGlygenErrors(@Param("datasetId") Long datasetId, Pageable pageable);
+	default String getGlygenErrors (@Param("datasetId") Long datasetId) {
+		return findGlygenErrors(datasetId, PageRequest.of(0, 1)).stream().findFirst().orElse(null);
+	};
 }

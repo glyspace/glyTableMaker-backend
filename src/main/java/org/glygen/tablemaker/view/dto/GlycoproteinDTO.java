@@ -17,7 +17,7 @@ public class GlycoproteinDTO {
     UserEntity user;
     Date dateAdded;  // date added to the collection
     java.util.Collection<SiteDTO> sites;
-    java.util.Collection<GlycanTag> tags;
+    java.util.Collection<GlycanTagDTO> tags;
 	public String getUniprotId() {
 		return uniprotId;
 	}
@@ -84,10 +84,10 @@ public class GlycoproteinDTO {
 	public void setSites(java.util.Collection<SiteDTO> sites) {
 		this.sites = sites;
 	}
-	public java.util.Collection<GlycanTag> getTags() {
+	public java.util.Collection<GlycanTagDTO> getTags() {
 		return tags;
 	}
-	public void setTags(java.util.Collection<GlycanTag> tags) {
+	public void setTags(java.util.Collection<GlycanTagDTO> tags) {
 		this.tags = tags;
 	}
 }

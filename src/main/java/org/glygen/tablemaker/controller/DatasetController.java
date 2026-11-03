@@ -160,6 +160,16 @@ public class DatasetController {
 		this.namespaceRepository = namespaceRepository;
 	}
 	
+	private UserEntity currentUser () {
+    	// get user info
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserEntity user = null;
+        if (auth != null) { 
+            user = userRepository.findByUsernameIgnoreCase(auth.getName());
+        }
+        return user;
+    }
+	
 	@Operation(summary = "Get user's public datasets", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getdatasets")
     public ResponseEntity<SuccessResponse> getDatasets(
@@ -173,12 +183,8 @@ public class DatasetController {
             String globalFilter,
             @RequestParam("sorting")
             String sorting) {
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+        
+        UserEntity user = currentUser();
       
         // parse filters and sorting
         ObjectMapper mapper = new ObjectMapper();
@@ -323,13 +329,8 @@ public class DatasetController {
             String globalFilter,
             @RequestParam("sorting")
             String sorting) {
-		// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
-        
+		UserEntity user = currentUser();
+        if (user == null) throw new IllegalArgumentException("user must be logged in to access this API");
         if (!user.hasRole(RoleEntity.ADMIN)) {
         	throw new IllegalArgumentException("Only admin user has acess to this API");
         }
@@ -482,12 +483,7 @@ public class DatasetController {
             String globalFilter,
             @RequestParam("sorting")
             String sorting) {
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
       
         Map<String, Object> response = DataController.getCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, sorting);
         List<CollectionView> collections = (List<CollectionView>) response.get("objects");
@@ -515,12 +511,7 @@ public class DatasetController {
             String globalFilter,
             @RequestParam("sorting")
             String sorting) {
-        // get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
       
         Map<String, Object> response = DataController.getCollectionsoOfCollections(user, collectionRepository, imageLocation, start, size, filters, globalFilter, 
         		sorting);
@@ -538,12 +529,7 @@ public class DatasetController {
 	@Operation(summary = "Publish dataset", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/publishdataset")
     public ResponseEntity<SuccessResponse<DatasetView>> publishDataset(@Valid @RequestBody DatasetInputView d) throws MethodArgumentNotValidException {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         if (d.getLicense() == null || d.getCollections() == null || d.getCollections().isEmpty()) {
         	// validation error
@@ -815,12 +801,7 @@ public class DatasetController {
     public ResponseEntity<SuccessResponse<String>> transferDatasetRequest(
             @Valid @RequestBody Transfer transfer) {
 		
-		// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         Dataset existing = datasetRepository.findByDatasetIdentifierAndUserAndVersions_head(transfer.getDatasetIdentifier(), user, true);
     	if (existing == null) {
     		throw new IllegalArgumentException("Dataset (" + transfer.getDatasetIdentifier() + ") to be transfered cannot be found in user's dataset collection");
@@ -883,12 +864,7 @@ public class DatasetController {
     		@Parameter(required=true, description="notification id of the transfer request") 
             @PathVariable("requestId") Long notificationId) {
 		
-		// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         Optional<NotificationEntity> n = notificationRepository.findById(notificationId);
 		if (!n.isPresent()) {
@@ -921,12 +897,7 @@ public class DatasetController {
 			@Parameter(required=true, description="notification id of the transfer request") 
             @PathVariable("requestId") Long notificationId) {
 		
-		// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
 		
 		Optional<NotificationEntity> n = notificationRepository.findByIdAndRecipient(notificationId, user);
 		if (!n.isPresent()) {
@@ -970,12 +941,7 @@ public class DatasetController {
     	if (d.getId() == null) {
     		throw new IllegalArgumentException("Dataset id should be provided for update");
     	}
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+    	UserEntity user = currentUser();
     	Dataset existing = datasetRepository.findByDatasetIdAndUser(d.getId(), user);
     	if (existing == null) {
     		throw new IllegalArgumentException("Dataset (" + d.getId() + ") to be updated cannot be found");
@@ -1324,12 +1290,7 @@ public class DatasetController {
     public ResponseEntity<SuccessResponse<DatasetView>> getDataset(
     		@Parameter(required=true, description="id of the dataseet to be retrieved") 
     		@PathVariable("datasetIdentifier") String datasetIdentifier) {
-    	// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         String identifier = datasetIdentifier;
         String version = null; 

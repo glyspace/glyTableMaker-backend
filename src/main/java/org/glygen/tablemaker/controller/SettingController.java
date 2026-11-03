@@ -58,15 +58,20 @@ public class SettingController {
 		this.contributorSettingRepository = contributorSettingRepository;
 	}
 	
-	@Operation(summary = "Get settings for the user", security = { @SecurityRequirement(name = "bearer-key") })
-    @GetMapping("/getsettings")
-    public ResponseEntity<SuccessResponse<List<SettingEntity>>> getSettings() {
-		// get user info
+	private UserEntity currentUser () {
+    	// get user info
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserEntity user = null;
         if (auth != null) { 
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
+        return user;
+    }
+	
+	@Operation(summary = "Get settings for the user", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getsettings")
+    public ResponseEntity<SuccessResponse<List<SettingEntity>>> getSettings() {
+		UserEntity user = currentUser();
         
         List<SettingEntity> settings = settingRepository.findAllByUser(user);
         return new ResponseEntity<>(
@@ -79,12 +84,7 @@ public class SettingController {
     		@Parameter(required=true, description="table name for the column settings") 
     		@RequestParam("tablename")
     		TableMakerTable tableName) {
-		// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         List<ColumnVisibillitySetting> settings = columnRepository.findByTableNameAndUser(tableName, user);
         return new ResponseEntity<>(
@@ -94,12 +94,7 @@ public class SettingController {
 	@Operation(summary = "Get all column settings for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getallcolumnsettings")
     public ResponseEntity<SuccessResponse<Map<String, List<ColumnVisibillitySetting>>>> getAllColumnSettings() {
-		// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         Map<String, List<ColumnVisibillitySetting>> columnSettings = new HashMap<>();
         for (TableMakerTable table: TableMakerTable.values()) {
@@ -123,12 +118,7 @@ public class SettingController {
 	@Operation(summary = "Get default contributor setting for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getdefaultcontributorsetting")
     public ResponseEntity<SuccessResponse<ContributorSetting>> getDefaultContributorSetting() {
-		// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         
         List<ContributorSetting> settings = contributorSettingRepository.findAllByUserAndDefaultSetting(user, true);
@@ -154,12 +144,7 @@ public class SettingController {
 	@Operation(summary = "Get all contributor settings for the user", security = { @SecurityRequirement(name = "bearer-key") })
     @GetMapping("/getallcontributorsettings")
     public ResponseEntity<SuccessResponse<List<ContributorSetting>>> getAllContributorSettings() {
-		// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         
         List<ContributorSetting> settings = contributorSettingRepository.findAllByUser(user)
@@ -173,11 +158,7 @@ public class SettingController {
     @Transactional
     public ResponseEntity<SuccessResponse<List<ContributorSetting>>> updateContributorSettings(
     		@RequestBody List<ContributorSetting> settings) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         ObjectMapper mapper = new ObjectMapper();
         Set<String> names = new LinkedHashSet<>();
@@ -232,12 +213,7 @@ public class SettingController {
 	@Operation(summary = "update setting", security = { @SecurityRequirement(name = "bearer-key") })
     @PostMapping("/updatesetting")
     public ResponseEntity<SuccessResponse<SettingEntity>> updateSetting(@Valid @RequestBody SettingEntity setting) {
-		// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         Optional<SettingEntity> existing = settingRepository.findByNameAndUser(setting.getName(), user);
         SettingEntity saved = null;
@@ -259,12 +235,7 @@ public class SettingController {
     		@Valid 
     		@RequestBody 
     		List<ColumnVisibillitySetting> settings) {
-		// get user info
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        UserEntity user = null;
-        if (auth != null) { 
-            user = userRepository.findByUsernameIgnoreCase(auth.getName());
-        }
+		UserEntity user = currentUser();
         
         
         for (ColumnVisibillitySetting setting: settings) {
