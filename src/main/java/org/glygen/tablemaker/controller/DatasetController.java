@@ -1752,19 +1752,24 @@ public class DatasetController {
 			break;
 		}
 
-		JsonNode sampleSchema = metadataDefinition.get(cv.getSampleType().name().toLowerCase());
-		JsonNode generalSchema = metadataDefinition.get("general");
-		JsonNode xorGroups = metadataDefinition.get("xorGroups");
-
-		errors.putAll(validateMetadata(cv.getSampleType(), sampleSchema, cv.getMetadataValues(), xorGroups, namespaceRepository));
-
-		validateFields(
-				cv.getSampleType(),
-		        generalSchema,
-		        cv.getMetadataValues(),
-		        xorGroups,
-		        "",
-		        errors, namespaceRepository);
+		if (cv.getSampleType() != null && cv.getMetadataValues() != null) {
+			JsonNode sampleSchema = metadataDefinition.get(cv.getSampleType().name().toLowerCase());
+			JsonNode generalSchema = metadataDefinition.get("general");
+			JsonNode xorGroups = metadataDefinition.get("xorGroups");
+	
+			errors.putAll(validateMetadata(cv.getSampleType(), sampleSchema, cv.getMetadataValues(), xorGroups, namespaceRepository));
+	
+			validateFields(
+					cv.getSampleType(),
+			        generalSchema,
+			        cv.getMetadataValues(),
+			        xorGroups,
+			        "",
+			        errors, namespaceRepository);
+		} else {
+			if (cv.getMetadataValues() == null) errors.put("Metadata", "No metadata is found");
+			else errors.put("Metadata", "Cannot validate metadata, sample type is missing");
+		}
 		
 		List<DatasetError> errorList = new ArrayList<>();
 		for (String key: errors.keySet()) {
