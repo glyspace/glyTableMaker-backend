@@ -4,12 +4,14 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.http.ParseException;
 import org.eurocarbdb.MolecularFramework.io.SugarImporterException;
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarExporterGlycoCTCondensed;
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarImporterGlycoCTCondensed;
@@ -25,57 +27,51 @@ import org.glycoinfo.WURCSFramework.util.validation.WURCSValidator;
 import org.glycoinfo.WURCSFramework.wurcs.graph.WURCSGraph;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
 
-import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.MissingNode;
 
 public class GlytoucanUtil {
-	
-	String apiKey;
-	String userId;
-	
 	public static String glytoucanLinkURL = "https://glytoucan.org/Structures/Glycans/";
-	static String glycanURL = "https://glytoucan.org/api/entry/";
-	static String registerURL = "https://glytoucan.org/api/submission";
-	static String searchURL = "https://glytoucan.org/api/entry/search";
-	static String statusURL = "https://glytoucan.org/api/submission/wurcs/";
-	//static String retrieveURL ="api/WURCS2GlyTouCan";
-	//static String alternativeRetrieveURL = "sparqlist/wurcs2gtcids";	
-	//static String validateURL = "wurcsframework/wurcsvalidator/1.0.1/";
-	//static String apiURL = "https://api.glycosmos.org/";
-	//static String retrieveAPIURL ="https://sparqlist.glyconavi.org/";
-	//static String hashToAccessionURL = "https://sparqlist.glycosmos.org/sparqlist/gtc_select_acc_by_hashkey?hashKey=";
-	//https://api.glycosmos.org/sparqlist/wurcs2gtcids?wurcs=
-	
-	//private static RestTemplate restTemplate = new RestTemplate();
-	
-	final static Logger logger = LoggerFactory.getLogger(GlytoucanUtil.class);
-	
-	static GlytoucanUtil instance;
-	
-	private GlytoucanUtil() {
-	}
-	
-	public static GlytoucanUtil getInstance () {
-		if (instance == null)
-			instance = new GlytoucanUtil();
-		return instance;
-	}
-	
-	
-	public void setApiKey(String apiKey) {
-		this.apiKey = apiKey;
-	}
-	
-	public void setUserId(String userId) {
-		this.userId = userId;
-	}
-	
+    static String glycanURL   = "https://glytoucan.org/api/entry/";
+    static String registerURL = "https://glytoucan.org/api/submission";
+    static String searchURL   = "https://glytoucan.org/api/entry/search";
+    static String statusURL   = "https://glytoucan.org/api/submission/wurcs/";
+ 
+    private static final Logger logger = LoggerFactory.getLogger(GlytoucanUtil.class);
+ 
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(15);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(60);
+    private static final int MAX_LOGGED_BODY = 3000;
+ 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final HttpClient CLIENT = HttpClient.newBuilder()
+            .connectTimeout(CONNECT_TIMEOUT)
+            .build();
+    private static final GlytoucanUtil INSTANCE = new GlytoucanUtil();
+ 
+    private volatile String apiKey;
+    private volatile String userId;
+ 
+    private GlytoucanUtil() {
+    }
+ 
+    public static GlytoucanUtil getInstance() {
+        return INSTANCE;
+    }
+ 
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+    }
+ 
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+    
 	/**
 	 * checks the status of registered glycan by the hashkey that was assigned during registration, returns glytoucan id if assigned
 	 * 
@@ -83,162 +79,131 @@ public class GlytoucanUtil {
 	 * @return accession number if assigned
 	 * @throws GlytoucanFailedException throws GlytoucanFailedException if there were errors during registration
 	 */
-	public String checkBatchStatus (String hashKey) throws GlytoucanFailedException {
-		
-		try {
-			HttpClient client = HttpClient.newHttpClient();
-			HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-			        .uri(URI.create(statusURL)).GET();
-			
-			// Add headers
-			createHeaders(userId, apiKey).forEach(requestBuilder::header);
-			
-			HttpRequest request = requestBuilder.build();
-			java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-			String json = response.body();
-	        JSONObject obj = new JSONObject(json);
-	        if (obj.has("contents")) {
-	        	JSONObject contents = obj.getJSONObject("contents");
-	        	if (contents.has("accession")) {
-	        		return contents.getString("accession");
-	        	}
-	        	else if (contents.has("validation_error")) {
-	        		String error = contents.getString("validation_error");
-	        		if (error != null && error.trim().length() > 0) {
-	        			throw new GlytoucanFailedException("Registration error", error);
-	        		}
-	        	}
-	        }
-		} catch (HttpClientErrorException e) {
-			logger.info("Exception retrieving status of submission " + ((HttpClientErrorException) e).getResponseBodyAsString());
-		} catch (HttpServerErrorException e) {
-			logger.info("Exception retrieving status of submission " + ((HttpServerErrorException) e).getResponseBodyAsString());
-		} catch (Exception e) {
-		    logger.error("General Error: Exception checking status of submission " + e.getMessage());
-            logger.info("Submission Number: " + hashKey);
-		}
-		return null;
-	}
+    public String checkBatchStatus(String hashKey) throws GlytoucanFailedException {
+        if (isBlank(hashKey)) return null;
+ 
+        ApiResponse r;
+        try {
+            r = get(statusURL + hashKey.trim());
+        } catch (IOException e) {
+            // Transient problem: treat as "not known yet" so the caller can retry later
+            logger.error("Cannot reach GlyTouCan to check submission " + hashKey + ": " + e.getMessage(), e);
+            return null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.warn("Interrupted while checking submission " + hashKey);
+            return null;
+        }
+ 
+        JsonNode contents = r.contents();
+        if (contents.isObject()) {
+            String accession = text(contents, "accession");
+            if (accession != null) return accession;
+ 
+            String validationError = text(contents, "validation_error");
+            if (validationError != null) {
+                logger.info("Submission " + hashKey + " failed validation: " + validationError);
+                throw new GlytoucanFailedException("Registration error", validationError);
+            }
+        }
+ 
+        String error = findError(r.json);
+        if (error != null) {
+            logger.warn("GlyTouCan returned an error checking submission " + hashKey
+                    + " (HTTP " + r.status + "): " + error);
+        } else if (!r.isSuccess() || r.json == null) {
+            logger.warn("Unexpected response checking submission " + hashKey + " " + r.describe());
+        }
+        // No accession yet
+        return null;
+    }
 	
-	public String registerGlycan (String wurcsSequence) throws GlytoucanFailedException {
-	    if (wurcsSequence == null)  return null;
-		
-	    Sequence input = new Sequence();
-	    input.setSequence(wurcsSequence);
-	    
-	    try {
-			HttpClient client = HttpClient.newHttpClient();
-
-			ObjectMapper mapper = new ObjectMapper();
-			String requestBody = mapper.writeValueAsString(input);
-
-
-			HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-			        .uri(URI.create(registerURL))
-			        .POST(HttpRequest.BodyPublishers.ofString(requestBody));
-			
-			// Add headers
-			createHeaders(userId, apiKey).forEach(requestBuilder::header);
-			
-			HttpRequest request = requestBuilder.build();
-
-	        java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-	        String json = response.body();
-	        JSONObject obj = new JSONObject(json);
-	        if (obj.has("contents")) {
-	        	JSONObject contents = obj.getJSONObject("contents");
-	        	if (contents.has("submission_number")) {
-	        		return contents.getString("submission_number");
-	            } else if (contents.has("error")) {
-	        		String error = contents.getString("error");
-	    			throw new GlytoucanFailedException ("Cannot register the glycan. Reason: " + error, error);
-	        	} else {
-	        		// something has changed with the end-point
-		        	// log error
-		        	logger.error("GlyTouCan registration API has been changed. Cannot find submission number in the response: " + json);
-		        	throw new GlytoucanFailedException ("GlyTouCan registration API has been modified!", null);
-	        	}
-	        } else {
-	        	// something has changed with the end-point
-	        	// log error
-	        	logger.error("GlyTouCan registration API has been changed. Cannot find contents in the resppnse: " + json);
-	        	throw new GlytoucanFailedException ("GlyTouCan registration API has been modified!", null);
-	        }
-		} catch (HttpClientErrorException e) {
-			logger.error("Client Error: Exception adding glycan " + ((HttpClientErrorException) e).getResponseBodyAsString());
-			String error = ((HttpClientErrorException) e).getResponseBodyAsString();
-			throw new GlytoucanFailedException ("Cannot register the glycan. Reason: " + e.getMessage(), error);
-		} catch (HttpServerErrorException e) {
-			logger.error("Server Error: Exception adding glycan " + ((HttpServerErrorException) e).getResponseBodyAsString());
-			String error = ((HttpServerErrorException) e).getResponseBodyAsString();
-			throw new GlytoucanFailedException ("Cannot register the glycan. Reason: " + e.getMessage(), error);
-		} catch (Exception e) {
-		    logger.error("General Error: Exception adding glycan " + e.getMessage());
-            logger.info("Sequence: " + wurcsSequence);
-		}
-		
-		return null;
-	}
+    /**
+     * Registers the glycan with GlyTouCan.
+     *
+     * @param wurcsSequence WURCS sequence to register
+     * @return the submission number (hash key) to use with {@link #checkBatchStatus(String)}
+     * @throws GlytoucanFailedException if GlyTouCan rejects the glycan
+     * @throws GlytoucanAPIFailedException if GlyTouCan cannot be reached or the response format is unexpected
+     */
+    public String registerGlycan(String wurcsSequence) throws GlytoucanFailedException, GlytoucanAPIFailedException {
+        if (isBlank(wurcsSequence)) return null;
+ 
+        ApiResponse r;
+        try {
+            r = post(registerURL, new Sequence(wurcsSequence));
+        } catch (IOException e) {
+            logger.error("Cannot reach GlyTouCan to register glycan: " + e.getMessage() + ". Sequence: " + wurcsSequence, e);
+            throw new GlytoucanAPIFailedException("GlyTouCan registration API is not reachable", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new GlytoucanAPIFailedException("GlyTouCan registration was interrupted", e);
+        }
+ 
+        JsonNode contents = r.contents();
+        if (contents.isObject()) {
+            String submissionNumber = text(contents, "submission_number");
+            if (submissionNumber != null) return submissionNumber;
+        }
+ 
+        String error = findError(r.json);
+        if (error != null) {
+            if (r.isServerError()) {
+                logger.error("GlyTouCan server error during registration " + r.describe());
+                throw new GlytoucanAPIFailedException("GlyTouCan registration API failed: " + error,
+                        new IOException(r.describe()));
+            }
+            logger.info("GlyTouCan rejected glycan: " + error + ". Sequence: " + wurcsSequence);
+            throw new GlytoucanFailedException("Cannot register the glycan. Reason: " + error, r.body);
+        }
+ 
+        logger.error("GlyTouCan registration API has changed. No submission number in the response " + r.describe());
+        throw new GlytoucanAPIFailedException("GlyTouCan registration API has been modified!",
+                new IOException("Cannot find submission number in the response " + r.describe()));
+    }
 	
-	public String getAccessionNumber (String wurcsSequence) throws GlytoucanAPIFailedException {
-		if (wurcsSequence == null) return null;
-		Sequence input = new Sequence();
-	    input.setSequence(wurcsSequence);
-	    
-	    try {
-			HttpClient client = HttpClient.newHttpClient();
-
-			ObjectMapper mapper = new ObjectMapper();
-			String requestBody = mapper.writeValueAsString(input);
-
-
-			HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-			        .uri(URI.create(searchURL))
-			        .POST(HttpRequest.BodyPublishers.ofString(requestBody));
-			
-			// Add headers
-			createHeaders(userId, apiKey).forEach(requestBuilder::header);
-			
-			HttpRequest request = requestBuilder.build();
-
-	        java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-	        String json = response.body();
-	        JSONObject obj = new JSONObject(json);
-	        if (obj.has("contents")) {
-	        	JSONObject contents = obj.getJSONObject("contents");
-	        	if (contents.has("accession")) {
-	        		return contents.getString("accession");
-	        	} else if (contents.has("error")) {
-	        		String error = contents.getString("error");
-	    			logger.error("Cannot retrieve glytoucanId. Reason: " + error);
-	    			return null;
-	        	}
-	        	else {
-	        		// something has changed with the end-point
-		        	// log error
-		        	logger.error("GlyTouCan registration API has been changed. Cannot find submission number in the response: " + json);
-		        	throw new GlytoucanAPIFailedException ("GlyTouCan registration API has been modified!", new IOException ("Cannot find submission number in the response: " + json));
-	        	}
-	        } else {
-	        	// something has changed with the end-point
-	        	// log error
-	        	logger.error("GlyTouCan registration API has been changed. Cannot find contents in the resppnse: " + json);
-	        	throw new GlytoucanAPIFailedException ("GlyTouCan registration API has been modified!", new IOException ("Cannot find contents in the resppnse: " + json));
-	        }
-        } catch (JsonParseException e) {
-        	logger.info("Exception retrieving glycan " + e.getMessage());
-        	throw new GlytoucanAPIFailedException("Glytoucan retrieval API is not working", e);
-        } catch (ParseException e) {
-        	logger.info("Exception retrieving glycan " + e.getMessage());
-        	throw new GlytoucanAPIFailedException("Glytoucan retrieval API is not working", e);
-		} catch (IOException e) {
-			logger.info("Exception retrieving glycan " + e.getMessage());
-		} catch (InterruptedException e) {
-			logger.info("Exception retrieving glycan " + e.getMessage());
-		} 
-		
-		return null;
-	}
+	/**
+     * Looks up the GlyTouCan accession number for a WURCS sequence.
+     *
+     * @param wurcsSequence WURCS sequence to search
+     * @return accession number, or null if the glycan is not found or GlyTouCan reports an error for it
+     * @throws GlytoucanAPIFailedException if GlyTouCan cannot be reached or the response format is unexpected
+     */
+    public String getAccessionNumber(String wurcsSequence) throws GlytoucanAPIFailedException {
+        if (isBlank(wurcsSequence)) return null;
+ 
+        ApiResponse r;
+        try {
+            r = post(searchURL, new Sequence(wurcsSequence));
+        } catch (IOException e) {
+            logger.error("Cannot reach GlyTouCan search API: " + e.getMessage(), e);
+            throw new GlytoucanAPIFailedException("GlyTouCan retrieval API is not working", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new GlytoucanAPIFailedException("GlyTouCan search was interrupted", e);
+        }
+ 
+        JsonNode contents = r.contents();
+        if (contents.isObject()) {
+            String accession = text(contents, "accession");
+            if (accession != null) return accession;
+        }
+ 
+        String error = findError(r.json);
+        if (error != null) {
+            if (r.isServerError()) {
+                logger.error("GlyTouCan server error during search " + r.describe());
+                throw new GlytoucanAPIFailedException("GlyTouCan retrieval API failed: " + error,
+                        new IOException(r.describe()));
+            }
+            logger.info("Cannot get accession number of the glycan. Reason: " + error);
+            return null;
+        }
+ 
+        logger.error("GlyTouCan search API has changed. No accession in the response " + r.describe());
+        throw new GlytoucanAPIFailedException("GlyTouCan search API has been modified!",
+                new IOException("Cannot find accession in the response " + r.describe()));
+    }
 	
 	/**
 	 * calls Glytoucan API to retrieve the glycan with the given accession number
@@ -246,40 +211,72 @@ public class GlytoucanUtil {
 	 * @param accessionNumber the glytoucan id to search
 	 * @return WURCS sequence if the glycan is found, null otherwise
 	 */
-	public String retrieveGlycan (String accessionNumber) {
-		String sequence = null;
-		
-		String url = glycanURL + accessionNumber;
-		try {
-			
-			HttpClient client = HttpClient.newHttpClient();
-			HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-			        .uri(URI.create(url)).GET();
-			
-			// Add headers
-			createHeaders(userId, apiKey).forEach(requestBuilder::header);
-			
-			HttpRequest request = requestBuilder.build();
-			java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-			String json = response.body();
-	        JSONObject obj = new JSONObject(json);
-	        if (obj.has("contents")) {
-	        	JSONObject contents = obj.getJSONObject("contents");
-	        	if (contents.has("validated_wurcstext")) {
-	        		return contents.getString("validated_wurcstext");
-	        	} else if (contents.has("archive_flag") && contents.getBoolean("archive_flag")) {
-	        		logger.warn(accessionNumber + " has been archived");
-	        	}
-	        }
-			
-		} catch (HttpClientErrorException e) {
-			logger.warn("Exception retrieving glycan " + ((HttpClientErrorException) e).getResponseBodyAsString());
-		} catch (Exception e) {
-			logger.warn("unknown exception retrieving glycan from glytoucan", e);
-		}
-		
-		return sequence;
-	}
+	public String retrieveGlycan(String accessionNumber) {
+        if (isBlank(accessionNumber)) return null;
+        String acc = accessionNumber.trim();
+ 
+        ApiResponse r;
+        try {
+            r = get(glycanURL + acc);
+        } catch (IOException e) {
+            logger.warn("Cannot reach GlyTouCan to retrieve " + acc + ": " + e.getMessage(), e);
+            return null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.warn("Interrupted while retrieving " + acc);
+            return null;
+        }
+ 
+        JsonNode contents = r.contents();
+        if (contents.isObject()) {
+            String wurcs = text(contents, "validated_wurcstext");
+            if (wurcs != null) return wurcs;
+ 
+            if (contents.path("archive_flag").asBoolean(false)) {
+                logger.warn(acc + " has been archived");
+                return null;
+            }
+        }
+ 
+        String error = findError(r.json);
+        if (error != null) {
+            logger.warn("GlyTouCan returned an error retrieving " + acc + " (HTTP " + r.status + "): " + error);
+        } else {
+            logger.warn("Unexpected response retrieving " + acc + " " + r.describe());
+        }
+        return null;
+    }
+	
+	private ApiResponse get(String url) throws IOException, InterruptedException {
+        return execute(HttpRequest.newBuilder().uri(URI.create(url)).GET());
+    }
+ 
+    private ApiResponse post(String url, Object body) throws IOException, InterruptedException {
+        String requestBody = MAPPER.writeValueAsString(body);   // JsonProcessingException is an IOException
+        return execute(HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8)));
+    }
+	
+	private ApiResponse execute(HttpRequest.Builder builder) throws IOException, InterruptedException {
+        createHeaders(userId, apiKey).forEach(builder::header);
+        HttpRequest request = builder.timeout(REQUEST_TIMEOUT).build();
+ 
+        HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        String body = response.body();
+ 
+        JsonNode json = null;
+        if (body != null && !body.isBlank()) {
+            try {
+                JsonNode node = MAPPER.readTree(body);
+                if (node != null && node.isObject()) json = node;
+            } catch (JsonProcessingException e) {
+                // Not JSON (e.g. an HTML error page). Leave json null; callers log the raw body.
+                logger.debug("Response from " + request.uri() + " is not JSON: " + e.getOriginalMessage());
+            }
+        }
+        return new ApiResponse(request.uri().toString(), response.statusCode(), body, json);
+    }
 
 	Map<String, String> createHeaders(String userId, String apiKey) {
 	    Map<String, String> headers = new HashMap<>();
@@ -291,6 +288,78 @@ public class GlytoucanUtil {
 	    headers.put("Content-Type", "application/json");
 	    return headers;
 	}
+	
+	/**
+     * Looks for an error in the places GlyTouCan is known to put one:
+     * top-level "errcode", contents.error / contents.message, or a top-level error/message.
+     *
+     * @return the error text, or null if none was found
+     */
+    private static String findError(JsonNode root) {
+        if (root == null) return null;
+ 
+        String errcode = text(root, "errcode");
+        if (errcode != null) {
+            String msg = text(root, "message");
+            return msg != null ? errcode + ": " + msg : errcode;
+        }
+ 
+        JsonNode contents = root.path("contents");
+        if (contents.isObject()) {
+            String err = firstNonNull(text(contents, "error"), text(contents, "message"));
+            if (err != null) return err;
+        }
+ 
+        return firstNonNull(text(root, "message"), text(root, "error"));
+    }
+	
+	private static String text(JsonNode node, String field) {
+        if (node == null) return null;
+        JsonNode v = node.path(field);
+        if (v.isMissingNode() || v.isNull()) return null;
+        String s = (v.isValueNode() ? v.asText() : v.toString()).trim();
+        return s.isEmpty() ? null : s;
+    }
+ 
+    private static String firstNonNull(String a, String b) {
+        return a != null ? a : b;
+    }
+ 
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+	
+	private static final class ApiResponse {
+        final String url;
+        final int status;
+        final String body;
+        final JsonNode json;
+ 
+        ApiResponse(String url, int status, String body, JsonNode json) {
+            this.url = url;
+            this.status = status;
+            this.body = body;
+            this.json = json;
+        }
+ 
+        boolean isSuccess() {
+            return status >= 200 && status < 300;
+        }
+ 
+        boolean isServerError() {
+            return status >= 500;
+        }
+ 
+        JsonNode contents() {
+            return json == null ? MissingNode.getInstance() : json.path("contents");
+        }
+ 
+        String describe() {
+            String b = body == null ? "<empty>" : body;
+            if (b.length() > MAX_LOGGED_BODY) b = b.substring(0, MAX_LOGGED_BODY) + "...(truncated)";
+            return "[" + url + ", HTTP " + status + "]: " + b;
+        }
+    }
 
 	
 	public static Sugar getSugarFromWURCS (String wurcsSequence) throws IOException {
@@ -316,12 +385,12 @@ public class GlytoucanUtil {
 	
 	public static void main(String[] args) {
 		
-		GlytoucanUtil.getInstance().setApiKey("6d9fbfb1c0a52cbbffae7c113395a203ae0e3995a455c42ff3932862cbf7e62a");
-        GlytoucanUtil.getInstance().setUserId("ff2dda587eb4597ab1dfb995b520e99b7ef68d7786af0f3ea626555e2c609c3d");
-		
-		String glyTouCanId;
+		GlytoucanUtil util = GlytoucanUtil.getInstance();
+        util.setUserId(System.getenv("GLYTOUCAN_USER_ID"));
+        util.setApiKey(System.getenv("GLYTOUCAN_API_KEY"));
+        
 		try {
-			glyTouCanId = GlytoucanUtil.getInstance().registerGlycan("WURCS=2.0/3,3,2/[a1122h-1b_1-5][a1122h-1a_1-5_6*OPOC/3O/3=O][a1122h-1a_1-5_?*OPOC/3O/3=O]/1-2-3/a3-b1_a6-c1");
+			String glyTouCanId = GlytoucanUtil.getInstance().registerGlycan("WURCS=2.0/3,3,2/[a1122h-1b_1-5][a1122h-1a_1-5_6*OPOC/3O/3=O][a1122h-1a_1-5_?*OPOC/3O/3=O]/1-2-3/a3-b1_a6-c1");
 			System.out.println(glyTouCanId);
 		} catch (Exception e1) {
 			System.out.println ("Registration Error " + e1.getMessage());
@@ -389,7 +458,7 @@ public class GlytoucanUtil {
         wurcs = "WURCS=2.0/2,2,1/[h2122h_6*OSO/3=O/3=O][a2112h-1b_1-5]/1-2/a4-b1";
         System.out.println(wurcs);
         try {
-	        glyTouCanId = GlytoucanUtil.getInstance().getAccessionNumber(wurcs);
+	        String glyTouCanId = GlytoucanUtil.getInstance().getAccessionNumber(wurcs);
 	        System.out.println(glyTouCanId);
 	        
 	        wurcs = "WURCS=2.0/3,4,4/[a2112h-1a_1-5][a2122h-1b_1-5_2*NCC/3=O][a2211m-1b_1-5]/1-2-2-3/a6-b1_b4-d1_c1-b3%.6%_a1-d3~n";
@@ -435,6 +504,13 @@ public class GlytoucanUtil {
 
 class Sequence {
 	String sequence;
+	
+	public Sequence() {
+    }
+ 
+    public Sequence(String sequence) {
+        this.sequence = sequence;
+    }
 	
 	public void setSequence (String s) {
 		this.sequence = s;

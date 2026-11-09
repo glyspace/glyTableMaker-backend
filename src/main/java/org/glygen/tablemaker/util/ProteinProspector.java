@@ -422,8 +422,8 @@ public class ProteinProspector {
 		if (args.length > 0) {
 			try {
 				GlytoucanUtil util = GlytoucanUtil.getInstance();
-				util.setApiKey("6d9fbfb1c0a52cbbffae7c113395a203ae0e3995a455c42ff3932862cbf7e62a");
-		        util.setUserId("ff2dda587eb4597ab1dfb995b520e99b7ef68d7786af0f3ea626555e2c609c3d");
+				util.setUserId(System.getenv("GLYTOUCAN_USER_ID"));
+			    util.setApiKey(System.getenv("GLYTOUCAN_API_KEY"));
 		        ProteinProspector p = new ProteinProspector();
 				//p.addGlytoucanIds(args[0], util);
 				p.generateCartoonSheet(args[0]);

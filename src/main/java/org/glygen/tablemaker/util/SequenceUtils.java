@@ -156,9 +156,10 @@ public class SequenceUtils {
 	ethyl esterified n-acetylneuraminic acid	Se
 	dimethylamidated n-glycolylneuraminic acid	Gd
 	ethyl esterified n-glycolylneuraminic acid	Ge
+ * @throws GlytoucanAPIFailedException 
 **/
 	
-	public static void registerGlycan (Glycan glycan) {
+	public static void registerGlycan (Glycan glycan) throws GlytoucanAPIFailedException {
     	// if not, register
         // store the hash and update status 
 		try {
@@ -184,7 +185,7 @@ public class SequenceUtils {
 			glycan.setStatus(RegistrationStatus.ERROR);
 			glycan.setError (e.getMessage());
 			glycan.setErrorJson(e.getErrorJson());
-		}
+		} 
     }
 	
 	public static Double computeMassFromWurcs (String wurcs) throws Exception {
