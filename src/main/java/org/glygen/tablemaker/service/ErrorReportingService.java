@@ -211,6 +211,9 @@ public class ErrorReportingService {
 			if (!emails.isEmpty()) {
 				emailManager.sendErrorReport(error, emails.toArray(new String[0]));
 			}
+			
+			if (error.getDetails() != null && error.getDetails().length() > ErrorReportEntity.MAX_DETAILS_LENGTH) 
+				error.setDetails(error.getDetails().substring(0, ErrorReportEntity.MAX_DETAILS_LENGTH));
 			errorReportRepository.save(error);
 		}
 	}

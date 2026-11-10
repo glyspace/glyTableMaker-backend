@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotNull;
 @Table (name="error_report")
 public class ErrorReportEntity {
 	
+	public static final int MAX_DETAILS_LENGTH = 4000;
 	String message;
 	String details;
 	Date dateReported;
@@ -30,7 +31,7 @@ public class ErrorReportEntity {
 		this.message = message;
 	}
 	
-	@Column (length=4000)
+	@Column (length=MAX_DETAILS_LENGTH)
 	public String getDetails() {
 		return details;
 	}

@@ -150,8 +150,8 @@ public class GlytoucanUtil {
         if (error != null) {
             if (r.isServerError()) {
                 logger.error("GlyTouCan server error during registration " + r.describe());
-                throw new GlytoucanAPIFailedException("GlyTouCan registration API failed: " + error,
-                        new IOException(r.describe()));
+                throw new GlytoucanFailedException("GlyTouCan registration API failed: " + error,
+                        r.describe());
             }
             logger.info("GlyTouCan rejected glycan: " + error + ". Sequence: " + wurcsSequence);
             throw new GlytoucanFailedException("Cannot register the glycan. Reason: " + error, r.body);
@@ -193,8 +193,8 @@ public class GlytoucanUtil {
         if (error != null) {
             if (r.isServerError()) {
                 logger.error("GlyTouCan server error during search " + r.describe());
-                throw new GlytoucanAPIFailedException("GlyTouCan retrieval API failed: " + error,
-                        new IOException(r.describe()));
+                throw new GlytoucanFailedException("GlyTouCan retrieval API failed: " + error,
+                        r.describe());
             }
             logger.info("Cannot get accession number of the glycan. Reason: " + error);
             return null;

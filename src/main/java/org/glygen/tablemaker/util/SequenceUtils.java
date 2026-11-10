@@ -146,7 +146,7 @@ public class SequenceUtils {
 		queryList.add(new SearchQueryItem("Acetyl", "RES\n1s:n-acetyl"));
 	}
 	
-/**	
+/*	
 	Ethyl esterified Hexuronic acid	HexAe
 	lactonized n-acetylneuraminic acid	Sl
 	ammonia amidated n-acetylneuraminic acid	Sa
@@ -156,11 +156,16 @@ public class SequenceUtils {
 	ethyl esterified n-acetylneuraminic acid	Se
 	dimethylamidated n-glycolylneuraminic acid	Gd
 	ethyl esterified n-glycolylneuraminic acid	Ge
- * @throws GlytoucanAPIFailedException 
-**/
+ 
+*/
 	
+	/**
+	 * 
+	 * @param glycan Glycan to register, wurcs field should exist
+	 * @throws GlytoucanAPIFailedException if the GlyTouCan API does not respond or response have been changed
+	 */
 	public static void registerGlycan (Glycan glycan) throws GlytoucanAPIFailedException {
-    	// if not, register
+		if (glycan.getWurcs() == null) return;
         // store the hash and update status 
 		try {
 	        String glyToucanId = GlytoucanUtil.getInstance().registerGlycan(glycan.getWurcs());
