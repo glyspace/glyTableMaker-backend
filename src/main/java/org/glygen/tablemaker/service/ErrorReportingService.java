@@ -206,10 +206,10 @@ public class ErrorReportingService {
 				}
 			} catch (Exception e) {
 				logger.error("could not create the issue in Github. Reason " + e.getMessage(), e);
-			}
-			// send emails and create a ticket in Github
-			if (!emails.isEmpty()) {
-				emailManager.sendErrorReport(error, emails.toArray(new String[0]));
+				// send emails 
+				if (!emails.isEmpty()) {
+					emailManager.sendErrorReport(error, emails.toArray(new String[0]));
+				}
 			}
 			
 			if (error.getDetails() != null && error.getDetails().length() > ErrorReportEntity.MAX_DETAILS_LENGTH) 
