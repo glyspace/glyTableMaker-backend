@@ -1,8 +1,17 @@
 package org.glygen.tablemaker;
 
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.glygen.tablemaker.config.NamespaceHandler;
 import org.glygen.tablemaker.persistence.RoleEntity;
+import org.glygen.tablemaker.persistence.dao.CompositionFormatRepository;
 import org.glygen.tablemaker.persistence.dao.RoleRepository;
+import org.glygen.tablemaker.persistence.glycan.CompositionFormatDescriptor;
+import org.glyspace.glytablemaker.composition.CompositionFormat;
+import org.glyspace.glytablemaker.composition.ResidueType;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -12,6 +21,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ulisesbocchio.jasyptspringboot.environment.StandardEncryptableEnvironment;
 
 @SpringBootApplication
@@ -20,6 +31,12 @@ public class TablemakerApplication {
 
     @Autowired
     RoleRepository roleRepository;
+    
+    @Autowired
+    CompositionFormatRepository compFormatRepository;
+    
+    @Autowired
+    ObjectMapper mapper;
    
 	public static void main(String[] args) {
 		new SpringApplicationBuilder()
@@ -38,9 +55,148 @@ public class TablemakerApplication {
 	        if (software == null) roleRepository.save(new RoleEntity(RoleEntity.SOFTWARE));
 	        RoleEntity moderator = roleRepository.findByRoleName (RoleEntity.MODERATOR);
 	        if (moderator == null) roleRepository.save(new RoleEntity(RoleEntity.MODERATOR));
-	      };
+	        addSystemCompositionFormats();
+	     };
 	}
 	
+	private void addSystemCompositionFormats() {
+		List<CompositionFormatDescriptor> formats = compFormatRepository.findByNameEqualsIgnoreCaseAndSystem("byonic format", true);
+        if (formats == null || formats.size() == 0) {
+        	// save bynoic format
+        	CompositionFormatDescriptor format = new CompositionFormatDescriptor();
+        	format.setDateCreated(new Date());
+        	format.setName("Byonic Format");
+        	format.setDescription("Residue names are written in full and every count is enclosed in round brackets, including a count of one");
+        	format.setExample("HexNAc(2)Hex(5)Fuc(1)NeuAc(1)");
+        	format.setSystem(true);
+        	format.setUser(null);
+        	CompositionFormat byonic = new CompositionFormat();
+        	Map<String, ResidueType> residueMap = new HashMap<String, ResidueType>();
+        	residueMap.put("Hex", ResidueType.HEX);
+        	residueMap.put("Glc", ResidueType.GLC);
+        	residueMap.put("Gal", ResidueType.GAL);
+        	residueMap.put("Man", ResidueType.MAN);
+        	residueMap.put("HexNAc", ResidueType.HEXNAC);
+        	residueMap.put("GlcNAc", ResidueType.GLCNAC);
+        	residueMap.put("GalNAc", ResidueType.GALNAC);
+        	residueMap.put("dHex", ResidueType.DHEX);
+        	residueMap.put("Fuc", ResidueType.FUC);
+        	residueMap.put("IdoA", ResidueType.IDOA);
+        	residueMap.put("Kdn", ResidueType.KDN);
+        	residueMap.put("HexA", ResidueType.HEXA);
+        	residueMap.put("GlcA", ResidueType.GLCA);
+        	// differences
+        	residueMap.put("Pent", ResidueType.PEN);
+        	residueMap.put("NeuAc", ResidueType.NEUAC);
+        	residueMap.put("NeuGc", ResidueType.NEUGC);
+        	residueMap.put("Acetyl", ResidueType.Ac);
+        	//residueMap.put("DiNAcBac", "Bac");
+        	residueMap.put("Phospo", ResidueType.PHOSPHATE);
+        	residueMap.put("Sulfo", ResidueType.SULFATE);
+        	byonic.setStringToResidue(residueMap);
+        	byonic.setAllowNumberOmission(false);
+        	byonic.setOpeningDelimiter("(");
+        	byonic.setClosingDelimiter(")");
+        	format.setDefinition(mapper.valueToTree(byonic));
+        	compFormatRepository.save(format);
+        }
+        formats = compFormatRepository.findByNameEqualsIgnoreCaseAndSystem("single letter code (wuhrer)", true);
+        if (formats == null || formats.size() == 0) {
+        	// save single letter format
+        	CompositionFormatDescriptor format = new CompositionFormatDescriptor();
+        	format.setDateCreated(new Date());
+        	format.setName("Single Letter Code (Wuhrer)");
+        	format.setDescription("Each residue is a single letter followed by its count, with no delimiters, and a count of one is left out");
+        	format.setExample("H5N4FS");
+        	format.setSystem(true);
+        	format.setUser(null);
+        	CompositionFormat single = new CompositionFormat();
+        	Map<String, ResidueType> residueMap = new HashMap<String, ResidueType>();
+        	residueMap.put("p", ResidueType.PHOSPHATE);
+        	residueMap.put("P", ResidueType.PEN);
+        	residueMap.put("F", ResidueType.DHEX);
+        	residueMap.put("H", ResidueType.HEX);
+        	residueMap.put("A", ResidueType.HEXA);
+        	residueMap.put("N", ResidueType.HEXNAC);
+        	residueMap.put("G", ResidueType.NEUGC);
+        	residueMap.put("S", ResidueType.NEUAC);
+        	residueMap.put("K", ResidueType.KDN);
+        	residueMap.put("O", ResidueType.KDO);
+        	//residueMap.put("Sl", "NeuAcLac");
+        	residueMap.put("s", ResidueType.SULFATE);
+        	residueMap.put("a", ResidueType.Ac);
+        	residueMap.put("m", ResidueType.ME);
+        	
+        	single.setStringToResidue(residueMap);
+        	single.setAllowNumberOmission(true);
+        	JsonNode node = mapper.valueToTree(single);
+        	format.setDefinition(node);
+        	compFormatRepository.save(format);
+        }
+   /*     formats = compFormatRepository.findByNameEqualsIgnoreCaseAndSystem("glycogenius encoding", true);
+        if (formats == null || formats.size() == 0) {
+        	// save single letter format
+        	CompositionFormatDescriptor format = new CompositionFormatDescriptor();
+        	format.setDateCreated(new Date());
+        	format.setName("GlycoGenius Encoding");
+        	format.setDescription("Uses a simple letter combination (one to two letters) to identify each monosaccharide, followed by the amount of it with the exception of modifications");
+        	format.setExample("H2N2+1(s)+1(p)");
+        	format.setSystem(true);
+        	format.setUser(null);
+        	CompositionFormat ggenius = new CompositionFormat();
+        	Map<String, ResidueType> residueMap = new HashMap<String, ResidueType>();
+        	residueMap.put("p", ResidueType.PHOSPHATE);
+        	residueMap.put("s", ResidueType.SULFATE);
+        	residueMap.put("F", ResidueType.FUC);
+        	residueMap.put("H", ResidueType.HEX);
+        	residueMap.put("HN", ResidueType.HEXN);
+        	residueMap.put("N", ResidueType.HEXNAC);
+        	residueMap.put("G", ResidueType.NEUGC);
+        	residueMap.put("S", ResidueType.NEUAC);
+        	residueMap.put("X", ResidueType.XYL);
+        	residueMap.put("UA", ResidueType.HEXA);
+        	ggenius.setStringToResidue(residueMap);
+        	ggenius.setAllowNumberOmission(false);
+        	//TODO how to handle this - only used for sulfate and phosphate and also with + before these
+        	ggenius.setOpeningDelimiter("(");   
+        	ggenius.setClosingDelimiter(")");
+        	JsonNode node = mapper.valueToTree(ggenius);
+        	format.setDefinition(node);
+        	compFormatRepository.save(format);
+        }
+        formats = compFormatRepository.findByNameEqualsIgnoreCaseAndSystem("proteinprospector encoding", true);
+        if (formats == null || formats.size() == 0) {
+        	// save single letter format
+        	CompositionFormatDescriptor format = new CompositionFormatDescriptor();
+        	format.setDateCreated(new Date());
+        	format.setName("ProteinProspector Encoding");
+        	format.setDescription("Byonic like encoding, counts follow the residues and the count of one can be omitted");
+        	format.setExample("HexNAc2Hex3FucXyl+Cation:Fe[III]");
+        	format.setSystem(true);
+        	format.setUser(null);
+        	CompositionFormat pp = new CompositionFormat();
+        	Map<String, ResidueType> residueMap = new HashMap<String, ResidueType>();
+        	residueMap.put("Fuc", ResidueType.FUC);
+        	residueMap.put("Galactosyl", ResidueType.GAL);
+        	residueMap.put("galactosyl", ResidueType.GAL);
+        	residueMap.put("HexNAc", ResidueType.HEXNAC);
+        	residueMap.put("Glucosyl", ResidueType.GLC);
+        	residueMap.put("Phospho", ResidueType.PHOSPHATE);
+        	residueMap.put("Sulfo", ResidueType.SULFATE);
+        	residueMap.put("NeuGc", ResidueType.NEUGC);
+        	residueMap.put("NeuAc", ResidueType.NEUAC);
+        	residueMap.put("Hex", ResidueType.HEX);
+        	residueMap.put("HN", ResidueType.HEXN);
+        	residueMap.put("Xyl", ResidueType.XYL);
+        	residueMap.put("Ac", ResidueType.Ac);
+        	pp.setStringToResidue(residueMap);
+        	pp.setAllowNumberOmission(true);
+        	JsonNode node = mapper.valueToTree(pp);
+        	format.setDefinition(node);
+        	compFormatRepository.save(format);
+        }*/
+	}
+
 	@EventListener(ApplicationReadyEvent.class)
 	public void doSomethingAfterStartup() {
 	    NamespaceHandler.loadNamespaces();

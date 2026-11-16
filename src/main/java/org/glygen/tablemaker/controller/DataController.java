@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -96,6 +97,7 @@ import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionRepository;
 import org.glygen.tablemaker.persistence.dao.CollectionSpecification;
 import org.glygen.tablemaker.persistence.dao.CollectionTagRepository;
+import org.glygen.tablemaker.persistence.dao.CompositionFormatRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetSpecification;
 import org.glygen.tablemaker.persistence.dao.GlycanImageRepository;
@@ -112,6 +114,7 @@ import org.glygen.tablemaker.persistence.dao.UserRepository;
 import org.glygen.tablemaker.persistence.glycan.Collection;
 import org.glygen.tablemaker.persistence.glycan.CollectionTag;
 import org.glygen.tablemaker.persistence.glycan.CollectionType;
+import org.glygen.tablemaker.persistence.glycan.CompositionFormatDescriptor;
 import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.glycan.Datatype;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
@@ -139,6 +142,7 @@ import org.glygen.tablemaker.service.AsyncService;
 import org.glygen.tablemaker.service.ErrorReportingService;
 import org.glygen.tablemaker.service.GlycanManagerImpl;
 import org.glygen.tablemaker.service.ScheduledTasksService;
+import org.glygen.tablemaker.util.CompositionFormatValidator;
 import org.glygen.tablemaker.util.FixGlycoCtUtil;
 import org.glygen.tablemaker.util.GlytoucanUtil;
 import org.glygen.tablemaker.util.ProteinProspector;
@@ -158,15 +162,18 @@ import org.glygen.tablemaker.view.SuccessResponse;
 import org.glygen.tablemaker.view.TagView;
 import org.glygen.tablemaker.view.UserStatisticsView;
 import org.glygen.tablemaker.view.dto.CollectionDTO;
+import org.glygen.tablemaker.view.dto.CompositionFormatView;
 import org.glygen.tablemaker.view.dto.GlycanDTO;
 import org.glygen.tablemaker.view.dto.GlycanInSiteDTO;
 import org.glygen.tablemaker.view.dto.GlycanTagDTO;
 import org.glygen.tablemaker.view.dto.GlycoproteinDTO;
 import org.glygen.tablemaker.view.dto.SiteDTO;
+import org.glyspace.glytablemaker.composition.CompositionFormat;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -179,6 +186,7 @@ import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -261,6 +269,7 @@ public class DataController {
     final private ErrorReportingService errorReportingService;
 	final private SettingRepository settingRepository;
 	final private NamespaceRepository namespaceRepository;
+	final private CompositionFormatRepository compositionRepository;
     
     @Value("${spring.file.imagedirectory}")
     String imageLocation;
@@ -274,6 +283,9 @@ public class DataController {
     @Value("${glygen.glymage}")
 	String glymage;
     
+    @Autowired
+    ObjectMapper objectMapper;
+    
     
     public DataController(GlycanRepository glycanRepository, UserRepository userRepository,
     		BatchUploadRepository uploadRepository, AsyncService uploadService, 
@@ -283,7 +295,8 @@ public class DataController {
     		GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
     		GlycoproteinRepository glycoproteinRepository, BatchUploadJobRepository batchUploadJobRepository, 
     		ErrorReportingService errorReportingService, GlycanTagRepository glycanTagRepository, 
-    		CollectionTagRepository collectionTagRepository, SettingRepository settingRepository, NamespaceRepository namespaceRepository) {
+    		CollectionTagRepository collectionTagRepository, SettingRepository settingRepository, 
+    		NamespaceRepository namespaceRepository, CompositionFormatRepository compositionRepository) {
         this.glycanRepository = glycanRepository;
 		this.glycanTagRepository = glycanTagRepository;
 		this.collectionRepository = collectionRepository;
@@ -301,6 +314,7 @@ public class DataController {
 		this.errorReportingService = errorReportingService;
 		this.settingRepository = settingRepository;
 		this.namespaceRepository = namespaceRepository;
+		this.compositionRepository = compositionRepository;
     }
     
     private UserEntity currentUser () {
@@ -311,6 +325,13 @@ public class DataController {
             user = userRepository.findByUsernameIgnoreCase(auth.getName());
         }
         return user;
+    }
+    
+    private static CompositionFormatView toView(CompositionFormatDescriptor f) {
+        CompositionFormatView dto = new CompositionFormatView(f.getId(), f.getName(), f.getDescription(), f.getExample(),
+                f.getSystem(), f.getDateCreated(), f.getDateModified());
+        dto.setDefinition(f.getDefinition());
+        return dto;
     }
     
     @Operation(summary = "Get data counts", security = { @SecurityRequirement(name = "bearer-key") })
@@ -328,6 +349,141 @@ public class DataController {
     	stats.setCocCount(collectionRepository.count(spec));
     	stats.setGlycoproteinCount(glycoproteinRepository.count(GlycoproteinSpecification.hasUserWithId(user.getUserId())));
         return new ResponseEntity<>(new SuccessResponse<UserStatisticsView>(stats, "statistics gathered"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Get system and user defined composition formats available for the given user", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getcompositionformats")
+    public ResponseEntity<SuccessResponse<List<CompositionFormatView>>> getCompositionFormats() {
+        UserEntity user = currentUser();
+        List<CompositionFormatDescriptor> formats = new ArrayList<>(compositionRepository.findBySystem(true));
+        formats.addAll(compositionRepository.findByUser(user));
+        List<CompositionFormatView> dto = new ArrayList<>();
+        for (CompositionFormatDescriptor desc: formats) {
+        	dto.add (new CompositionFormatView (desc.getId(), desc.getName(), desc.getDescription(), desc.getExample(), desc.getSystem(), desc.getDateCreated(), desc.getDateModified()));
+        }
+        return new ResponseEntity<>(new SuccessResponse<List<CompositionFormatView>>(dto, "composition formats gathered"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Get given composition format details for the given user", security = { @SecurityRequirement(name = "bearer-key") })
+    @GetMapping("/getcompositionformat/{id}")
+    public ResponseEntity<SuccessResponse<CompositionFormatView>> getCompositionFormatById(
+    		@Parameter(required=true, description="id of the composition format to be retrieved") 
+    		@PathVariable("id") Long id) {
+        UserEntity user = currentUser();
+        Optional<CompositionFormatDescriptor> format = compositionRepository.findByIdAndUser(id, user);
+        if (format.isEmpty()) {
+        	// check system ones
+        	format = compositionRepository.findByIdAndUser(id, null);
+        	if (format.isEmpty())
+        		throw new EntityNotFoundException("Composition format descriptor with the given id " + id + " does not exists!");
+        }
+        CompositionFormatDescriptor f = format.get();
+        if (f.getUser() == null || Objects.equals(f.getUser().getUserId(), user.getUserId())) {
+        	CompositionFormatView dto = toView(f);
+        	return new ResponseEntity<>(new SuccessResponse<CompositionFormatView>(dto, "composition formats gathered"), HttpStatus.OK);
+        } else {
+        	throw new AccessDeniedException("User " + user.getUsername() + " does not have access to the composition descriptor " + id);
+        }
+    }
+    
+    private String validateFormatName(String rawName, Long currentId, UserEntity user, List<String> errors) {
+        String name = rawName == null ? "" : rawName.trim();
+        if (name.isEmpty()) {
+            errors.add("Name is required");
+            return name;
+        }
+        List<CompositionFormatDescriptor> sameName = new ArrayList<>();
+        List<CompositionFormatDescriptor> system = compositionRepository.findByNameEqualsIgnoreCaseAndSystem(name, true);
+        List<CompositionFormatDescriptor> own = compositionRepository.findByNameEqualsIgnoreCaseAndUser(name, user);
+        if (system != null) sameName.addAll(system);
+        if (own != null) sameName.addAll(own);
+        for (CompositionFormatDescriptor d : sameName) {
+            if (!Objects.equals(d.getId(), currentId)) {      // the format being edited may keep its own name
+                errors.add("There is already a composition format with the name \"" + name + "\"");
+                break;
+            }
+        }
+        return name;
+    }
+    
+    private static String blankToNull(String s) {
+        return s == null || s.trim().isEmpty() ? null : s.trim();
+    }
+    
+    @Operation(summary = "Add a new composition format for the user", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/addcompositionformat")
+    public ResponseEntity<SuccessResponse<CompositionFormatView>> addCompositionFormat(@Valid @RequestBody CompositionFormatView format) {
+    	UserEntity user = currentUser();
+    	List<String> errors = new ArrayList<>();
+        String name = validateFormatName(format.getName(), null, user, errors);
+        CompositionFormat normalized = CompositionFormatValidator.validateDefinition(format.getDefinition(), errors, objectMapper);
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join("; ", errors));
+        }
+    	CompositionFormatDescriptor newFormat = new CompositionFormatDescriptor();   // id, system and user are never taken from the client
+	    newFormat.setDateCreated(new Date());
+	    newFormat.setName(name);
+	    newFormat.setDescription(blankToNull(format.getDescription()));
+	    newFormat.setExample(format.getExample());
+	    newFormat.setDefinition(objectMapper.valueToTree(normalized));
+	    newFormat.setSystem(false);
+	    newFormat.setUser(user);
+    	CompositionFormatDescriptor saved = compositionRepository.save(newFormat);
+    	return new ResponseEntity<>(new SuccessResponse<CompositionFormatView>(toView(saved), "composition format created"), HttpStatus.OK);
+    }
+    
+    @Operation(summary = "Update an existing composition format for the user", security = { @SecurityRequirement(name = "bearer-key") })
+    @PostMapping("/updatecompositionformat")
+    public ResponseEntity<SuccessResponse<CompositionFormatView>> updateCompositionFormat(@Valid @RequestBody CompositionFormatView format) {
+    	UserEntity user = currentUser();
+    	// find the existing format 
+    	if (format.getId() == null) throw new BadRequestException("Composition format should have an existing id for it to be updated");
+    	Optional<CompositionFormatDescriptor> f = compositionRepository.findByIdAndUser(format.getId(), user);
+        if (f.isEmpty()) {
+        	throw new DataNotFoundException("Composition format cannot be found in the system for the given user " + user.getUsername());
+        }
+        CompositionFormatDescriptor existing = f.get();
+        List<String> errors = new ArrayList<>();
+        String name = validateFormatName(format.getName(), existing.getId(), user, errors);
+        CompositionFormat normalized = CompositionFormatValidator.validateDefinition(format.getDefinition(), errors, objectMapper);
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join("; ", errors));
+        }
+ 
+        existing.setDateModified(new Date());
+        existing.setName(name);
+        existing.setDescription(blankToNull(format.getDescription()));
+        existing.setExample(format.getExample());
+        existing.setDefinition(objectMapper.valueToTree(normalized));
+        CompositionFormatDescriptor saved = compositionRepository.save(existing);
+        return new ResponseEntity<>(new SuccessResponse<CompositionFormatView>(toView(saved), "composition format updated"), HttpStatus.OK);
+        
+    }
+    
+    @Operation(summary = "Delete the given composition format", security = { @SecurityRequirement(name = "bearer-key") })
+    @RequestMapping(value="deletecompositionformat/{id}", method = RequestMethod.DELETE)
+    @ApiResponses (value ={@ApiResponse(responseCode="200", description="file upload deleted successfully"), 
+            @ApiResponse(responseCode="401", description="Unauthorized"),
+            @ApiResponse(responseCode="403", description="Not enough privileges to delete file uploads"),
+            @ApiResponse(responseCode="415", description="Media type is not supported"),
+            @ApiResponse(responseCode="500", description="Internal Server Error")})
+    public ResponseEntity<SuccessResponse<Long>> deleteCompositionFormat (
+            @Parameter(required=true, description="id of the composition format to delete") 
+            @PathVariable("id") Long id) {
+        
+    	UserEntity user = currentUser();
+        Optional<CompositionFormatDescriptor> found = compositionRepository.findByIdAndUser(id, user);
+        if (found.isEmpty()) {
+        	throw new IllegalArgumentException("Could not find composition format with the given id (" + id + ") for this user");
+        }
+        
+        CompositionFormatDescriptor toDelete = found.get();
+        if (toDelete.getSystem() != null && toDelete.getSystem()) {
+        	// should never happen since we search by user
+        	throw new AccessDeniedException("The user is not allowed to delete system defined formats");
+        }
+        compositionRepository.delete(toDelete);
+        return new ResponseEntity<>(new SuccessResponse<Long>(id, "Composition format deleted successfully"), HttpStatus.OK);
     }
     
     @Operation(summary = "Get glycans", security = { @SecurityRequirement(name = "bearer-key") })

@@ -895,6 +895,9 @@ public class ScheduledTasksService {
                     // ignore
                     logger.warn ("no image found for glycan " + glycan.getGlycanId());
                 }
+    		} catch (GlytoucanFailedException e) {
+    			glycan.setError(e.getMessage());
+    			glycan.setErrorJson(e.getErrorJson());
     		} catch (GlytoucanAPIFailedException e) {
     			// report the issue
 				logger.error (e.getMessage(), e);

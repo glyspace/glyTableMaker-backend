@@ -177,7 +177,13 @@
 		    <groupId>com.fasterxml.jackson.datatype</groupId>
 		    <artifactId>jackson-datatype-jsr310</artifactId>
 		</dependency>
-
+		
+		<!-- https://glygen.ccrc.uga.edu/repository/content/repositories/thirdparty/ -->
+		<dependency>
+		  <groupId>org.glyspace</groupId>
+		  <artifactId>glytablemaker.composition.parser</artifactId>
+		  <version>0.0.1</version>
+		</dependency>
 
     </dependencies>
 

@@ -161,7 +161,6 @@ public class ErrorReportingService {
 	}
 	
 	public void reportUserError (UserError error) {
-		emailManager.sendErrorReport(error, emails.toArray(new String[0]));
 		String subject = "User Reported Issue: ";
 		String message = "";
 		if (error instanceof BatchUploadEntity) {
@@ -183,6 +182,8 @@ public class ErrorReportingService {
 			createIssue (subject, message, "Bug", "User Reported", false);
 		} catch (Exception e) {
 			logger.error("could not create the issue in Github. Reason " + e.getMessage(), e);
+			// sending email to the admins
+			emailManager.sendErrorReport(error, emails.toArray(new String[0]));
 		}
 	}	
 	
@@ -203,6 +204,11 @@ public class ErrorReportingService {
 				String issueUrl = createIssue (error.getMessage(), error.getDetails(), "Bug", error.getTicketLabel(), false);
 				if (issueUrl != null) {
 					error.setTicketUrl(issueUrl);
+				} else {
+					// send email
+					if (!emails.isEmpty()) {
+						emailManager.sendErrorReport(error, emails.toArray(new String[0]));
+					}
 				}
 			} catch (Exception e) {
 				logger.error("could not create the issue in Github. Reason " + e.getMessage(), e);

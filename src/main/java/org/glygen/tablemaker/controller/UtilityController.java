@@ -114,6 +114,8 @@ public class UtilityController {
     
     @Value("${glygen.glymage}")
 	String glymage;
+    
+    List<String> emails = new ArrayList<String>();
 	
 	public UtilityController(NamespaceRepository namespaceRepository, 
 			FeedbackRepository feedbackRepository, 
@@ -136,6 +138,19 @@ public class UtilityController {
 		this.glycanImageRepository = glycanImageRepository;
 		this.glycoproteinRepository = glycoproteinRepository;
 		this.errorReportingService = errorReportingService;
+		
+		// retrieve admin emails
+        try {
+            Resource classificationNamespace = new ClassPathResource("adminemails.txt");
+            final InputStream inputStream = classificationNamespace.getInputStream();
+            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                emails.add(line.trim());
+            }
+        } catch (Exception e) {
+            logger.error("Cannot locate admin emails", e);
+        }
 	}
 	
 	@Operation(summary = "Get all namespaces")
@@ -603,13 +618,6 @@ public class UtilityController {
         	return new ResponseEntity<>(new SuccessResponse<FeedbackEntity>(null, "Feedback is not valid, ignored"), HttpStatus.OK);
         }
         
-        try {
-			String issueUrl = errorReportingService.createIssue(feedback.getSubject(), feedback.toString(), "Bug", "Feedback", false);
-			logger.info ("Ticket created for user's feedback: " + issueUrl);
-		} catch (Exception e) {
-			logger.error("Could not create issue", e);
-		}
-        
         FeedbackEntity feedbackEntity = new FeedbackEntity();
         feedbackEntity.setEmail(feedback.getEmail());
         feedbackEntity.setPage(feedback.getPage());
@@ -618,22 +626,17 @@ public class UtilityController {
         feedbackEntity.setFirstName(feedback.getFirstName());
         feedbackEntity.setLastName(feedback.getLastName());
         
+        try {
+			String issueUrl = errorReportingService.createIssue(feedback.getSubject(), feedback.toString(), "Bug", "Feedback", false);
+			logger.info ("Ticket created for user's feedback: " + issueUrl);
+		} catch (Exception e) {
+			logger.error("Could not create issue! Sending email to the admins", e);
+			if (emails != null && !emails.isEmpty())
+				emailManager.sendFeedback(feedbackEntity, emails.toArray(new String[0]));
+		}
+        
         feedbackRepository.save(feedbackEntity);
         emailManager.sendFeedbackNotice(feedbackEntity);
-        List<String> emails = new ArrayList<String>();
-        try {
-            Resource classificationNamespace = new ClassPathResource("adminemails.txt");
-            final InputStream inputStream = classificationNamespace.getInputStream();
-            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                emails.add(line.trim());
-            }
-        } catch (Exception e) {
-            logger.error("Cannot load admin emails", e);
-            throw new IllegalArgumentException("Feedback not sent! Cannot load admin emails");
-        }
-        emailManager.sendFeedback(feedbackEntity, emails.toArray(new String[0]));
         
         return new ResponseEntity<>(new SuccessResponse<FeedbackEntity>(feedbackEntity, "Feedback is sent"), HttpStatus.OK);
     }
