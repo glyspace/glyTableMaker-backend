@@ -1947,7 +1947,7 @@ public class DataController {
         StringBuffer errors = new StringBuffer();
         
     	List<Glycan> allAdded = new ArrayList<>();
-    	int i=0;
+    	int i=1;
     	for (GlycanView g: gList) {
     		try {
 	    		ResponseEntity<SuccessResponse<Glycan>> response = addGlycan (g, g.getType() != null ? g.getType() : compositionType);
@@ -1957,7 +1957,8 @@ public class DataController {
     			allAdded.add ((Glycan)e.getDuplicate());
     		} catch (Exception e) {
     			// add them to error list and return errors
-    			errors.append ("Row " + i + ": " + e.getMessage()+ ";");
+    			if (!errors.isEmpty()) errors.append("\n");
+    			errors.append ("Row " + i + ": " + e.getMessage());
     		}
     		i++;
     	}
@@ -1967,7 +1968,7 @@ public class DataController {
     	if (errors.isEmpty()) {
     		return new ResponseEntity<>(new SuccessResponse<List<Glycan>>(allAdded, "glycans added"), HttpStatus.OK);
     	} else {
-    		throw new IllegalArgumentException ("Errors: " + errors.toString());
+    		throw new IllegalArgumentException (errors.toString());
     	}
     }
 
