@@ -49,7 +49,6 @@ import org.eurocarbdb.MolecularFramework.sugar.Sugar;
 import org.eurocarbdb.MolecularFramework.util.analytical.mass.GlycoVisitorMass;
 import org.eurocarbdb.MolecularFramework.util.visitor.GlycoVisitorException;
 import org.eurocarbdb.application.glycanbuilder.BuilderWorkspace;
-import org.eurocarbdb.application.glycanbuilder.ResidueType;
 import org.eurocarbdb.application.glycanbuilder.dataset.ResidueDictionary;
 import org.eurocarbdb.application.glycanbuilder.massutil.IonCloud;
 import org.eurocarbdb.application.glycanbuilder.massutil.MassOptions;
@@ -169,6 +168,8 @@ import org.glygen.tablemaker.view.dto.GlycanTagDTO;
 import org.glygen.tablemaker.view.dto.GlycoproteinDTO;
 import org.glygen.tablemaker.view.dto.SiteDTO;
 import org.glyspace.glytablemaker.composition.CompositionFormat;
+import org.glyspace.glytablemaker.composition.CompositionParser;
+import org.glyspace.glytablemaker.composition.ResidueType;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -2014,59 +2015,57 @@ public class DataController {
             try {
                 boolean doNotRegister = false;
                 String strWURCS = null;
-                switch (compositionType) {
-                case BASE:
-                	Composition compo = CompositionUtils.parse(g.getComposition().trim());
-                	strWURCS = CompositionConverter.toWURCS(compo);
-                	strWURCS = toUnknownForm(strWURCS);
-                	break;
-                case GLYGEN:
-                	compo = CompositionUtils.parse(g.getComposition().trim());
-                	SugarToWURCSGraph t_s2w = new SugarToWURCSGraph();
-        			try {
-        				Sugar sugar = CompositionConverter.toSugar(compo);
-        				for (GlycoNode node: sugar.getNodes()) {
-        					if (node instanceof Monosaccharide) {
-        						Monosaccharide m = ((Monosaccharide)node);
-        						m.setRing(-1, -1);
-        						m.setAnomer(Anomer.Unknown);
-        					}
-        				}
-        				t_s2w.start(sugar);
-        			} catch (WURCSExchangeException | GlycoconjugateException e) {
-        				throw new ConversionException("Error in converting composition to Sugar object.", e);
-        			}
-        			try {
-        				WURCSFactory factory = new WURCSFactory(t_s2w.getGraph());
-        				strWURCS = factory.getWURCS();
-        			} catch (WURCSException e) {
-        				throw new ConversionException("Error in encoding the composition in WURCS.", e);
-        			}
-                	break;
-                case DEFINED:
-                	compo = CompositionUtils.parse(g.getComposition().trim());
-                	strWURCS = CompositionConverter.toWURCS(compo);
-                	break;
-				case BYONIC:
-					compo = SequenceUtils.getWurcsCompositionFromByonic(g.getComposition().trim());
-					strWURCS = CompositionConverter.toWURCS(compo);
-					break;
-				case COMPACT:
-					compo = SequenceUtils.getWurcsCompositionFromCondensed(g.getComposition().trim());
-					strWURCS = CompositionConverter.toWURCS(compo);
-					break;
-				case PROTEINPROSPECTOR:
-					g.setSequence(g.getComposition().trim());
-					g.setFormat(SequenceFormat.PPCOMPOSITION);
-					parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user);
-					break;
-				case GLYCOGENIUS:
-					compo = SequenceUtils.getWurcsCompositionFromGlycoGenius(g.getComposition().trim());
-					strWURCS = CompositionConverter.toWURCS(compo);
-					//TODO disable this for the production system
-					doNotRegister = true;
-				default:
-					break;
+                
+                if (g.getCompositionFormat() != null) { // user selected composition format (including Byonic and single letter code)
+                	strWURCS= getWurcsFromComposition (g.getCompositionFormat(), 
+                			g.getComposition(), compositionType, user);
+                } else {  // this is coming from composition visual selection, directly in WURCS composition string (composition converter's expected format)
+	                switch (compositionType) {
+	                case BASE:
+	                	Composition compo = CompositionUtils.parse(g.getComposition().trim());
+	                	strWURCS = CompositionConverter.toWURCS(compo);
+	                	strWURCS = toUnknownForm(strWURCS);
+	                	break;
+	                case GLYGEN:
+	                	compo = CompositionUtils.parse(g.getComposition().trim());
+	                	SugarToWURCSGraph t_s2w = new SugarToWURCSGraph();
+	        			try {
+	        				Sugar sugar = CompositionConverter.toSugar(compo);
+	        				for (GlycoNode node: sugar.getNodes()) {
+	        					if (node instanceof Monosaccharide) {
+	        						Monosaccharide m = ((Monosaccharide)node);
+	        						m.setRing(-1, -1);
+	        						m.setAnomer(Anomer.Unknown);
+	        					}
+	        				}
+	        				t_s2w.start(sugar);
+	        			} catch (WURCSExchangeException | GlycoconjugateException e) {
+	        				throw new ConversionException("Error in converting composition to Sugar object.", e);
+	        			}
+	        			try {
+	        				WURCSFactory factory = new WURCSFactory(t_s2w.getGraph());
+	        				strWURCS = factory.getWURCS();
+	        			} catch (WURCSException e) {
+	        				throw new ConversionException("Error in encoding the composition in WURCS.", e);
+	        			}
+	                	break;
+	                case DEFINED:
+	                	compo = CompositionUtils.parse(g.getComposition().trim());
+	                	strWURCS = CompositionConverter.toWURCS(compo);
+	                	break;
+					case PROTEINPROSPECTOR:
+						g.setSequence(g.getComposition().trim());
+						g.setFormat(SequenceFormat.PPCOMPOSITION);
+						parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user);
+						break;
+					case GLYCOGENIUS:
+						compo = SequenceUtils.getWurcsCompositionFromGlycoGenius(g.getComposition().trim());
+						strWURCS = CompositionConverter.toWURCS(compo);
+						//TODO disable this for the production system
+						//doNotRegister = true;
+					default:
+						break;
+	                }
                 }
                 
                 if (compositionType != CompositionType.PROTEINPROSPECTOR) {
@@ -2135,7 +2134,102 @@ public class DataController {
         return new ResponseEntity<>(new SuccessResponse<Glycan>(glycan, "glycan added"), HttpStatus.OK);
     }
     
-    public static String toUnknownForm(String strWURCS) throws WURCSException {
+    private String getWurcsFromComposition(
+    		CompositionFormatDescriptor compositionFormatDescriptor, 
+    		String composition,
+    		CompositionType type,
+			UserEntity user) {
+    	final Long selectedId = compositionFormatDescriptor.getId();
+        final String selectedName = compositionFormatDescriptor.getName();
+
+        CompositionFormatDescriptor format = null;
+        if (selectedId != null) {
+            format = compositionRepository.findByIdAndUser(selectedId, user)
+                    .or(() -> compositionRepository.findByIdAndUser(selectedId, null)   // system formats have no user
+                            .filter(f -> Boolean.TRUE.equals(f.getSystem())))
+                    .orElse(null);
+        } else if (selectedName != null && !selectedName.trim().isEmpty()) {
+            List<CompositionFormatDescriptor> own = compositionRepository.findByNameEqualsIgnoreCaseAndUser(selectedName.trim(), user);
+            if (own != null && !own.isEmpty()) {
+                format = own.get(0);
+            } else {
+                List<CompositionFormatDescriptor> system = compositionRepository.findByNameEqualsIgnoreCaseAndSystem(selectedName.trim(), true);
+                if (system != null && !system.isEmpty()) {
+                    format = system.get(0);
+                }
+            }
+        }
+        if (format == null) {
+            // error, cannot locate the format used
+            throw new IllegalArgumentException("Composition format " + (selectedName != null ? selectedName : selectedId)
+                    + " cannot be located for this user");
+        }
+
+        CompositionFormat compositionFormat;
+        try {
+            compositionFormat = objectMapper.treeToValue(format.getDefinition(), CompositionFormat.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("The definition of composition format " + format.getName() + " cannot be read", e);
+        }
+
+        Map<ResidueType, Integer> residues = new CompositionParser().parse(composition.trim(), compositionFormat);
+        if (residues == null) {
+            throw new IllegalArgumentException("Composition " + composition + " does not match the composition format " + format.getName());
+        }
+
+        String wurcs = toWurcs(residues, composition, type);
+        return wurcs;
+	}
+    
+    private static String toWurcs(Map<ResidueType, Integer> composition, String original, CompositionType type) {
+        // WURCS composition string, e.g. Hex:5|HexNAc:3|S:1
+        StringBuilder wurcsComposition = new StringBuilder();
+        for (Map.Entry<ResidueType, Integer> e : composition.entrySet()) {
+            if (wurcsComposition.length() > 0) {
+                wurcsComposition.append("|");
+            }
+            wurcsComposition.append(e.getKey().getWurcsName()).append(":").append(e.getValue());
+        }
+        try {
+            Composition compo = CompositionUtils.parse(wurcsComposition.toString());
+            String strWURCS = CompositionConverter.toWURCS(compo);  // DEFINED
+            switch (type) {
+            case BASE:
+            	strWURCS = toUnknownForm(strWURCS);
+            	break;
+            case GLYGEN:
+            	SugarToWURCSGraph t_s2w = new SugarToWURCSGraph();
+    			try {
+    				Sugar sugar = CompositionConverter.toSugar(compo);
+    				for (GlycoNode node: sugar.getNodes()) {
+    					if (node instanceof Monosaccharide) {
+    						Monosaccharide m = ((Monosaccharide)node);
+    						m.setRing(-1, -1);
+    						m.setAnomer(Anomer.Unknown);
+    					}
+    				}
+    				t_s2w.start(sugar);
+    			} catch (WURCSExchangeException | GlycoconjugateException e) {
+    				throw new ConversionException("Error in converting composition to Sugar object.", e);
+    			}
+    			try {
+    				WURCSFactory factory = new WURCSFactory(t_s2w.getGraph());
+    				strWURCS = factory.getWURCS();
+    			} catch (WURCSException e) {
+    				throw new ConversionException("Error in encoding the composition in WURCS.", e);
+    			}
+            	break;
+            default:
+            	break;
+            }
+            return strWURCS;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Composition " + original + " (" + wurcsComposition
+                    + ") cannot be converted to WURCS: " + e.getMessage(), e);
+        }
+    }
+
+	public static String toUnknownForm(String strWURCS) throws WURCSException {
 
         WURCSFactory factory = new WURCSFactory(strWURCS);
         WURCSArray array = factory.getArray();
@@ -4002,7 +4096,7 @@ public class DataController {
 		        	        massOptions.setIsotope(MassOptions.ISOTOPE_MONO);
 		        	        massOptions.ION_CLOUD = new IonCloud();
 		        	        massOptions.NEUTRAL_EXCHANGES = new IonCloud();
-		        	        ResidueType m_residueFreeEnd = ResidueDictionary.findResidueType("freeEnd");
+		        	        org.eurocarbdb.application.glycanbuilder.ResidueType m_residueFreeEnd = ResidueDictionary.findResidueType("freeEnd");
 		        	        massOptions.setReducingEndType(m_residueFreeEnd);
 		        			org.eurocarbdb.application.glycanbuilder.Glycan glycanObject = t_wurcsparser.readGlycan(glycan.getWurcs(), massOptions);
 		        			if (glycanObject == null) {
