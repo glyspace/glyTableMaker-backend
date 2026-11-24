@@ -32,6 +32,7 @@ import org.glygen.tablemaker.persistence.NotificationEntity;
 import org.glygen.tablemaker.persistence.dao.ApplicationSettingsRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadJobRepository;
 import org.glygen.tablemaker.persistence.dao.BatchUploadRepository;
+import org.glygen.tablemaker.persistence.dao.CompositionFormatRepository;
 import org.glygen.tablemaker.persistence.dao.DatabaseResourceRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetMetadataGroupRepository;
 import org.glygen.tablemaker.persistence.dao.DatasetRepository;
@@ -92,6 +93,7 @@ public class ScheduledTasksService {
 	final private UserManager userManager;
 	final private DatasetMetadataGroupRepository datasetMetadataGroupRepository;
 	final private DatabaseResourceRepository databaseResourceRepository;
+	final private CompositionFormatRepository compositionRepository;
 	
 	@Value("${spring.file.uploaddirectory}")
 	String uploadDir;
@@ -118,7 +120,7 @@ public class ScheduledTasksService {
 			GlycanImageRepository glycanImageRepository, DatasetRepository datasetRepository, 
 			ApplicationSettingsRepository settingRepository, DatasetManager datasetManager, EmailManager emailManager, 
 			UserManager userManager, DatasetMetadataGroupRepository datasetMetadataGroupRepository, 
-			DatabaseResourceRepository databaseResourceRepository) {
+			DatabaseResourceRepository databaseResourceRepository, CompositionFormatRepository compositionRepository) {
 		this.batchUploadJobRepository = batchUploadJobRepository;
 		this.batchUploadService = batchUploadService;
 		this.uploadRepository = uploadRepository;
@@ -133,6 +135,7 @@ public class ScheduledTasksService {
 		this.userManager = userManager;
 		this.datasetMetadataGroupRepository = datasetMetadataGroupRepository;
 		this.databaseResourceRepository = databaseResourceRepository;
+		this.compositionRepository = compositionRepository;
 	}
 	
 	@Scheduled(fixedDelay = 604800000, initialDelay=2000)
@@ -985,7 +988,7 @@ public class ScheduledTasksService {
     			try {
 	    			DataController.rerunAddGlycoproteinsFromFile(this, newFile, job.getUpload().getId(), job.getFileType(), 
 	    					job.getTag(), job.getOrderParam(), job.getCompType(), job.getUser().getUserId(), 
-	    					uploadRepository, batchUploadJobRepository, batchUploadService, userRepository, errorReportingService);
+	    					uploadRepository, batchUploadJobRepository, batchUploadService, userRepository, errorReportingService, compositionRepository);
 	    			job.setLastRun(new Date());
 	    			batchUploadJobRepository.save(job);
     			} catch (Exception e) {

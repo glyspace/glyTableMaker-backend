@@ -151,7 +151,6 @@ public class UniProtUtil {
 			
 			String sequence = UniProtUtil.getSequenceFromUniProt("P12763", "2");
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
         

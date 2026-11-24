@@ -64,7 +64,7 @@ public class DatasetGlycoproteinMetadataRecord {
 	}
 
 	public DatasetGlycoproteinMetadataRecord() {
-		// TODO Auto-generated constructor stub
+		
 	}
 
 	public Long getId() {

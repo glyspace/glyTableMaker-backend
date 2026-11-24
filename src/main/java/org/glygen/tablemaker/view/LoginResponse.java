@@ -7,7 +7,6 @@ public class LoginResponse {
     long unreadMessageCount;
     
     public LoginResponse() {
-        // TODO Auto-generated constructor stub
     }
     
     public LoginResponse(String token, User user) {

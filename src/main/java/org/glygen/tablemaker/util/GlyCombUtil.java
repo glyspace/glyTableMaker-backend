@@ -253,7 +253,6 @@ public class GlyCombUtil {
 			gp.setGlycombReceiptNumber("b1f8690d-ce09-4a83-a376-3738c377a66d");
 			util.publish(gp);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}

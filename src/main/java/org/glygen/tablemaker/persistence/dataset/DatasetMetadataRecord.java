@@ -37,7 +37,6 @@ public class DatasetMetadataRecord {
 	}
 
 	public DatasetMetadataRecord() {
-		// TODO Auto-generated constructor stub
 	}
 
 	public Long getId() {

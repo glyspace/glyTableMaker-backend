@@ -133,68 +133,6 @@ public class TablemakerApplication {
         	format.setDefinition(node);
         	compFormatRepository.save(format);
         }
-   /*     formats = compFormatRepository.findByNameEqualsIgnoreCaseAndSystem("glycogenius encoding", true);
-        if (formats == null || formats.size() == 0) {
-        	// save single letter format
-        	CompositionFormatDescriptor format = new CompositionFormatDescriptor();
-        	format.setDateCreated(new Date());
-        	format.setName("GlycoGenius Encoding");
-        	format.setDescription("Uses a simple letter combination (one to two letters) to identify each monosaccharide, followed by the amount of it with the exception of modifications");
-        	format.setExample("H2N2+1(s)+1(p)");
-        	format.setSystem(true);
-        	format.setUser(null);
-        	CompositionFormat ggenius = new CompositionFormat();
-        	Map<String, ResidueType> residueMap = new HashMap<String, ResidueType>();
-        	residueMap.put("p", ResidueType.PHOSPHATE);
-        	residueMap.put("s", ResidueType.SULFATE);
-        	residueMap.put("F", ResidueType.FUC);
-        	residueMap.put("H", ResidueType.HEX);
-        	residueMap.put("HN", ResidueType.HEXN);
-        	residueMap.put("N", ResidueType.HEXNAC);
-        	residueMap.put("G", ResidueType.NEUGC);
-        	residueMap.put("S", ResidueType.NEUAC);
-        	residueMap.put("X", ResidueType.XYL);
-        	residueMap.put("UA", ResidueType.HEXA);
-        	ggenius.setStringToResidue(residueMap);
-        	ggenius.setAllowNumberOmission(false);
-        	//TODO how to handle this - only used for sulfate and phosphate and also with + before these
-        	ggenius.setOpeningDelimiter("(");   
-        	ggenius.setClosingDelimiter(")");
-        	JsonNode node = mapper.valueToTree(ggenius);
-        	format.setDefinition(node);
-        	compFormatRepository.save(format);
-        }
-        formats = compFormatRepository.findByNameEqualsIgnoreCaseAndSystem("proteinprospector encoding", true);
-        if (formats == null || formats.size() == 0) {
-        	// save single letter format
-        	CompositionFormatDescriptor format = new CompositionFormatDescriptor();
-        	format.setDateCreated(new Date());
-        	format.setName("ProteinProspector Encoding");
-        	format.setDescription("Byonic like encoding, counts follow the residues and the count of one can be omitted");
-        	format.setExample("HexNAc2Hex3FucXyl+Cation:Fe[III]");
-        	format.setSystem(true);
-        	format.setUser(null);
-        	CompositionFormat pp = new CompositionFormat();
-        	Map<String, ResidueType> residueMap = new HashMap<String, ResidueType>();
-        	residueMap.put("Fuc", ResidueType.FUC);
-        	residueMap.put("Galactosyl", ResidueType.GAL);
-        	residueMap.put("galactosyl", ResidueType.GAL);
-        	residueMap.put("HexNAc", ResidueType.HEXNAC);
-        	residueMap.put("Glucosyl", ResidueType.GLC);
-        	residueMap.put("Phospho", ResidueType.PHOSPHATE);
-        	residueMap.put("Sulfo", ResidueType.SULFATE);
-        	residueMap.put("NeuGc", ResidueType.NEUGC);
-        	residueMap.put("NeuAc", ResidueType.NEUAC);
-        	residueMap.put("Hex", ResidueType.HEX);
-        	residueMap.put("HN", ResidueType.HEXN);
-        	residueMap.put("Xyl", ResidueType.XYL);
-        	residueMap.put("Ac", ResidueType.Ac);
-        	pp.setStringToResidue(residueMap);
-        	pp.setAllowNumberOmission(true);
-        	JsonNode node = mapper.valueToTree(pp);
-        	format.setDefinition(node);
-        	compFormatRepository.save(format);
-        }*/
 	}
 
 	@EventListener(ApplicationReadyEvent.class)

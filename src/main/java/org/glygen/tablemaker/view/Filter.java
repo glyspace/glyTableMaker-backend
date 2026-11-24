@@ -5,7 +5,6 @@ public class Filter {
     String value;
     
     public Filter() {
-        // TODO Auto-generated constructor stub
     }
     
     public Filter (String id, String value) {

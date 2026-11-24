@@ -15,7 +15,6 @@ public class CompositionFormatView {
 	JsonNode definition;
 
 	public CompositionFormatView() {
-		// TODO Auto-generated constructor stub
 	}
 
 	public CompositionFormatView(Long id, String name, String description, String example, Boolean system, Date dateCreated,

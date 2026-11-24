@@ -443,13 +443,10 @@ public class GlytoucanUtil {
         try {
             exporter.start(glycoCTSeq);
         } catch (SugarImporterException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (GlycoVisitorException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (WURCSException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
         String wurcs = exporter.getWURCS(); 
@@ -485,7 +482,6 @@ public class GlytoucanUtil {
         try {
 			GlytoucanUtil.getSugarFromWURCS(wurcs);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
         

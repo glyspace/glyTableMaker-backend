@@ -6,7 +6,6 @@ public class SuccessResponse<T> {
     String message;
     
     public SuccessResponse() {
-        // TODO Auto-generated constructor stub
     }
     
     public SuccessResponse (T d, String m) {

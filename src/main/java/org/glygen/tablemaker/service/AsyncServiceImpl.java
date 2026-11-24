@@ -34,6 +34,7 @@ import org.glygen.tablemaker.persistence.UploadErrorEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
 import org.glygen.tablemaker.persistence.dao.GlycanRepository;
 import org.glygen.tablemaker.persistence.dao.GlycoproteinRepository;
+import org.glygen.tablemaker.persistence.glycan.CompositionFormatDescriptor;
 import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
@@ -263,7 +264,7 @@ public class AsyncServiceImpl implements AsyncService {
 	@Override
 	@Async("GlygenAsyncExecutor")
 	public CompletableFuture<SuccessResponse<BatchUploadEntity>> addGlycoproteinFromExcelFile(File file, 
-			BatchUploadEntity upload, UserEntity user, String tag, CompositionType compType) {
+			BatchUploadEntity upload, UserEntity user, String tag, CompositionType compType, CompositionFormatDescriptor format) {
 		try {
 			List<UploadErrorEntity> errors = new ArrayList<>();
             List<Glycoprotein> allGlycoproteins = new ArrayList<>();
@@ -297,31 +298,24 @@ public class AsyncServiceImpl implements AsyncService {
 	            	String[] glycans = glycanData.trim().split (";");
                 	for (String comp: glycans) {
                 		try {
-		            		Composition compo = null;
-							// parse and register glycans
-		            		//TODO use system defined composition formats and the common code
-		            		if (compType != null && compType == CompositionType.COMPACT) {
-		            			compo = SequenceUtils.getWurcsCompositionFromCondensed(comp.trim());
-		            		} else { // assume byonic
-		            			compo = SequenceUtils.getWurcsCompositionFromByonic(comp.trim());
+		            		if (format != null) {
+		            			String strWURCS = SequenceUtils.getWurcsComposition(comp, compType, format);
+		            			//  parse and add glycan
+			                	GlycanView g = new GlycanView();
+			                	g.setFormat(SequenceFormat.WURCS);
+			                	g.setSequence(strWURCS);
+			                	Glycan glycan = new Glycan();
+			                	DataController.parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user);
+			                	// save the glycan
+			                    glycan.setDateCreated(new Date());
+			                    glycan.setUser(user);
+			                    allGlycans.add(glycan);
+			                    glycanSequenceMap.put (comp.trim(), glycan);
+			                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
+			                    if (added != null) {
+			                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added, errorReportingService);
+			                    }
 		            		}
-	    					String strWURCS = CompositionConverter.toWURCS(compo);
-		                	//  parse and add glycan
-		                	GlycanView g = new GlycanView();
-		                	g.setFormat(SequenceFormat.WURCS);
-		                	g.setSequence(strWURCS);
-		                	Glycan glycan = new Glycan();
-		                	DataController.parseAndRegisterGlycan(glycan, g, glycanRepository, errorReportingService, user);
-		                	// save the glycan
-		                    glycan.setDateCreated(new Date());
-		                    glycan.setUser(user);
-		                    allGlycans.add(glycan);
-		                    glycanSequenceMap.put (comp.trim(), glycan);
-		                    Glycan added = glycanManager.addUploadToGlycan(glycan, upload, true, user);
-		                    if (added != null) {
-		                    	DataController.createImageForGlycan(imageLocation, scheme+glymage, added, errorReportingService);
-		                    }
-                		
 		                } catch (DuplicateException e) {
 		                	//errors.add(new UploadErrorEntity(count+"", "duplicate", sequence));
 		                	if (e.getDuplicate() != null && e.getDuplicate() instanceof Glycan) {
@@ -442,7 +436,7 @@ public class AsyncServiceImpl implements AsyncService {
 	@Override
 	@Async("GlygenAsyncExecutor")
 	public CompletableFuture<SuccessResponse<BatchUploadEntity>> addGlycoproteinFromByonicFile(File file, 
-			BatchUploadEntity upload, UserEntity user, String delimeter, String tag, MultipleGlycanOrder order) {
+			BatchUploadEntity upload, UserEntity user, String delimeter, String tag, MultipleGlycanOrder order, CompositionFormatDescriptor format) {
 		try {
 			List<UploadErrorEntity> errors = new ArrayList<>();
             List<Glycoprotein> allGlycoproteins = new ArrayList<>();
@@ -506,9 +500,7 @@ public class AsyncServiceImpl implements AsyncService {
                     	String[] glycans = glycanData.trim().split (";");
                     	for (String comp: glycans) {
                     		try {
-        						// parse and register glycans
-                        		Composition compo = SequenceUtils.getWurcsCompositionFromByonic(comp.trim());
-            					String strWURCS = CompositionConverter.toWURCS(compo);
+                    			String strWURCS = SequenceUtils.getWurcsComposition(comp, CompositionType.DEFINED, format);
         	                	//  parse and add glycan
         	                	GlycanView g = new GlycanView();
         	                	g.setFormat(SequenceFormat.WURCS);

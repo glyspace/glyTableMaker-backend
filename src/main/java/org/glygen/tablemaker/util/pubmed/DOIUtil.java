@@ -114,10 +114,8 @@ public class DOIUtil {
 			pub = new DOIUtil().getPublication("10.3390/cimb45110575");
 			System.out.println (pub.getFormattedAuthor());
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		

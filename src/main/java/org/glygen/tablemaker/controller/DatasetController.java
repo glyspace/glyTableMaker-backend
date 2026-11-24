@@ -827,8 +827,6 @@ public class DatasetController {
 			notification.setTitle("Dataset Transfer Request");
 			String message = "You have a dataset transfer request from the user " +  user + ".";
 			notification.setMessage(message);
-			//String jsonString = "{\"datasetHash\":" + "\""+ request.getDatasetHash() + "\"}";
-			//JsonNode node = mapper.readTree(jsonString);
 			JsonNode node = mapper.valueToTree(request);
 			notification.setMetadata(node);
 			notification.setCreatedAt(Instant.now());

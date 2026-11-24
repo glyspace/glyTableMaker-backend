@@ -428,10 +428,8 @@ public class ProteinProspector {
 				//p.addGlytoucanIds(args[0], util);
 				p.generateCartoonSheet(args[0]);
 			} catch (EncryptedDocumentException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}

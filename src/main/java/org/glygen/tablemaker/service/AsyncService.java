@@ -5,6 +5,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.glygen.tablemaker.persistence.BatchUploadEntity;
 import org.glygen.tablemaker.persistence.UserEntity;
+import org.glygen.tablemaker.persistence.glycan.CompositionFormatDescriptor;
 import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.protein.MultipleGlycanOrder;
 import org.glygen.tablemaker.view.ExcelFileWrapper;
@@ -20,10 +21,10 @@ public interface AsyncService {
 			UserEntity user, ExcelFileWrapper excelParameters, String tag);
 
 	CompletableFuture<SuccessResponse<BatchUploadEntity>> addGlycoproteinFromByonicFile(File file,
-			BatchUploadEntity upload, UserEntity user, String delimeter, String tag, MultipleGlycanOrder multipleGlycanOrder);
+			BatchUploadEntity upload, UserEntity user, String delimeter, String tag, MultipleGlycanOrder multipleGlycanOrder, CompositionFormatDescriptor compositionFormatDescriptor);
 
 	CompletableFuture<SuccessResponse<BatchUploadEntity>> addGlycoproteinFromExcelFile(File file,
-			BatchUploadEntity upload, UserEntity user, String tag, CompositionType compType);
+			BatchUploadEntity upload, UserEntity user, String tag, CompositionType compType, CompositionFormatDescriptor compFormat);
 
 	CompletableFuture<SuccessResponse<BatchUploadEntity>> addGlycanFromGlycoGeniusFile(File file,
 			BatchUploadEntity saved, UserEntity user, ExcelFileWrapper excelParameters, String tag, SequenceFormat format);

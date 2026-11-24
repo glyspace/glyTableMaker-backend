@@ -47,13 +47,19 @@ import org.glycoinfo.application.glycanbuilder.converterWURCS2.WURCS2Parser;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
+import org.glygen.tablemaker.persistence.glycan.CompositionFormatDescriptor;
 import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
+import org.glyspace.glytablemaker.composition.CompositionFormat;
+import org.glyspace.glytablemaker.composition.CompositionParser;
 import org.grits.toolbox.util.structure.glycan.count.GlycanCompositionCountOperator;
 import org.grits.toolbox.util.structure.glycan.count.SearchQueryItem;
 import org.grits.toolbox.util.structure.glycan.filter.GlycanFilterException;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class SequenceUtils {
 	static org.slf4j.Logger logger = LoggerFactory.getLogger(SequenceUtils.class);
@@ -63,6 +69,8 @@ public class SequenceUtils {
 	static Map<String, String> singleLetterExportMapping = new HashMap<>();
 	static List<SearchQueryItem> queryList = new ArrayList<>();	
 	static Map<String, String> byonicMapping = new HashMap<>();
+	
+	static ObjectMapper objectMapper = new ObjectMapper();
 	
 	static {
 		// values should match WURCS composition list here: https://gitlab.com/glycoinfo/glycompconverter
@@ -298,9 +306,29 @@ public class SequenceUtils {
     	String pattern = "^(?:\\s*[A-Za-z]+\\s*\\(\\s*\\d+\\s*\\)\\s*)+$";
     	return input.matches(pattern);
     }
+    
+    public static String getWurcsComposition (String composition, CompositionType type, CompositionFormatDescriptor format) throws CompositionParseException {
+    	if (format == null) {
+    		throw new IllegalArgumentException("The definition of composition format is null");
+    	}
+    	CompositionFormat compositionFormat;
+        try {
+            compositionFormat = objectMapper.treeToValue(format.getDefinition(), CompositionFormat.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("The definition of composition format " + format.getName() + " cannot be read", e);
+        }
+
+        Map<org.glyspace.glytablemaker.composition.ResidueType, Integer> residues = new CompositionParser().parse(composition.trim(), compositionFormat);
+        if (residues == null) {
+            throw new CompositionParseException("Composition " + composition + " does not match the composition format " + format.getName());
+        }
+
+        String wurcs = SequenceUtils.toWurcs(residues, composition, type);
+        return wurcs;
+    }
 
     
-    public static Composition getWurcsCompositionFromByonic (String sequence) throws DictionaryException, CompositionParseException {
+   /* public static Composition getWurcsCompositionFromByonic (String sequence) throws DictionaryException, CompositionParseException {
     	if (sequence != null) {
     		if (isValidByonicComposition(sequence)) {
 	    		String[] monoWithCountList = sequence.split("\\)");
@@ -358,7 +386,8 @@ public class SequenceUtils {
     	}
     	
     	return null;
-    }
+    }*/
+    
     public static Composition getWurcsCompositionFromGlycoGenius (String sequence) throws DictionaryException, CompositionParseException {
     	if (sequence != null) {
 			// Split into prefix and suffix
@@ -638,28 +667,7 @@ public class SequenceUtils {
     }
 
     
-    public static void main(String[] args) {
-		// test byonic export
-    	
-    	try {
-			Composition c = getWurcsCompositionFromByonic("HexNac(2)dHex(1)");
-			System.out.println (c.toString());
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} 
-    	
-    	// test Juan's condensed sequence
-    	try {
-    		
-    		Composition c = getWurcsCompositionFromCondensed("H2N2F1");
-			System.out.println (c.toString());
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} 
-    	
-		
+    public static void main(String[] args) {	
 		String sequence = "RES\n" +
 				"1b:b-dglc-HEX-1:5\n" +
 				"2s:n-acetyl\n" +
@@ -704,7 +712,6 @@ public class SequenceUtils {
 				}
 			} else System.out.println("Not matched");
 		} catch (SugarImporterException | GlycanFilterException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		

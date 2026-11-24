@@ -2062,8 +2062,6 @@ public class DataController {
 					case GLYCOGENIUS:
 						compo = SequenceUtils.getWurcsCompositionFromGlycoGenius(g.getComposition().trim());
 						strWURCS = CompositionConverter.toWURCS(compo);
-						//TODO disable this for the production system
-						//doNotRegister = true;
 					default:
 						break;
 	                }
@@ -2139,7 +2137,7 @@ public class DataController {
     		CompositionFormatDescriptor compositionFormatDescriptor, 
     		String composition,
     		CompositionType type,
-			UserEntity user) {
+			UserEntity user) throws CompositionParseException {
     	final Long selectedId = compositionFormatDescriptor.getId();
         final String selectedName = compositionFormatDescriptor.getName();
 
@@ -2165,21 +2163,8 @@ public class DataController {
             throw new IllegalArgumentException("Composition format " + (selectedName != null ? selectedName : selectedId)
                     + " cannot be located for this user");
         }
-
-        CompositionFormat compositionFormat;
-        try {
-            compositionFormat = objectMapper.treeToValue(format.getDefinition(), CompositionFormat.class);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("The definition of composition format " + format.getName() + " cannot be read", e);
-        }
-
-        Map<ResidueType, Integer> residues = new CompositionParser().parse(composition.trim(), compositionFormat);
-        if (residues == null) {
-            throw new IllegalArgumentException("Composition " + composition + " does not match the composition format " + format.getName());
-        }
-
-        String wurcs = SequenceUtils.toWurcs(residues, composition, type);
-        return wurcs;
+        
+        return SequenceUtils.getWurcsComposition(composition, type, format);
 	}
     
     
@@ -3203,7 +3188,7 @@ public class DataController {
             	logger.error("Could not store the original file");
             }
             addGlycoproteinsFromFile(this, newFile, saved, fileType, tag, multipleGlycanOrder, compType,
-    			user, uploadRepository, batchUploadJobRepository, batchUploadService, errorReportingService);
+    			user, uploadRepository, batchUploadJobRepository, batchUploadService, errorReportingService, compositionRepository);
             return new ResponseEntity<>(new SuccessResponse<Boolean>(true, "batch upload finished"), HttpStatus.OK); 
         }
     }
@@ -3211,7 +3196,8 @@ public class DataController {
     public static void rerunAddGlycoproteinsFromFile(ScheduledTasksService scheduledTasksService, File file, Long uploadId,
 			String fileType, String tag, MultipleGlycanOrder orderParam, CompositionType compositionType, Long userId,
 			BatchUploadRepository uploadRepository, BatchUploadJobRepository batchUploadJobRepository,
-			AsyncService batchUploadService, UserRepository userRepository, ErrorReportingService errorReportingService) {
+			AsyncService batchUploadService, UserRepository userRepository, ErrorReportingService errorReportingService,
+			CompositionFormatRepository compositionRepository) {
     	
     	Optional<UserEntity> user = userRepository.findById(userId);
  		Optional<BatchUploadEntity> batch = uploadRepository.findById(uploadId);
@@ -3221,7 +3207,7 @@ public class DataController {
 			result.setStatus(UploadStatus.PROCESSING);
 			BatchUploadEntity saved = uploadRepository.save(result);
 			addGlycoproteinsFromFile(scheduledTasksService, file, saved, fileType, tag, orderParam, compositionType, user.get(), 
-					uploadRepository, batchUploadJobRepository, batchUploadService, errorReportingService);
+					uploadRepository, batchUploadJobRepository, batchUploadService, errorReportingService, compositionRepository);
 		}
 		
 	}
@@ -3230,14 +3216,40 @@ public class DataController {
     		String tag, MultipleGlycanOrder multipleGlycanOrder, CompositionType compType,
     		UserEntity user, BatchUploadRepository uploadRepository, 
     		BatchUploadJobRepository batchUploadJobRepository, AsyncService batchUploadService,
-    		ErrorReportingService errorReportingService) {
+    		ErrorReportingService errorReportingService, CompositionFormatRepository compositionRepository) {
     	
         try {    
             CompletableFuture<SuccessResponse<BatchUploadEntity>> response = null;
             if (fileType.equalsIgnoreCase("byonic")) {
-            	response = batchUploadService.addGlycoproteinFromByonicFile(newFile, result, user, ",", tag, multipleGlycanOrder);
+            	List<CompositionFormatDescriptor> b = compositionRepository.findByNameEqualsIgnoreCaseAndUser("byonic format", user);
+            	if (b.isEmpty()) {
+            		// error, cannot find the required system format
+            		throw new RuntimeException("System defined byonic format does not exist!");
+            	}
+            	response = batchUploadService.addGlycoproteinFromByonicFile(newFile, result, user, ",", tag, multipleGlycanOrder, b.get(0));
             } else if (fileType.equalsIgnoreCase("excel")) {
-            	response = batchUploadService.addGlycoproteinFromExcelFile(newFile, result, user, tag, compType);
+            	CompositionFormatDescriptor compFormat = null;
+            	switch (compType) {
+				case BYONIC:
+					List<CompositionFormatDescriptor> b = compositionRepository.findByNameEqualsIgnoreCaseAndUser("byonic format", user);
+	            	if (b.isEmpty()) {
+	            		// error, cannot find the required system format
+	            		throw new RuntimeException("System defined byonic format does not exist!");
+	            	}
+	            	compFormat = b.get(0);
+					break;
+				case COMPACT:
+					List<CompositionFormatDescriptor> s = compositionRepository.findByNameEqualsIgnoreCaseAndUser("Single Letter Code (Wuhrer)", user);
+	            	if (s.isEmpty()) {
+	            		// error, cannot find the required system format
+	            		throw new RuntimeException("System defined single letter code format does not exist!");
+	            	}
+	            	compFormat = s.get(0);
+					break;
+				default: 
+					break;
+            	}
+            	response = batchUploadService.addGlycoproteinFromExcelFile(newFile, result, user, tag, compType, compFormat);
             }
             
             response.whenComplete((resp, e) -> {
