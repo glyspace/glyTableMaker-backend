@@ -7,6 +7,7 @@ public class StatisticsView {
     Long glycanCount=0L;
     Long proteinCount=0L;
     Long newGlycanCount=0L;
+    Long usersWithPublishedDatasets=0L;
     
 	public Long getUserCount() {
 		return userCount;
@@ -37,6 +38,12 @@ public class StatisticsView {
 	}
 	public void setNewGlycanCount(Long newGlycanCount) {
 		this.newGlycanCount = newGlycanCount;
+	}
+	public Long getUsersWithPublishedDatasets() {
+		return usersWithPublishedDatasets;
+	}
+	public void setUsersWithPublishedDatasets(Long usersWithPublishedDatasets) {
+		this.usersWithPublishedDatasets = usersWithPublishedDatasets;
 	}
 
 }

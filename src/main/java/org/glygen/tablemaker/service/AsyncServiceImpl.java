@@ -299,6 +299,7 @@ public class AsyncServiceImpl implements AsyncService {
                 		try {
 		            		Composition compo = null;
 							// parse and register glycans
+		            		//TODO use system defined composition formats and the common code
 		            		if (compType != null && compType == CompositionType.COMPACT) {
 		            			compo = SequenceUtils.getWurcsCompositionFromCondensed(comp.trim());
 		            		} else { // assume byonic

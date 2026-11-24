@@ -266,7 +266,7 @@ public class DatasetController {
                 			dv.setRetracted(true);
                 		}
                 	}
-                	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
+                	long proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
                 	dv.setNoProteins(proteinCount);
                 	
                 	List<TransferRequest> requests = transferRequestRepository.findByDatasetIdentifier(d.getDatasetIdentifier());
@@ -301,7 +301,7 @@ public class DatasetController {
             			dv.setRetracted(true);
             		}
             	}
-            	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
+            	long proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
             	dv.setNoGlycans(datasetRepository.getGlycanCount(d.getDatasetId()));
             	dv.setNoProteins(proteinCount);
             	List<TransferRequest> requests = transferRequestRepository.findByDatasetIdentifier(d.getDatasetIdentifier());
@@ -402,7 +402,7 @@ public class DatasetController {
                 	dv.setDateCreated(d.getDateCreated());
                 	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
                 	dv.setUser (getUserView(d.getUser(), softwareRepository));
-                	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
+                	long proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
                 	dv.setNoProteins(proteinCount);
                 	dv.setNoGlycans(datasetRepository.getGlycanCount(d.getDatasetId()));
                 	dv.setVersion(datasetRepository.getLatestVersionByDatasetId(d.getDatasetId()));
@@ -447,7 +447,7 @@ public class DatasetController {
             			dv.setRetracted(true);
             		}
             	}
-            	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
+            	long proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
             	dv.setNoProteins(proteinCount);
             	dv.setNoGlycans(datasetRepository.getGlycanCount(d.getDatasetId()));
             	if (proteinCount > 0) {

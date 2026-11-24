@@ -14,24 +14,40 @@ import java.util.regex.Pattern;
 
 import org.eurocarbdb.MolecularFramework.io.SugarImporterException;
 import org.eurocarbdb.MolecularFramework.io.GlycoCT.SugarImporterGlycoCTCondensed;
+import org.eurocarbdb.MolecularFramework.sugar.Anomer;
+import org.eurocarbdb.MolecularFramework.sugar.GlycoNode;
+import org.eurocarbdb.MolecularFramework.sugar.GlycoconjugateException;
+import org.eurocarbdb.MolecularFramework.sugar.Monosaccharide;
 import org.eurocarbdb.MolecularFramework.sugar.Sugar;
 import org.eurocarbdb.MolecularFramework.util.visitor.GlycoVisitorException;
 import org.eurocarbdb.application.glycanbuilder.ResidueType;
 import org.eurocarbdb.application.glycanbuilder.dataset.ResidueDictionary;
 import org.eurocarbdb.application.glycanbuilder.massutil.IonCloud;
 import org.eurocarbdb.application.glycanbuilder.massutil.MassOptions;
+import org.glycoinfo.GlycanCompositionConverter.conversion.CompositionConverter;
+import org.glycoinfo.GlycanCompositionConverter.conversion.ConversionException;
 import org.glycoinfo.GlycanCompositionConverter.structure.Composition;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionParseException;
 import org.glycoinfo.GlycanCompositionConverter.utils.CompositionUtils;
 import org.glycoinfo.GlycanCompositionConverter.utils.DictionaryException;
+import org.glycoinfo.GlycanFormatconverter.util.exchange.SugarToWURCSGraph.SugarToWURCSGraph;
 import org.glycoinfo.WURCSFramework.io.GlycoCT.GlycoVisitorValidationForWURCS;
 import org.glycoinfo.WURCSFramework.io.GlycoCT.WURCSExporterGlycoCT;
 import org.glycoinfo.WURCSFramework.util.WURCSException;
+import org.glycoinfo.WURCSFramework.util.WURCSFactory;
+import org.glycoinfo.WURCSFramework.util.exchange.WURCSExchangeException;
+import org.glycoinfo.WURCSFramework.util.subsumption.WURCSSubsumptionConverter;
 import org.glycoinfo.WURCSFramework.util.validation.WURCSValidator;
+import org.glycoinfo.WURCSFramework.wurcs.array.LIN;
+import org.glycoinfo.WURCSFramework.wurcs.array.MS;
+import org.glycoinfo.WURCSFramework.wurcs.array.RES;
+import org.glycoinfo.WURCSFramework.wurcs.array.UniqueRES;
+import org.glycoinfo.WURCSFramework.wurcs.array.WURCSArray;
 import org.glycoinfo.application.glycanbuilder.converterWURCS2.WURCS2Parser;
 import org.glygen.tablemaker.exception.DataNotFoundException;
 import org.glygen.tablemaker.exception.GlytoucanAPIFailedException;
 import org.glygen.tablemaker.exception.GlytoucanFailedException;
+import org.glygen.tablemaker.persistence.glycan.CompositionType;
 import org.glygen.tablemaker.persistence.glycan.Glycan;
 import org.glygen.tablemaker.persistence.glycan.RegistrationStatus;
 import org.grits.toolbox.util.structure.glycan.count.GlycanCompositionCountOperator;
@@ -396,6 +412,101 @@ public class SequenceUtils {
     	return null;
     }
     
+    public static String toWurcs(Map<org.glyspace.glytablemaker.composition.ResidueType, Integer> composition, String original, CompositionType type) {
+        // WURCS composition string, e.g. Hex:5|HexNAc:3|S:1
+        StringBuilder wurcsComposition = new StringBuilder();
+        for (Map.Entry<org.glyspace.glytablemaker.composition.ResidueType, Integer> e : composition.entrySet()) {
+            if (wurcsComposition.length() > 0) {
+                wurcsComposition.append("|");
+            }
+            // if composition includes PMe, we need to represent this with some other unused residue: Mur
+            if (e.getKey() == org.glyspace.glytablemaker.composition.ResidueType.PME) {
+            	wurcsComposition.append("Mur").append(":").append(e.getValue());
+            } else {
+            	wurcsComposition.append(e.getKey().getWurcsName()).append(":").append(e.getValue());
+            }
+        }
+        try {
+        	Composition compo = CompositionUtils.parse(wurcsComposition.toString());
+            String strWURCS = CompositionConverter.toWURCS(compo);  // DEFINED
+            // we need to replace Mur with PMe before returning WURCS
+            //TODO how to handle conversion to unknown (BASE) and GLYGEN form?
+            //strWURCS = strWURCS.replaceAll(Pattern.quote("a2122h-1x_1-5_2*N_3*OC^RCO/4=O/3C"),
+            //        "*OPOC/3O/3=O_");
+            switch (type) {
+            case BASE:
+            	strWURCS = toUnknownForm(strWURCS);
+            	break;
+            case GLYGEN:
+            	SugarToWURCSGraph t_s2w = new SugarToWURCSGraph();
+    			try {
+    				Sugar sugar = CompositionConverter.toSugar(compo);
+    				for (GlycoNode node: sugar.getNodes()) {
+    					if (node instanceof Monosaccharide) {
+    						Monosaccharide m = ((Monosaccharide)node);
+    						m.setRing(-1, -1);
+    						m.setAnomer(Anomer.Unknown);
+    					}
+    				}
+    				t_s2w.start(sugar);
+    			} catch (WURCSExchangeException | GlycoconjugateException e) {
+    				throw new ConversionException("Error in converting composition to Sugar object.", e);
+    			}
+    			try {
+    				WURCSFactory factory = new WURCSFactory(t_s2w.getGraph());
+    				strWURCS = factory.getWURCS();
+    			} catch (WURCSException e) {
+    				throw new ConversionException("Error in encoding the composition in WURCS.", e);
+    			}
+            	break;
+            default:
+            	break;
+            }
+            
+            // we need to replace Mur with PMe before returning WURCS
+            //strWURCS = strWURCS.replaceAll(Pattern.quote("a2122h-1x_1-5_2*N_3*OC^RCO/4=O/3C"),
+            //        "*OPOC/3O/3=O_");
+            
+            return strWURCS;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Composition " + original + " (" + wurcsComposition
+                    + ") cannot be converted to WURCS: " + e.getMessage(), e);
+        }
+    }
+
+	public static String toUnknownForm(String strWURCS) throws WURCSException {
+
+        WURCSFactory factory = new WURCSFactory(strWURCS);
+        WURCSArray array = factory.getArray();
+
+        // copy array without UniqueRES
+        WURCSArray arrayNew = new WURCSArray(
+            array.getVersion(),
+            array.getUniqueRESCount(),
+            array.getRESCount(),
+            array.getLINCount(),
+            array.isComposition()
+        );
+
+        for (RES res : array.getRESs())
+          arrayNew.addRES(res);
+
+        for ( LIN lin : array.getLINs() )
+          arrayNew.addLIN(lin);
+
+        // add UniqueRES converted to unknown form
+        WURCSSubsumptionConverter converter = new WURCSSubsumptionConverter();
+        for (UniqueRES ures : array.getUniqueRESs()) {
+          MS ms = converter.convertAnomericCarbonToUncertain(ures);
+          UniqueRES uresNew = new UniqueRES(ures.getUniqueRESID(), ms);
+          arrayNew.addUniqueRES(uresNew);
+        }
+
+        // back to WURCS
+        WURCSFactory factoryNew = new WURCSFactory(arrayNew);
+        return factoryNew.getWURCS();
+    }
+    
     public static void addCompositionInformation (Glycan glycan) {
     	String output = "";
     	SugarImporterGlycoCTCondensed importer = new SugarImporterGlycoCTCondensed();
@@ -596,5 +707,11 @@ public class SequenceUtils {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+		Map<org.glyspace.glytablemaker.composition.ResidueType, Integer> residueMap = new HashMap<>();
+		residueMap.put(org.glyspace.glytablemaker.composition.ResidueType.HEX, 2);
+		residueMap.put(org.glyspace.glytablemaker.composition.ResidueType.PME, 1);
+		System.out.println ("Converted WURCS for composition: " + SequenceUtils.toWurcs(residueMap, "H2mP", CompositionType.DEFINED));
 	}
+    
 }

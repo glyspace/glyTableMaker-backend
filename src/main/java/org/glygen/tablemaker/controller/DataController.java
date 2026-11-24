@@ -2025,7 +2025,7 @@ public class DataController {
 	                case BASE:
 	                	Composition compo = CompositionUtils.parse(g.getComposition().trim());
 	                	strWURCS = CompositionConverter.toWURCS(compo);
-	                	strWURCS = toUnknownForm(strWURCS);
+	                	strWURCS = SequenceUtils.toUnknownForm(strWURCS);
 	                	break;
 	                case GLYGEN:
 	                	compo = CompositionUtils.parse(g.getComposition().trim());
@@ -2178,90 +2178,11 @@ public class DataController {
             throw new IllegalArgumentException("Composition " + composition + " does not match the composition format " + format.getName());
         }
 
-        String wurcs = toWurcs(residues, composition, type);
+        String wurcs = SequenceUtils.toWurcs(residues, composition, type);
         return wurcs;
 	}
     
-    private static String toWurcs(Map<ResidueType, Integer> composition, String original, CompositionType type) {
-        // WURCS composition string, e.g. Hex:5|HexNAc:3|S:1
-        StringBuilder wurcsComposition = new StringBuilder();
-        for (Map.Entry<ResidueType, Integer> e : composition.entrySet()) {
-            if (wurcsComposition.length() > 0) {
-                wurcsComposition.append("|");
-            }
-            wurcsComposition.append(e.getKey().getWurcsName()).append(":").append(e.getValue());
-        }
-        try {
-            Composition compo = CompositionUtils.parse(wurcsComposition.toString());
-            String strWURCS = CompositionConverter.toWURCS(compo);  // DEFINED
-            switch (type) {
-            case BASE:
-            	strWURCS = toUnknownForm(strWURCS);
-            	break;
-            case GLYGEN:
-            	SugarToWURCSGraph t_s2w = new SugarToWURCSGraph();
-    			try {
-    				Sugar sugar = CompositionConverter.toSugar(compo);
-    				for (GlycoNode node: sugar.getNodes()) {
-    					if (node instanceof Monosaccharide) {
-    						Monosaccharide m = ((Monosaccharide)node);
-    						m.setRing(-1, -1);
-    						m.setAnomer(Anomer.Unknown);
-    					}
-    				}
-    				t_s2w.start(sugar);
-    			} catch (WURCSExchangeException | GlycoconjugateException e) {
-    				throw new ConversionException("Error in converting composition to Sugar object.", e);
-    			}
-    			try {
-    				WURCSFactory factory = new WURCSFactory(t_s2w.getGraph());
-    				strWURCS = factory.getWURCS();
-    			} catch (WURCSException e) {
-    				throw new ConversionException("Error in encoding the composition in WURCS.", e);
-    			}
-            	break;
-            default:
-            	break;
-            }
-            return strWURCS;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Composition " + original + " (" + wurcsComposition
-                    + ") cannot be converted to WURCS: " + e.getMessage(), e);
-        }
-    }
-
-	public static String toUnknownForm(String strWURCS) throws WURCSException {
-
-        WURCSFactory factory = new WURCSFactory(strWURCS);
-        WURCSArray array = factory.getArray();
-
-        // copy array without UniqueRES
-        WURCSArray arrayNew = new WURCSArray(
-            array.getVersion(),
-            array.getUniqueRESCount(),
-            array.getRESCount(),
-            array.getLINCount(),
-            array.isComposition()
-        );
-
-        for (RES res : array.getRESs())
-          arrayNew.addRES(res);
-
-        for ( LIN lin : array.getLINs() )
-          arrayNew.addLIN(lin);
-
-        // add UniqueRES converted to unknown form
-        WURCSSubsumptionConverter converter = new WURCSSubsumptionConverter();
-        for (UniqueRES ures : array.getUniqueRESs()) {
-          MS ms = converter.convertAnomericCarbonToUncertain(ures);
-          UniqueRES uresNew = new UniqueRES(ures.getUniqueRESID(), ms);
-          arrayNew.addUniqueRES(uresNew);
-        }
-
-        // back to WURCS
-        WURCSFactory factoryNew = new WURCSFactory(arrayNew);
-        return factoryNew.getWURCS();
-    }
+    
 
     
     @Operation(summary = "Add collection", security = { @SecurityRequirement(name = "bearer-key") })
@@ -4202,7 +4123,7 @@ public class DataController {
             	try {
 	            	Composition compo = CompositionUtils.parse(output);
 	     	       	String wurcs = CompositionConverter.toWURCS(compo);
-			        wurcs = DataController.toUnknownForm(wurcs);
+			        wurcs = SequenceUtils.toUnknownForm(wurcs);
 			        glycan.setWurcs(wurcs);
 	        	} catch (Exception e) {
             		throw new IllegalArgumentException("ProteinProspector sequence is not valid. Reason: " + e.getMessage());

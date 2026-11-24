@@ -758,19 +758,16 @@ public class UtilityController {
             @ApiResponse(responseCode="500", description="Internal Server Error")})
     public ResponseEntity<SuccessResponse<StatisticsView>> getStatistics () {
         StatisticsView stats = new StatisticsView();
-        stats.setUserCount(userRepository.count());
-        stats.setDatasetCount(datasetRepository.count());
-        
-        stats.setGlycanCount((long)datasetRepository.getAllGlycanCount());
-        stats.setProteinCount((long)datasetRepository.getAllGlycoproteinCount()); 
-        //stats.setGlycanCount((long)glycanRepository.findDistinctGlytoucanId().size());
-        //stats.setProteinCount((long)glycoproteinRepository.findDistinctUniprotId().size());
+        stats.setUserCount(userRepository.countByEnabled(true));
+        stats.setDatasetCount(datasetRepository.countByRetractedIsNullOrRetractedFalse());
+        stats.setUsersWithPublishedDatasets(datasetRepository.countUsersByDataset());
+        stats.setGlycanCount(datasetRepository.getAllGlycanCount());
+        stats.setProteinCount(datasetRepository.getAllGlycoproteinCount()); 
         List<String> publicGlycans = datasetRepository.getAllPublicGlytoucanIds();
         stats.setNewGlycanCount(
         		glycanRepository.countByGlytoucanIDInAndStatus(publicGlycans, RegistrationStatus.NEWLY_REGISTERED) + 
         		glycanRepository.countByGlytoucanIDInAndStatus(publicGlycans, RegistrationStatus.NEWLY_SUBMITTED_FOR_REGISTRATION));
         
-        //stats.setNewGlycanCount((long)glycanRepository.getRegisteredGlycanCount(publicGlycans));
         return new ResponseEntity<>(new SuccessResponse<StatisticsView>(stats, "Statistics retrieved"), HttpStatus.OK); 
     }
 	

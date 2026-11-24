@@ -18,4 +18,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 	
 	@Query("SELECT e FROM UserEntity e ORDER BY e.lastLoginDate DESC NULLS LAST")
 	List<UserEntity> findAllOrderByLastLoginDateDescNullsLast();
+	
+	public long countByEnabled (Boolean enabled);
 }

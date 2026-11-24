@@ -141,7 +141,7 @@ public class ProteinProspector {
 	            try {
 	            	boolean highlight = false;
 		            String wurcs = CompositionConverter.toWURCS(compo);
-		            wurcs = DataController.toUnknownForm(wurcs);
+		            wurcs = SequenceUtils.toUnknownForm(wurcs);
 	            	
 	            	Cell glytoucanCell = row.getCell(2);
 	            	Cell newGlytoucanCell = row.getCell(3);
@@ -367,7 +367,7 @@ public class ProteinProspector {
             	String output = parseModification (input);
                 Composition compo = CompositionUtils.parse(output);
 	            String wurcs = CompositionConverter.toWURCS(compo);
-	            wurcs = DataController.toUnknownForm(wurcs);
+	            wurcs = SequenceUtils.toUnknownForm(wurcs);
 	            byte [] cartoon = createImage(wurcs);
 	            if (cartoon != null) {
 	            	InputStream is = new ByteArrayInputStream(cartoon);

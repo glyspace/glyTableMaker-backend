@@ -25,14 +25,14 @@ public class DatasetView {
 	
 	Retraction retraction;
 	
-	Integer noGlycans;
-	Integer noProteins = 0;
+	Long noGlycans;
+	Long noProteins = 0L;
 	
 	Boolean transferRequested;
 	
 	String error; // error json reported by GlyGen if this dataset is integrated in GlyGen
 	
-	Integer noRows;
+	Long noRows;
 	
 	License license;
 	String version;
@@ -88,18 +88,8 @@ public class DatasetView {
 	public void setDateCreated(Date dateCreated) {
 		this.dateCreated = dateCreated;
 	}
-	public Integer getNoGlycans() {
-		return noGlycans;
-	}
-	public void setNoGlycans(Integer noGlycans) {
-		this.noGlycans = noGlycans;
-	}
-	public Integer getNoProteins() {
-		return noProteins;
-	}
-	public void setNoProteins(Integer noProteins) {
-		this.noProteins = noProteins;
-	}
+	
+	
 	public License getLicense() {
 		return license;
 	}
@@ -196,12 +186,7 @@ public class DatasetView {
 	public void setRetraction(Retraction retraction) {
 		this.retraction = retraction;
 	}
-	public Integer getNoRows() {
-		return noRows;
-	}
-	public void setNoRows(Integer noRows) {
-		this.noRows = noRows;
-	}
+	
 	public String getError() {
 		return error;
 	}
@@ -213,6 +198,24 @@ public class DatasetView {
 	}
 	public void setTransferRequested(Boolean transferRequested) {
 		this.transferRequested = transferRequested;
+	}
+	public Long getNoGlycans() {
+		return noGlycans;
+	}
+	public void setNoGlycans(Long noGlycans) {
+		this.noGlycans = noGlycans;
+	}
+	public Long getNoProteins() {
+		return noProteins;
+	}
+	public void setNoProteins(Long noProteins) {
+		this.noProteins = noProteins;
+	}
+	public Long getNoRows() {
+		return noRows;
+	}
+	public void setNoRows(Long noRows) {
+		this.noRows = noRows;
 	}
 	
 	

@@ -359,7 +359,7 @@ public class PublicDataController {
                 	dv.setDateCreated(d.getDateCreated());
                 	dv.setLicense(datasetRepository.getLicenseByDatasetId(d.getDatasetId()));
                 	dv.setUser (DatasetController.getUserView(d.getUser(), softwareRepository));
-                	int proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
+                	long proteinCount = datasetRepository.getProteinCount(d.getDatasetId());
                 	dv.setNoProteins(proteinCount);
                 	datasets.add(dv);
                 }
@@ -407,7 +407,7 @@ public class PublicDataController {
         }
         
         DatasetView dv = DatasetController.createDatasetView (existing, version, glycanImageRepository, imageLocation, retractionRepository, softwareRepository);
-        int proteinCount = 0;
+        long proteinCount = 0L;
         if (version != null) {
         	proteinCount = datasetRepository.getProteinCountByVersion(version);
         } else {
